@@ -36,20 +36,21 @@ Usage:
     )
 """
 
-import os
 import json
 import random
 import sqlite3
-from dataclasses import dataclass, field, asdict
-from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Any, Tuple
-from pathlib import Path
+from dataclasses import asdict, dataclass, field
+from datetime import datetime
 from enum import Enum
+from pathlib import Path
+from typing import Any, Dict, List, Optional, Tuple
+
 from loguru import logger
 
 
 class SponsorType(Enum):
     """Types of sponsor integrations."""
+
     INTEGRATED = "integrated"  # Woven into content
     DEDICATED = "dedicated"  # Standalone segment
     AFFILIATE = "affiliate"  # Affiliate link mention
@@ -60,6 +61,7 @@ class SponsorType(Enum):
 
 class PlacementPosition(Enum):
     """Sponsor placement positions."""
+
     OPTIMAL = "optimal"  # Algorithm decides
     EARLY = "early"  # ~30% through video
     MIDDLE = "middle"  # ~50% through video
@@ -71,6 +73,7 @@ class PlacementPosition(Enum):
 @dataclass
 class SponsorDeal:
     """Represents a sponsorship deal."""
+
     deal_id: str
     sponsor_name: str
     sponsor_type: SponsorType
@@ -111,6 +114,7 @@ class SponsorDeal:
 @dataclass
 class SponsorRead:
     """A generated sponsor read script."""
+
     deal_id: str
     sponsor_name: str
     script: str
@@ -132,6 +136,7 @@ class SponsorRead:
 @dataclass
 class SponsorDeliverable:
     """Track a sponsor deliverable."""
+
     deliverable_id: str
     deal_id: str
     video_id: Optional[str]
@@ -154,6 +159,7 @@ class SponsorDeliverable:
 @dataclass
 class PlacementTest:
     """A/B test for sponsor placement."""
+
     test_id: str
     deal_id: str
     variant_a_position: PlacementPosition
@@ -195,7 +201,7 @@ SPONSOR_TEMPLATES: Dict[str, Dict[str, List[str]]] = {
         "default": [
             "This video is sponsored by {sponsor_name}. {talking_point_1}. {talking_point_2}. Check them out using my link below.",
             "Quick shout-out to {sponsor_name} for sponsoring this video. {talking_point_1}. {cta}",
-        ]
+        ],
     },
     "dedicated": {
         "default": [
@@ -208,7 +214,7 @@ SPONSOR_TEMPLATES: Dict[str, Dict[str, List[str]]] = {
             "By the way, I use {sponsor_name} for {use_case}. If you want to try it, use my link in the description for {discount_offer}.",
             "Shout-out to {sponsor_name}. They're my go-to for {use_case}. Link below if you want to check them out.",
         ]
-    }
+    },
 }
 
 # Transition phrases for natural integration
@@ -255,7 +261,8 @@ class SponsorManager:
     def _init_database(self):
         """Initialize database for sponsor tracking."""
         with sqlite3.connect(self.db_path) as conn:
-            conn.execute("""
+            conn.execute(
+                """
                 CREATE TABLE IF NOT EXISTS sponsor_deals (
                     deal_id TEXT PRIMARY KEY,
                     sponsor_name TEXT NOT NULL,
@@ -276,8 +283,10 @@ class SponsorManager:
                     active INTEGER,
                     created_at TEXT
                 )
-            """)
-            conn.execute("""
+            """
+            )
+            conn.execute(
+                """
                 CREATE TABLE IF NOT EXISTS deliverables (
                     deliverable_id TEXT PRIMARY KEY,
                     deal_id TEXT,
@@ -293,8 +302,10 @@ class SponsorManager:
                     notes TEXT,
                     FOREIGN KEY (deal_id) REFERENCES sponsor_deals(deal_id)
                 )
-            """)
-            conn.execute("""
+            """
+            )
+            conn.execute(
+                """
                 CREATE TABLE IF NOT EXISTS placement_tests (
                     test_id TEXT PRIMARY KEY,
                     deal_id TEXT,
@@ -310,15 +321,20 @@ class SponsorManager:
                     completed INTEGER DEFAULT 0,
                     winner TEXT
                 )
-            """)
-            conn.execute("""
+            """
+            )
+            conn.execute(
+                """
                 CREATE INDEX IF NOT EXISTS idx_deliverables_deal
                 ON deliverables(deal_id)
-            """)
-            conn.execute("""
+            """
+            )
+            conn.execute(
+                """
                 CREATE INDEX IF NOT EXISTS idx_deliverables_status
                 ON deliverables(status)
-            """)
+            """
+            )
 
     def _load_deals(self):
         """Load active deals from database."""
@@ -340,12 +356,14 @@ class SponsorManager:
                     max_duration_seconds=row["max_duration_seconds"],
                     required_phrases=json.loads(row["required_phrases"] or "[]"),
                     forbidden_phrases=json.loads(row["forbidden_phrases"] or "[]"),
-                    start_date=datetime.fromisoformat(row["start_date"]) if row["start_date"] else None,
+                    start_date=(
+                        datetime.fromisoformat(row["start_date"]) if row["start_date"] else None
+                    ),
                     end_date=datetime.fromisoformat(row["end_date"]) if row["end_date"] else None,
                     deliverables=json.loads(row["deliverables"] or "{}"),
                     notes=row["notes"] or "",
                     active=bool(row["active"]),
-                    created_at=datetime.fromisoformat(row["created_at"])
+                    created_at=datetime.fromisoformat(row["created_at"]),
                 )
                 self._deals[deal.deal_id] = deal
 
@@ -366,7 +384,7 @@ class SponsorManager:
         forbidden_phrases: List[str] = None,
         start_date: Optional[datetime] = None,
         end_date: Optional[datetime] = None,
-        notes: str = ""
+        notes: str = "",
     ) -> SponsorDeal:
         """
         Create a new sponsor deal.
@@ -410,7 +428,7 @@ class SponsorManager:
             start_date=start_date,
             end_date=end_date,
             notes=notes,
-            active=True
+            active=True,
         )
 
         # Save to database
@@ -423,24 +441,36 @@ class SponsorManager:
     def _save_deal(self, deal: SponsorDeal):
         """Save deal to database."""
         with sqlite3.connect(self.db_path) as conn:
-            conn.execute("""
+            conn.execute(
+                """
                 INSERT OR REPLACE INTO sponsor_deals
                 (deal_id, sponsor_name, sponsor_type, talking_points, discount_code,
                  url, cpm_rate, flat_rate, min_duration_seconds, max_duration_seconds,
                  required_phrases, forbidden_phrases, start_date, end_date,
                  deliverables, notes, active, created_at)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """, (
-                deal.deal_id, deal.sponsor_name, deal.sponsor_type.value,
-                json.dumps(deal.talking_points), deal.discount_code, deal.url,
-                deal.cpm_rate, deal.flat_rate, deal.min_duration_seconds,
-                deal.max_duration_seconds, json.dumps(deal.required_phrases),
-                json.dumps(deal.forbidden_phrases),
-                deal.start_date.isoformat() if deal.start_date else None,
-                deal.end_date.isoformat() if deal.end_date else None,
-                json.dumps(deal.deliverables), deal.notes, int(deal.active),
-                deal.created_at.isoformat()
-            ))
+            """,
+                (
+                    deal.deal_id,
+                    deal.sponsor_name,
+                    deal.sponsor_type.value,
+                    json.dumps(deal.talking_points),
+                    deal.discount_code,
+                    deal.url,
+                    deal.cpm_rate,
+                    deal.flat_rate,
+                    deal.min_duration_seconds,
+                    deal.max_duration_seconds,
+                    json.dumps(deal.required_phrases),
+                    json.dumps(deal.forbidden_phrases),
+                    deal.start_date.isoformat() if deal.start_date else None,
+                    deal.end_date.isoformat() if deal.end_date else None,
+                    json.dumps(deal.deliverables),
+                    deal.notes,
+                    int(deal.active),
+                    deal.created_at.isoformat(),
+                ),
+            )
 
     def generate_sponsor_read(
         self,
@@ -448,7 +478,7 @@ class SponsorManager:
         niche: str = "default",
         target_duration: int = 45,
         style: str = "conversational",
-        custom_context: Optional[str] = None
+        custom_context: Optional[str] = None,
     ) -> SponsorRead:
         """
         Generate a sponsor read script.
@@ -483,7 +513,11 @@ class SponsorManager:
             "sponsor_name": deal.sponsor_name,
             "discount_code": deal.discount_code or "in the description",
             "url": deal.url or "the link in the description",
-            "cta": f"Use code {deal.discount_code} at checkout" if deal.discount_code else "Check the link in the description",
+            "cta": (
+                f"Use code {deal.discount_code} at checkout"
+                if deal.discount_code
+                else "Check the link in the description"
+            ),
             "discount_offer": "an exclusive discount" if deal.discount_code else "a special offer",
             "benefit": "level up your skills",
             "use_case": "improving my workflow",
@@ -541,7 +575,7 @@ class SponsorManager:
             placement_percentage=self._get_placement_percentage(placement),
             includes_discount_code=deal.discount_code is not None,
             includes_url=deal.url is not None,
-            word_count=word_count
+            word_count=word_count,
         )
 
     def _determine_optimal_placement(self, deal: SponsorDeal) -> PlacementPosition:
@@ -581,7 +615,7 @@ class SponsorManager:
         video_script: str,
         sponsor_deal: SponsorDeal,
         placement: str = "optimal",
-        custom_percentage: Optional[float] = None
+        custom_percentage: Optional[float] = None,
     ) -> Tuple[str, SponsorRead]:
         """
         Insert sponsor segment into a video script.
@@ -606,20 +640,21 @@ class SponsorManager:
             )
 
         # Split script into sentences/paragraphs
-        paragraphs = video_script.split('\n\n')
+        paragraphs = video_script.split("\n\n")
         total_paragraphs = len(paragraphs)
 
         if total_paragraphs <= 1:
             # Split by sentences instead
             import re
-            sentences = re.split(r'(?<=[.!?])\s+', video_script)
+
+            sentences = re.split(r"(?<=[.!?])\s+", video_script)
             total_units = len(sentences)
             insert_index = int(total_units * (sponsor_read.placement_percentage / 100))
             insert_index = max(1, min(insert_index, total_units - 1))
 
             # Insert sponsor read
             sentences.insert(insert_index, f"\n\n{sponsor_read.script}\n\n")
-            modified_script = ' '.join(sentences)
+            modified_script = " ".join(sentences)
         else:
             # Insert between paragraphs
             insert_index = int(total_paragraphs * (sponsor_read.placement_percentage / 100))
@@ -630,7 +665,7 @@ class SponsorManager:
             sponsor_segment = f"\n\n{sponsor_read.script}\n\n{transition_out}\n\n"
 
             paragraphs.insert(insert_index, sponsor_segment)
-            modified_script = '\n\n'.join(paragraphs)
+            modified_script = "\n\n".join(paragraphs)
 
         return modified_script, sponsor_read
 
@@ -641,7 +676,7 @@ class SponsorManager:
         video_title: str,
         upload_date: datetime,
         segment_start: float,
-        segment_duration: float
+        segment_duration: float,
     ) -> SponsorDeliverable:
         """
         Track a sponsor deliverable.
@@ -667,33 +702,35 @@ class SponsorManager:
             upload_date=upload_date,
             sponsor_segment_start=segment_start,
             sponsor_segment_duration=segment_duration,
-            status="delivered"
+            status="delivered",
         )
 
         # Save to database
         with sqlite3.connect(self.db_path) as conn:
-            conn.execute("""
+            conn.execute(
+                """
                 INSERT INTO deliverables
                 (deliverable_id, deal_id, video_id, video_title, upload_date,
                  sponsor_segment_start, sponsor_segment_duration, status)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-            """, (
-                deliverable.deliverable_id, deliverable.deal_id,
-                deliverable.video_id, deliverable.video_title,
-                deliverable.upload_date.isoformat(),
-                deliverable.sponsor_segment_start,
-                deliverable.sponsor_segment_duration,
-                deliverable.status
-            ))
+            """,
+                (
+                    deliverable.deliverable_id,
+                    deliverable.deal_id,
+                    deliverable.video_id,
+                    deliverable.video_title,
+                    deliverable.upload_date.isoformat(),
+                    deliverable.sponsor_segment_start,
+                    deliverable.sponsor_segment_duration,
+                    deliverable.status,
+                ),
+            )
 
         logger.info(f"Tracked deliverable: {video_title} for deal {deal_id}")
         return deliverable
 
     def start_placement_test(
-        self,
-        deal_id: str,
-        variant_a: str = "middle",
-        variant_b: str = "early"
+        self, deal_id: str, variant_a: str = "middle", variant_b: str = "early"
     ) -> PlacementTest:
         """
         Start an A/B test for sponsor placement.
@@ -712,35 +749,36 @@ class SponsorManager:
             test_id=f"test_{uuid.uuid4().hex[:8]}",
             deal_id=deal_id,
             variant_a_position=PlacementPosition(variant_a),
-            variant_b_position=PlacementPosition(variant_b)
+            variant_b_position=PlacementPosition(variant_b),
         )
 
         self._tests[deal_id] = test
 
         # Save to database
         with sqlite3.connect(self.db_path) as conn:
-            conn.execute("""
+            conn.execute(
+                """
                 INSERT INTO placement_tests
                 (test_id, deal_id, variant_a_position, variant_b_position,
                  variant_a_videos, variant_b_videos, started_at)
                 VALUES (?, ?, ?, ?, ?, ?, ?)
-            """, (
-                test.test_id, test.deal_id,
-                test.variant_a_position.value, test.variant_b_position.value,
-                json.dumps([]), json.dumps([]),
-                test.started_at.isoformat()
-            ))
+            """,
+                (
+                    test.test_id,
+                    test.deal_id,
+                    test.variant_a_position.value,
+                    test.variant_b_position.value,
+                    json.dumps([]),
+                    json.dumps([]),
+                    test.started_at.isoformat(),
+                ),
+            )
 
         logger.info(f"Started placement test: {variant_a} vs {variant_b}")
         return test
 
     def record_test_result(
-        self,
-        deal_id: str,
-        video_id: str,
-        variant: str,
-        retention_impact: float,
-        click_rate: float
+        self, deal_id: str, video_id: str, variant: str, retention_impact: float, click_rate: float
     ):
         """Record results for a placement test variant."""
         if deal_id not in self._tests:
@@ -754,20 +792,16 @@ class SponsorManager:
             # Running average
             n = len(test.variant_a_videos)
             test.variant_a_retention_impact = (
-                (test.variant_a_retention_impact * (n - 1) + retention_impact) / n
-            )
-            test.variant_a_click_rate = (
-                (test.variant_a_click_rate * (n - 1) + click_rate) / n
-            )
+                test.variant_a_retention_impact * (n - 1) + retention_impact
+            ) / n
+            test.variant_a_click_rate = (test.variant_a_click_rate * (n - 1) + click_rate) / n
         else:
             test.variant_b_videos.append(video_id)
             n = len(test.variant_b_videos)
             test.variant_b_retention_impact = (
-                (test.variant_b_retention_impact * (n - 1) + retention_impact) / n
-            )
-            test.variant_b_click_rate = (
-                (test.variant_b_click_rate * (n - 1) + click_rate) / n
-            )
+                test.variant_b_retention_impact * (n - 1) + retention_impact
+            ) / n
+            test.variant_b_click_rate = (test.variant_b_click_rate * (n - 1) + click_rate) / n
 
         # Check if test should conclude
         if len(test.variant_a_videos) >= 5 and len(test.variant_b_videos) >= 5:
@@ -789,20 +823,26 @@ class SponsorManager:
 
         # Update database
         with sqlite3.connect(self.db_path) as conn:
-            conn.execute("""
+            conn.execute(
+                """
                 UPDATE placement_tests
                 SET completed = 1, winner = ?,
                     variant_a_retention_impact = ?, variant_b_retention_impact = ?,
                     variant_a_click_rate = ?, variant_b_click_rate = ?,
                     variant_a_videos = ?, variant_b_videos = ?
                 WHERE test_id = ?
-            """, (
-                test.winner,
-                test.variant_a_retention_impact, test.variant_b_retention_impact,
-                test.variant_a_click_rate, test.variant_b_click_rate,
-                json.dumps(test.variant_a_videos), json.dumps(test.variant_b_videos),
-                test.test_id
-            ))
+            """,
+                (
+                    test.winner,
+                    test.variant_a_retention_impact,
+                    test.variant_b_retention_impact,
+                    test.variant_a_click_rate,
+                    test.variant_b_click_rate,
+                    json.dumps(test.variant_a_videos),
+                    json.dumps(test.variant_b_videos),
+                    test.test_id,
+                ),
+            )
 
         logger.success(f"Test concluded: Winner is {test.winner}")
 
@@ -834,8 +874,7 @@ class SponsorManager:
         with sqlite3.connect(self.db_path) as conn:
             conn.row_factory = sqlite3.Row
             rows = conn.execute(
-                "SELECT * FROM deliverables WHERE deal_id = ? ORDER BY upload_date DESC",
-                (deal_id,)
+                "SELECT * FROM deliverables WHERE deal_id = ? ORDER BY upload_date DESC", (deal_id,)
             ).fetchall()
 
             return [
@@ -851,7 +890,7 @@ class SponsorManager:
                     clicks=row["clicks"],
                     conversions=row["conversions"],
                     status=row["status"],
-                    notes=row["notes"] or ""
+                    notes=row["notes"] or "",
                 )
                 for row in rows
             ]
@@ -869,16 +908,20 @@ class SponsorManager:
                 params = ()
 
             # Get deal summary
-            deal_data = conn.execute(f"""
+            deal_data = conn.execute(
+                f"""
                 SELECT d.*, COUNT(del.deliverable_id) as deliverable_count
                 FROM sponsor_deals d
                 LEFT JOIN deliverables del ON d.deal_id = del.deal_id
                 {deals_filter}
                 GROUP BY d.deal_id
-            """, params).fetchall()
+            """,
+                params,
+            ).fetchall()
 
             # Get performance metrics
-            performance = conn.execute(f"""
+            performance = conn.execute(
+                f"""
                 SELECT
                     d.deal_id,
                     d.sponsor_name,
@@ -890,25 +933,30 @@ class SponsorManager:
                 LEFT JOIN deliverables del ON d.deal_id = del.deal_id
                 {deals_filter}
                 GROUP BY d.deal_id
-            """, params).fetchall()
+            """,
+                params,
+            ).fetchall()
 
         deals_summary = []
         for deal in deal_data:
             perf = next((p for p in performance if p["deal_id"] == deal["deal_id"]), None)
-            deals_summary.append({
-                "deal_id": deal["deal_id"],
-                "sponsor_name": deal["sponsor_name"],
-                "type": deal["sponsor_type"],
-                "deliverable_count": deal["deliverable_count"],
-                "total_views": perf["total_views"] if perf else 0,
-                "total_clicks": perf["total_clicks"] if perf else 0,
-                "click_rate": (
-                    (perf["total_clicks"] / perf["total_views"] * 100)
-                    if perf and perf["total_views"] else 0
-                ),
-                "total_conversions": perf["total_conversions"] if perf else 0,
-                "avg_segment_duration": perf["avg_duration"] if perf else 0,
-            })
+            deals_summary.append(
+                {
+                    "deal_id": deal["deal_id"],
+                    "sponsor_name": deal["sponsor_name"],
+                    "type": deal["sponsor_type"],
+                    "deliverable_count": deal["deliverable_count"],
+                    "total_views": perf["total_views"] if perf else 0,
+                    "total_clicks": perf["total_clicks"] if perf else 0,
+                    "click_rate": (
+                        (perf["total_clicks"] / perf["total_views"] * 100)
+                        if perf and perf["total_views"]
+                        else 0
+                    ),
+                    "total_conversions": perf["total_conversions"] if perf else 0,
+                    "avg_segment_duration": perf["avg_duration"] if perf else 0,
+                }
+            )
 
         return {
             "generated_at": datetime.now().isoformat(),
@@ -944,10 +992,10 @@ if __name__ == "__main__":
                 talking_points=[
                     "Learn any skill online",
                     "Access to 1000+ courses",
-                    "Start for free"
+                    "Start for free",
                 ],
                 discount_code="TESTCODE",
-                url="https://example.com/sponsor"
+                url="https://example.com/sponsor",
             )
             print(f"Created deal: {deal.deal_id}")
             print(f"Sponsor: {deal.sponsor_name}")

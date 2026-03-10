@@ -27,20 +27,21 @@ Usage:
     strategy = strategist.content_strategy("psychology", topics=10)
 """
 
-import os
+import hashlib
 import json
+import random
 import re
 import sqlite3
-import hashlib
+from dataclasses import asdict, dataclass, field
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Dict, Any, List, Optional, Tuple
-from dataclasses import dataclass, field, asdict
-import random
+from typing import Any, Dict, List, Optional, Tuple
+
 from loguru import logger
 
 try:
     from pytrends.request import TrendReq
+
     PYTRENDS_AVAILABLE = True
 except ImportError:
     PYTRENDS_AVAILABLE = False
@@ -48,6 +49,7 @@ except ImportError:
 
 try:
     import requests
+
     REQUESTS_AVAILABLE = True
 except ImportError:
     REQUESTS_AVAILABLE = False
@@ -57,9 +59,11 @@ except ImportError:
 # DATA CLASSES
 # ============================================================
 
+
 @dataclass
 class KeywordData:
     """Data structure for keyword research results."""
+
     keyword: str
     search_volume_trend: List[float] = field(default_factory=list)
     related_queries: List[str] = field(default_factory=list)
@@ -78,6 +82,7 @@ class KeywordData:
 @dataclass
 class SearchIntent:
     """Search intent classification result."""
+
     query: str
     primary_intent: str  # informational, navigational, transactional, commercial
     confidence: float
@@ -93,6 +98,7 @@ class SearchIntent:
 @dataclass
 class CompetitorVideo:
     """Data about a competitor video."""
+
     title: str
     channel: str = ""
     views: int = 0
@@ -109,6 +115,7 @@ class CompetitorVideo:
 @dataclass
 class CompetitorReport:
     """Report from competitor analysis."""
+
     keyword: str
     top_videos: List[CompetitorVideo] = field(default_factory=list)
     common_title_patterns: List[str] = field(default_factory=list)
@@ -125,6 +132,7 @@ class CompetitorReport:
 @dataclass
 class CTRPrediction:
     """Click-through rate prediction."""
+
     title: str
     predicted_ctr: float  # 0-100 scale
     confidence: float  # 0-1 scale
@@ -138,6 +146,7 @@ class CTRPrediction:
 @dataclass
 class RetentionPrediction:
     """Audience retention prediction."""
+
     estimated_avg_view_duration: float  # percentage
     hook_strength: float  # 0-100
     pacing_score: float  # 0-100
@@ -151,6 +160,7 @@ class RetentionPrediction:
 @dataclass
 class TitleVariant:
     """A/B test title variant."""
+
     title: str
     variant_type: str  # curiosity, urgency, how-to, listicle, etc.
     predicted_ctr: float
@@ -164,6 +174,7 @@ class TitleVariant:
 @dataclass
 class TopicSuggestion:
     """Content topic suggestion."""
+
     topic: str
     keyword: str
     opportunity_score: float
@@ -180,6 +191,7 @@ class TopicSuggestion:
 @dataclass
 class SEOStrategyResult:
     """Result from SEO strategy operations."""
+
     success: bool
     operation: str
     data: Dict[str, Any] = field(default_factory=dict)
@@ -196,7 +208,7 @@ class SEOStrategyResult:
         lines = [
             f"SEO Strategy: {self.operation}",
             f"Status: {'Success' if self.success else 'Failed'}",
-            ""
+            "",
         ]
         if self.recommendations:
             lines.append("Recommendations:")
@@ -208,6 +220,7 @@ class SEOStrategyResult:
 # ============================================================
 # KEYWORD RESEARCHER
 # ============================================================
+
 
 class KeywordResearcher:
     """
@@ -228,7 +241,8 @@ class KeywordResearcher:
 
         conn = sqlite3.connect(str(cache_path))
         cursor = conn.cursor()
-        cursor.execute("""
+        cursor.execute(
+            """
             CREATE TABLE IF NOT EXISTS keyword_cache (
                 keyword_hash TEXT PRIMARY KEY,
                 keyword TEXT,
@@ -236,7 +250,8 @@ class KeywordResearcher:
                 created_at TEXT,
                 expires_at TEXT
             )
-        """)
+        """
+        )
         conn.commit()
         conn.close()
 
@@ -247,8 +262,7 @@ class KeywordResearcher:
         conn = sqlite3.connect(str(self.cache_db))
         cursor = conn.cursor()
         cursor.execute(
-            "SELECT data, expires_at FROM keyword_cache WHERE keyword_hash = ?",
-            (key_hash,)
+            "SELECT data, expires_at FROM keyword_cache WHERE keyword_hash = ?", (key_hash,)
         )
         row = cursor.fetchone()
         conn.close()
@@ -268,10 +282,19 @@ class KeywordResearcher:
 
         conn = sqlite3.connect(str(self.cache_db))
         cursor = conn.cursor()
-        cursor.execute("""
+        cursor.execute(
+            """
             INSERT OR REPLACE INTO keyword_cache (keyword_hash, keyword, data, created_at, expires_at)
             VALUES (?, ?, ?, ?, ?)
-        """, (key_hash, keyword, json.dumps(data.to_dict()), datetime.now().isoformat(), expires_at.isoformat()))
+        """,
+            (
+                key_hash,
+                keyword,
+                json.dumps(data.to_dict()),
+                datetime.now().isoformat(),
+                expires_at.isoformat(),
+            ),
+        )
         conn.commit()
         conn.close()
 
@@ -381,7 +404,7 @@ class KeywordResearcher:
                             for item in data[1]:
                                 if isinstance(item, list) and item[0] not in suggestions:
                                     suggestions.append(item[0])
-            except:
+            except Exception:
                 pass
 
         return suggestions[:20]
@@ -392,8 +415,8 @@ class KeywordResearcher:
             return {}
 
         try:
-            pytrends = TrendReq(hl='en-US', tz=360)
-            pytrends.build_payload([keyword], cat=0, timeframe='today 3-m')
+            pytrends = TrendReq(hl="en-US", tz=360)
+            pytrends.build_payload([keyword], cat=0, timeframe="today 3-m")
 
             # Get interest over time
             interest = pytrends.interest_over_time()
@@ -407,19 +430,15 @@ class KeywordResearcher:
             rising_list = []
 
             if keyword in related and related[keyword]:
-                top = related[keyword].get('top')
+                top = related[keyword].get("top")
                 if top is not None and not top.empty:
-                    related_list = top['query'].tolist()[:10]
+                    related_list = top["query"].tolist()[:10]
 
-                rising = related[keyword].get('rising')
+                rising = related[keyword].get("rising")
                 if rising is not None and not rising.empty:
-                    rising_list = rising['query'].tolist()[:10]
+                    rising_list = rising["query"].tolist()[:10]
 
-            return {
-                "trend": trend,
-                "related": related_list,
-                "rising": rising_list
-            }
+            return {"trend": trend, "related": related_list, "rising": rising_list}
 
         except Exception as e:
             logger.warning(f"Trends API error: {e}")
@@ -503,6 +522,7 @@ class KeywordResearcher:
 # SEARCH INTENT ANALYZER
 # ============================================================
 
+
 class SearchIntentAnalyzer:
     """
     Classify and optimize for search intent.
@@ -515,8 +535,20 @@ class SearchIntentAnalyzer:
     # Intent patterns
     INTENT_PATTERNS = {
         "informational": {
-            "keywords": ["how to", "what is", "why", "guide", "tutorial", "learn", "explained",
-                        "tips", "ways to", "understanding", "definition", "meaning"],
+            "keywords": [
+                "how to",
+                "what is",
+                "why",
+                "guide",
+                "tutorial",
+                "learn",
+                "explained",
+                "tips",
+                "ways to",
+                "understanding",
+                "definition",
+                "meaning",
+            ],
             "questions": ["what", "how", "why", "when", "who", "where"],
         },
         "navigational": {
@@ -524,13 +556,34 @@ class SearchIntentAnalyzer:
             "patterns": [r"\b(youtube|netflix|amazon|google)\b"],
         },
         "transactional": {
-            "keywords": ["buy", "purchase", "order", "deal", "discount", "coupon",
-                        "cheap", "price", "cost", "subscription", "free trial"],
+            "keywords": [
+                "buy",
+                "purchase",
+                "order",
+                "deal",
+                "discount",
+                "coupon",
+                "cheap",
+                "price",
+                "cost",
+                "subscription",
+                "free trial",
+            ],
         },
         "commercial": {
-            "keywords": ["best", "top", "review", "comparison", "vs", "versus",
-                        "alternative", "which", "should i", "worth it"],
-        }
+            "keywords": [
+                "best",
+                "top",
+                "review",
+                "comparison",
+                "vs",
+                "versus",
+                "alternative",
+                "which",
+                "should i",
+                "worth it",
+            ],
+        },
     }
 
     # Content recommendations by intent
@@ -540,25 +593,25 @@ class SearchIntentAnalyzer:
             "Include visual demonstrations",
             "Define key terms early",
             "Add timestamps for navigation",
-            "Include practical examples"
+            "Include practical examples",
         ],
         "navigational": [
             "Clear brand mention in title",
             "Direct link in description",
-            "Official branding elements"
+            "Official branding elements",
         ],
         "transactional": [
             "Include pricing information",
             "Show before/after results",
             "Add call-to-action",
-            "Include testimonials"
+            "Include testimonials",
         ],
         "commercial": [
             "Compare multiple options",
             "Use pros/cons format",
             "Include personal recommendation",
-            "Show real-world testing"
-        ]
+            "Show real-world testing",
+        ],
     }
 
     # Title templates by intent
@@ -568,24 +621,24 @@ class SearchIntentAnalyzer:
             "{topic} Explained: Everything You Need to Know",
             "{number} Ways to {topic} (Step by Step)",
             "The Ultimate Guide to {topic}",
-            "{topic} Tutorial for Beginners"
+            "{topic} Tutorial for Beginners",
         ],
         "navigational": [
             "{brand} Official Tutorial",
             "How to Use {brand} ({year})",
-            "{brand} Complete Walkthrough"
+            "{brand} Complete Walkthrough",
         ],
         "transactional": [
             "Is {topic} Worth It? (Honest Review)",
             "{topic} Review: My Experience After {time}",
-            "Why I {action} {topic} (And You Should Too)"
+            "Why I {action} {topic} (And You Should Too)",
         ],
         "commercial": [
             "Best {topic} in {year} (Top {number} Compared)",
             "{topic} vs {alternative}: Which is Better?",
             "{number} Best {topic} for {audience}",
-            "The Truth About {topic} (Honest Review)"
-        ]
+            "The Truth About {topic} (Honest Review)",
+        ],
     }
 
     def classify_intent(self, query: str) -> SearchIntent:
@@ -649,7 +702,7 @@ class SearchIntentAnalyzer:
             secondary_intent=secondary_intent,
             user_goal=user_goal,
             content_recommendations=recommendations,
-            title_templates=templates
+            title_templates=templates,
         )
 
         logger.success(f"[SearchIntentAnalyzer] Intent: {primary_intent} ({confidence:.0%})")
@@ -661,7 +714,7 @@ class SearchIntentAnalyzer:
             "informational": "Learn or understand something",
             "navigational": "Find a specific page or resource",
             "transactional": "Complete a purchase or action",
-            "commercial": "Research options before deciding"
+            "commercial": "Research options before deciding",
         }
         return goals.get(intent, "Unknown")
 
@@ -682,17 +735,21 @@ class SearchIntentAnalyzer:
 
         # Intent-specific additions
         if intent.primary_intent == "informational":
-            optimizations.extend([
-                "Front-load key information in first 30 seconds",
-                "Use numbered lists for clarity",
-                "Include a clear conclusion/summary"
-            ])
+            optimizations.extend(
+                [
+                    "Front-load key information in first 30 seconds",
+                    "Use numbered lists for clarity",
+                    "Include a clear conclusion/summary",
+                ]
+            )
         elif intent.primary_intent == "commercial":
-            optimizations.extend([
-                "Show actual usage footage",
-                "Be transparent about affiliate relationships",
-                "Include pricing comparison"
-            ])
+            optimizations.extend(
+                [
+                    "Show actual usage footage",
+                    "Be transparent about affiliate relationships",
+                    "Include pricing comparison",
+                ]
+            )
 
         return optimizations
 
@@ -700,6 +757,7 @@ class SearchIntentAnalyzer:
 # ============================================================
 # COMPETITOR ANALYZER
 # ============================================================
+
 
 class CompetitorAnalyzer:
     """
@@ -766,16 +824,18 @@ class CompetitorAnalyzer:
                 "[Number] [Keyword] That [Benefit]",
                 "How [Person] Made $[Amount] [Timeframe]",
                 "The [Adjective] [Keyword] Nobody Talks About",
-                "Why [Percentage]% of People [Fail/Succeed] at [Keyword]"
+                "Why [Percentage]% of People [Fail/Succeed] at [Keyword]",
             ]
 
         # Psychology patterns
-        elif any(w in keyword_lower for w in ["psychology", "mind", "brain", "behavior", "manipulation"]):
+        elif any(
+            w in keyword_lower for w in ["psychology", "mind", "brain", "behavior", "manipulation"]
+        ):
             patterns = [
                 "[Number] Signs of [Condition/Type]",
                 "The Psychology of [Topic]",
                 "Why Your Brain [Action]",
-                "Dark [Keyword] Tactics [Group] Uses"
+                "Dark [Keyword] Tactics [Group] Uses",
             ]
 
         # Storytelling patterns
@@ -784,7 +844,7 @@ class CompetitorAnalyzer:
                 "The Untold Story of [Subject]",
                 "What Really Happened to [Subject]",
                 "The [Adjective] Case of [Subject]",
-                "How [Subject] [Achievement/Failure]"
+                "How [Subject] [Achievement/Failure]",
             ]
 
         # Generic patterns
@@ -793,7 +853,7 @@ class CompetitorAnalyzer:
                 "How to [Keyword] ([Year])",
                 "[Number] Best [Keyword] for [Audience]",
                 "The Complete Guide to [Keyword]",
-                "[Keyword] Explained in [Time]"
+                "[Keyword] Explained in [Time]",
             ]
 
         return patterns
@@ -811,28 +871,34 @@ class CompetitorAnalyzer:
 
         # Niche-specific gaps
         if any(w in keyword_lower for w in ["money", "finance", "invest"]):
-            gaps.extend([
-                "Low-risk strategies for beginners",
-                "Step-by-step tutorials with real examples",
-                "Comparison with traditional alternatives"
-            ])
+            gaps.extend(
+                [
+                    "Low-risk strategies for beginners",
+                    "Step-by-step tutorials with real examples",
+                    "Comparison with traditional alternatives",
+                ]
+            )
         elif any(w in keyword_lower for w in ["psychology", "mind"]):
-            gaps.extend([
-                "Scientific research summaries",
-                "Practical application exercises",
-                "Real-life case examples"
-            ])
+            gaps.extend(
+                [
+                    "Scientific research summaries",
+                    "Practical application exercises",
+                    "Real-life case examples",
+                ]
+            )
 
         return gaps[:6]
 
-    def _generate_recommendations(self, keyword: str, patterns: List[str], gaps: List[str]) -> List[str]:
+    def _generate_recommendations(
+        self, keyword: str, patterns: List[str], gaps: List[str]
+    ) -> List[str]:
         """Generate strategic recommendations."""
         recommendations = [
             f"Use proven patterns: {patterns[0] if patterns else 'Number + Benefit format'}",
             "Include specific numbers and data points in titles",
             "Address content gaps for differentiation",
             "Focus on unique angles competitors haven't explored",
-            "Combine multiple successful patterns creatively"
+            "Combine multiple successful patterns creatively",
         ]
 
         if gaps:
@@ -885,7 +951,7 @@ class CompetitorAnalyzer:
             "common_words": {},
             "avg_title_length": 0,
             "number_usage": 0,
-            "question_usage": 0
+            "question_usage": 0,
         }
 
         total_length = 0
@@ -898,7 +964,7 @@ class CompetitorAnalyzer:
             total_length += len(title)
 
             # Track number usage
-            if re.search(r'\d+', title):
+            if re.search(r"\d+", title):
                 patterns["number_usage"] += 1
 
             # Track question usage
@@ -911,7 +977,9 @@ class CompetitorAnalyzer:
                     word_counts[word] = word_counts.get(word, 0) + 1
 
         patterns["avg_title_length"] = total_length / len(videos) if videos else 0
-        patterns["common_words"] = dict(sorted(word_counts.items(), key=lambda x: x[1], reverse=True)[:10])
+        patterns["common_words"] = dict(
+            sorted(word_counts.items(), key=lambda x: x[1], reverse=True)[:10]
+        )
         patterns["number_usage"] = patterns["number_usage"] / len(videos) if videos else 0
         patterns["question_usage"] = patterns["question_usage"] / len(videos) if videos else 0
 
@@ -921,6 +989,7 @@ class CompetitorAnalyzer:
 # ============================================================
 # PERFORMANCE PREDICTOR
 # ============================================================
+
 
 class PerformancePredictor:
     """
@@ -938,19 +1007,36 @@ class PerformancePredictor:
         "optimal_length": {"weight": 1.05, "description": "Title length 40-60 chars"},
         "curiosity_gap": {"weight": 1.18, "description": "Creates curiosity"},
         "starts_with_number": {"weight": 1.10, "description": "Starts with number"},
-        "question_format": {"weight": 1.08, "description": "Question format"}
+        "question_format": {"weight": 1.08, "description": "Question format"},
     }
 
     POWER_WORDS = [
-        "secret", "proven", "ultimate", "shocking", "hidden",
-        "revealed", "truth", "exclusive", "insider", "genius",
-        "legendary", "untold", "massive", "insane", "unbelievable"
+        "secret",
+        "proven",
+        "ultimate",
+        "shocking",
+        "hidden",
+        "revealed",
+        "truth",
+        "exclusive",
+        "insider",
+        "genius",
+        "legendary",
+        "untold",
+        "massive",
+        "insane",
+        "unbelievable",
     ]
 
     CURIOSITY_TRIGGERS = [
-        "nobody tells you", "you didn't know", "they don't want",
-        "what happens when", "the truth about", "here's why",
-        "you won't believe", "this is why"
+        "nobody tells you",
+        "you didn't know",
+        "they don't want",
+        "what happens when",
+        "the truth about",
+        "here's why",
+        "you won't believe",
+        "this is why",
     ]
 
     def __init__(self, patterns_file: str = None):
@@ -964,7 +1050,7 @@ class PerformancePredictor:
         if path.exists():
             try:
                 return json.loads(path.read_text())
-            except:
+            except Exception:
                 pass
         return {}
 
@@ -987,7 +1073,7 @@ class PerformancePredictor:
         title_lower = title.lower()
 
         # Check each factor
-        if re.search(r'\d+', title):
+        if re.search(r"\d+", title):
             factors["has_number"] = self.CTR_FACTORS["has_number"]["weight"]
         else:
             improvements.append("Add a specific number (e.g., '5 Ways', '10 Tips')")
@@ -1020,7 +1106,7 @@ class PerformancePredictor:
         else:
             improvements.append("Add curiosity trigger (e.g., 'nobody tells you')")
 
-        if re.match(r'^\d+\s', title):
+        if re.match(r"^\d+\s", title):
             factors["starts_with_number"] = self.CTR_FACTORS["starts_with_number"]["weight"]
 
         if "?" in title:
@@ -1044,7 +1130,7 @@ class PerformancePredictor:
             predicted_ctr=ctr_score,
             confidence=confidence,
             factors={k: v for k, v in factors.items()},
-            improvements=improvements[:5]
+            improvements=improvements[:5],
         )
 
         logger.success(f"[PerformancePredictor] CTR Score: {ctr_score:.1f}")
@@ -1085,7 +1171,7 @@ class PerformancePredictor:
             hook_strength=hook_strength,
             pacing_score=pacing_score,
             engagement_points=engagement_points,
-            drop_off_risks=drop_off_risks
+            drop_off_risks=drop_off_risks,
         )
 
         logger.success(f"[PerformancePredictor] Retention: {estimated_retention:.1f}%")
@@ -1097,8 +1183,13 @@ class PerformancePredictor:
 
         # Strong hook indicators
         strong_hooks = [
-            "what if", "imagine", "here's the truth", "nobody tells",
-            "i'm going to show", "by the end", "the secret"
+            "what if",
+            "imagine",
+            "here's the truth",
+            "nobody tells",
+            "i'm going to show",
+            "by the end",
+            "the secret",
         ]
 
         for phrase in strong_hooks:
@@ -1111,7 +1202,7 @@ class PerformancePredictor:
             score += 10
 
         # Specific numbers/data
-        if re.search(r'\$?\d+[,.]?\d*', hook):
+        if re.search(r"\$?\d+[,.]?\d*", hook):
             score += 10
 
         return min(score, 100)
@@ -1121,7 +1212,7 @@ class PerformancePredictor:
         score = 60.0
 
         # Count sentences
-        sentences = len(re.findall(r'[.!?]+', script))
+        sentences = len(re.findall(r"[.!?]+", script))
         words = len(script.split())
 
         if sentences > 0:
@@ -1134,8 +1225,8 @@ class PerformancePredictor:
                 score -= 10
 
         # Check for pattern interrupts (questions, exclamations)
-        questions = len(re.findall(r'\?', script))
-        exclamations = len(re.findall(r'!', script))
+        questions = len(re.findall(r"\?", script))
+        exclamations = len(re.findall(r"!", script))
 
         if questions > 5:
             score += 10
@@ -1153,7 +1244,7 @@ class PerformancePredictor:
             "now here's where it gets interesting",
             "what most people don't realize",
             "let me show you",
-            "and this is important"
+            "and this is important",
         ]
 
         script_lower = script.lower()
@@ -1172,7 +1263,7 @@ class PerformancePredictor:
         risks = []
 
         # Long paragraphs without breaks
-        paragraphs = script.split('\n\n')
+        paragraphs = script.split("\n\n")
         for i, para in enumerate(paragraphs):
             words = len(para.split())
             if words > 200:
@@ -1221,6 +1312,7 @@ class PerformancePredictor:
 # A/B TEST MANAGER
 # ============================================================
 
+
 class ABTestManager:
     """
     Manage title and thumbnail A/B testing.
@@ -1233,50 +1325,50 @@ class ABTestManager:
             "patterns": [
                 "The Truth About {topic}",
                 "Why Nobody Tells You About {topic}",
-                "What {experts} Don't Want You to Know About {topic}"
+                "What {experts} Don't Want You to Know About {topic}",
             ],
-            "description": "Creates information gap"
+            "description": "Creates information gap",
         },
         "urgency": {
             "patterns": [
                 "{topic} Before It's Too Late",
                 "Stop {bad_action} RIGHT NOW",
-                "The {topic} Mistake You're Making Today"
+                "The {topic} Mistake You're Making Today",
             ],
-            "description": "Creates time pressure"
+            "description": "Creates time pressure",
         },
         "how_to": {
             "patterns": [
                 "How to {topic} (Step by Step)",
                 "The Complete Guide to {topic}",
-                "How I {achievement} with {topic}"
+                "How I {achievement} with {topic}",
             ],
-            "description": "Educational format"
+            "description": "Educational format",
         },
         "listicle": {
             "patterns": [
                 "{number} {topic} That Will {benefit}",
                 "Top {number} {topic} in {year}",
-                "{number} {topic} Every {audience} Needs"
+                "{number} {topic} Every {audience} Needs",
             ],
-            "description": "Numbered list format"
+            "description": "Numbered list format",
         },
         "story": {
             "patterns": [
                 "How {person} {achievement} with {topic}",
                 "The {adjective} Story of {topic}",
-                "What Happened When I {action}"
+                "What Happened When I {action}",
             ],
-            "description": "Narrative format"
+            "description": "Narrative format",
         },
         "controversy": {
             "patterns": [
                 "Why {topic} is a {opinion}",
                 "The Problem With {topic}",
-                "Why I Quit {topic}"
+                "Why I Quit {topic}",
             ],
-            "description": "Creates debate"
-        }
+            "description": "Creates debate",
+        },
     }
 
     def __init__(self, results_file: str = None):
@@ -1292,7 +1384,9 @@ class ABTestManager:
         if not path.exists():
             path.write_text("{}")
 
-    def generate_variants(self, title: str, count: int = 5, niche: str = "default") -> List[TitleVariant]:
+    def generate_variants(
+        self, title: str, count: int = 5, niche: str = "default"
+    ) -> List[TitleVariant]:
         """
         Create title variations using different psychological triggers.
 
@@ -1327,7 +1421,7 @@ class ABTestManager:
                 variant_type=variant_type,
                 predicted_ctr=ctr_pred.predicted_ctr,
                 score=ctr_pred.predicted_ctr,
-                rationale=config["description"]
+                rationale=config["description"],
             )
             variants.append(variant)
 
@@ -1345,14 +1439,14 @@ class ABTestManager:
 
         for prefix in prefixes:
             if topic.startswith(prefix + " "):
-                topic = topic[len(prefix) + 1:]
+                topic = topic[len(prefix) + 1 :]
                 break
 
         # Remove year
-        topic = re.sub(r'\s*\(?\d{4}\)?\s*', '', topic)
+        topic = re.sub(r"\s*\(?\d{4}\)?\s*", "", topic)
 
         # Remove brackets content
-        topic = re.sub(r'\s*[\[\(].*?[\]\)]\s*', '', topic)
+        topic = re.sub(r"\s*[\[\(].*?[\]\)]\s*", "", topic)
 
         return topic.strip().title()
 
@@ -1367,13 +1461,19 @@ class ABTestManager:
             "{number}": str(random.choice([3, 5, 7, 10])),
             "{person}": random.choice(["Warren Buffett", "Elon Musk", "I", "This Expert"]),
             "{experts}": random.choice(["Experts", "Gurus", "They", "Professionals"]),
-            "{achievement}": random.choice(["succeeded", "made $10,000", "changed my life", "achieved this"]),
+            "{achievement}": random.choice(
+                ["succeeded", "made $10,000", "changed my life", "achieved this"]
+            ),
             "{adjective}": random.choice(["Untold", "Hidden", "Secret", "Shocking"]),
             "{audience}": random.choice(["Beginner", "Professional", "Smart Person", "Investor"]),
-            "{benefit}": random.choice(["Change Your Life", "Save You Money", "Make You Rich", "Blow Your Mind"]),
+            "{benefit}": random.choice(
+                ["Change Your Life", "Save You Money", "Make You Rich", "Blow Your Mind"]
+            ),
             "{action}": random.choice(["Tried This", "Did This", "Made This Change"]),
-            "{bad_action}": random.choice(["Wasting Money", "Making This Mistake", "Doing This Wrong"]),
-            "{opinion}": random.choice(["Lie", "Scam", "Mistake", "Myth"])
+            "{bad_action}": random.choice(
+                ["Wasting Money", "Making This Mistake", "Doing This Wrong"]
+            ),
+            "{opinion}": random.choice(["Lie", "Scam", "Mistake", "Myth"]),
         }
 
         result = pattern
@@ -1382,7 +1482,9 @@ class ABTestManager:
 
         return result
 
-    def score_variants(self, variants: List[TitleVariant], niche: str = "default") -> List[TitleVariant]:
+    def score_variants(
+        self, variants: List[TitleVariant], niche: str = "default"
+    ) -> List[TitleVariant]:
         """
         Score and rank all variants.
 
@@ -1417,7 +1519,7 @@ class ABTestManager:
             results[video_id] = {
                 "variant": variant,
                 "metrics": metrics,
-                "timestamp": datetime.now().isoformat()
+                "timestamp": datetime.now().isoformat(),
             }
 
             path.write_text(json.dumps(results, indent=2))
@@ -1430,6 +1532,7 @@ class ABTestManager:
 # ============================================================
 # CONTENT CALENDAR
 # ============================================================
+
 
 class ContentCalendar:
     """
@@ -1444,20 +1547,20 @@ class ContentCalendar:
             "best_days": ["Monday", "Wednesday", "Friday"],
             "best_hours": [15, 19, 21],
             "avoid_days": ["Saturday"],
-            "rationale": "Finance audience active during work week"
+            "rationale": "Finance audience active during work week",
         },
         "psychology": {
             "best_days": ["Tuesday", "Thursday", "Saturday"],
             "best_hours": [16, 19, 21],
             "avoid_days": [],
-            "rationale": "Self-improvement seekers browse evenings"
+            "rationale": "Self-improvement seekers browse evenings",
         },
         "storytelling": {
             "best_days": ["Daily"],
             "best_hours": [17, 20, 22],
             "avoid_days": [],
-            "rationale": "Entertainment works any day"
-        }
+            "rationale": "Entertainment works any day",
+        },
     }
 
     def __init__(self):
@@ -1500,7 +1603,7 @@ class ContentCalendar:
                 competition=research.competition_level,
                 content_angle=self._suggest_angle(seed, intent),
                 title_suggestion=self._generate_title(seed, niche, intent),
-                rationale=f"Opportunity score: {research.opportunity_score:.0f}/100"
+                rationale=f"Opportunity score: {research.opportunity_score:.0f}/100",
             )
             suggestions.append(suggestion)
 
@@ -1514,23 +1617,41 @@ class ContentCalendar:
         """Get seed keywords for a niche."""
         seeds = {
             "finance": [
-                "passive income ideas", "how to invest", "money mistakes",
-                "stock market beginner", "side hustle", "wealth building",
-                "financial freedom", "investing strategy", "save money tips",
-                "compound interest"
+                "passive income ideas",
+                "how to invest",
+                "money mistakes",
+                "stock market beginner",
+                "side hustle",
+                "wealth building",
+                "financial freedom",
+                "investing strategy",
+                "save money tips",
+                "compound interest",
             ],
             "psychology": [
-                "dark psychology", "manipulation tactics", "body language signs",
-                "cognitive biases", "narcissist signs", "emotional intelligence",
-                "subconscious mind", "psychology tricks", "human behavior",
-                "mental models"
+                "dark psychology",
+                "manipulation tactics",
+                "body language signs",
+                "cognitive biases",
+                "narcissist signs",
+                "emotional intelligence",
+                "subconscious mind",
+                "psychology tricks",
+                "human behavior",
+                "mental models",
             ],
             "storytelling": [
-                "true crime stories", "unsolved mysteries", "company failures",
-                "billion dollar mistakes", "rise and fall", "untold stories",
-                "what happened to", "business scandals", "documentary",
-                "case study"
-            ]
+                "true crime stories",
+                "unsolved mysteries",
+                "company failures",
+                "billion dollar mistakes",
+                "rise and fall",
+                "untold stories",
+                "what happened to",
+                "business scandals",
+                "documentary",
+                "case study",
+            ],
         }
         return seeds.get(niche, seeds["finance"])
 
@@ -1553,7 +1674,7 @@ class ContentCalendar:
             "informational": "Step-by-step tutorial with practical examples",
             "commercial": "Honest comparison with pros and cons",
             "transactional": "Results-focused case study",
-            "navigational": "Complete guide with resources"
+            "navigational": "Complete guide with resources",
         }
         return angles.get(intent.primary_intent, angles["informational"])
 
@@ -1561,7 +1682,11 @@ class ContentCalendar:
         """Generate a title suggestion."""
         if intent.title_templates:
             template = intent.title_templates[0]
-            return template.replace("{topic}", keyword.title()).replace("{year}", "2026").replace("{number}", "5")
+            return (
+                template.replace("{topic}", keyword.title())
+                .replace("{year}", "2026")
+                .replace("{number}", "5")
+            )
 
         return f"The Complete Guide to {keyword.title()} (2026)"
 
@@ -1580,7 +1705,7 @@ class ContentCalendar:
         return {
             "niche": niche,
             **schedule,
-            "recommendation": f"Post on {', '.join(schedule['best_days'][:3])} at {schedule['best_hours'][0]}:00 UTC"
+            "recommendation": f"Post on {', '.join(schedule['best_days'][:3])} at {schedule['best_hours'][0]}:00 UTC",
         }
 
     def keyword_opportunity_score(self, keyword: str, niche: str = "default") -> float:
@@ -1620,7 +1745,7 @@ class ContentCalendar:
             "weeks": weeks,
             "schedule": schedule,
             "topics": [t.to_dict() for t in topics],
-            "weekly_plan": []
+            "weekly_plan": [],
         }
 
         # Distribute topics across weeks
@@ -1632,10 +1757,7 @@ class ContentCalendar:
                     week_topics.append(topics[topic_idx].topic)
                     topic_idx += 1
 
-            plan["weekly_plan"].append({
-                "week": week,
-                "topics": week_topics
-            })
+            plan["weekly_plan"].append({"week": week, "topics": week_topics})
 
         logger.success(f"[ContentCalendar] Generated {weeks}-week plan")
         return plan
@@ -1644,6 +1766,7 @@ class ContentCalendar:
 # ============================================================
 # MAIN SEO STRATEGIST
 # ============================================================
+
 
 class SEOStrategist:
     """
@@ -1703,17 +1826,13 @@ class SEOStrategist:
             data={
                 "keyword_data": kw_data.to_dict(),
                 "intent": intent.to_dict(),
-                "competitor_report": competitors.to_dict()
+                "competitor_report": competitors.to_dict(),
             },
-            recommendations=recommendations
+            recommendations=recommendations,
         )
 
     def full_optimization(
-        self,
-        title: str,
-        description: str,
-        tags: List[str],
-        niche: str = "default"
+        self, title: str, description: str, tags: List[str], niche: str = "default"
     ) -> SEOStrategyResult:
         """
         Full pre-upload optimization.
@@ -1745,7 +1864,10 @@ class SEOStrategist:
         if variants:
             best_variant = variants[0]
             if best_variant.score > ctr_pred.predicted_ctr:
-                recommendations.insert(0, f"Consider alternative: '{best_variant.title}' (score: {best_variant.score:.0f})")
+                recommendations.insert(
+                    0,
+                    f"Consider alternative: '{best_variant.title}' (score: {best_variant.score:.0f})",
+                )
 
         return SEOStrategyResult(
             success=True,
@@ -1754,9 +1876,9 @@ class SEOStrategist:
                 "original": {"title": title, "description": description, "tags": tags},
                 "ctr_prediction": ctr_pred.to_dict(),
                 "variants": [v.to_dict() for v in variants],
-                "intent": intent.to_dict()
+                "intent": intent.to_dict(),
             },
-            recommendations=recommendations
+            recommendations=recommendations,
         )
 
     def content_strategy(self, niche: str, topics: int = 10, weeks: int = 4) -> SEOStrategyResult:
@@ -1789,7 +1911,9 @@ class SEOStrategist:
 
         if topic_suggestions:
             best_topic = topic_suggestions[0]
-            recommendations.append(f"Top opportunity: '{best_topic.topic}' (score: {best_topic.opportunity_score:.0f})")
+            recommendations.append(
+                f"Top opportunity: '{best_topic.topic}' (score: {best_topic.opportunity_score:.0f})"
+            )
 
         return SEOStrategyResult(
             success=True,
@@ -1797,9 +1921,9 @@ class SEOStrategist:
             data={
                 "topics": [t.to_dict() for t in topic_suggestions],
                 "content_plan": content_plan,
-                "schedule": schedule
+                "schedule": schedule,
             },
-            recommendations=recommendations
+            recommendations=recommendations,
         )
 
     def analyze_competitors(self, keyword: str, count: int = 10) -> SEOStrategyResult:
@@ -1819,10 +1943,12 @@ class SEOStrategist:
             success=True,
             operation=f"competitors:{keyword}",
             data={"report": report.to_dict()},
-            recommendations=report.recommendations
+            recommendations=report.recommendations,
         )
 
-    def generate_ab_variants(self, title: str, count: int = 5, niche: str = "default") -> SEOStrategyResult:
+    def generate_ab_variants(
+        self, title: str, count: int = 5, niche: str = "default"
+    ) -> SEOStrategyResult:
         """
         Generate A/B test variants for a title.
 
@@ -1844,11 +1970,8 @@ class SEOStrategist:
         return SEOStrategyResult(
             success=True,
             operation="ab_variants",
-            data={
-                "original": title,
-                "variants": [v.to_dict() for v in variants]
-            },
-            recommendations=recommendations
+            data={"original": title, "variants": [v.to_dict() for v in variants]},
+            recommendations=recommendations,
         )
 
     def run(self, command: str = None, **kwargs) -> SEOStrategyResult:
@@ -1878,7 +2001,7 @@ class SEOStrategist:
                     title=data.get("title", ""),
                     description=data.get("description", ""),
                     tags=data.get("tags", []),
-                    niche=niche
+                    niche=niche,
                 )
 
         elif command == "strategy":
@@ -1905,7 +2028,9 @@ class SEOStrategist:
         return SEOStrategyResult(
             success=False,
             operation="unknown",
-            recommendations=["Unknown command. Use: research, optimize, strategy, competitors, ab-test, calendar"]
+            recommendations=[
+                "Unknown command. Use: research, optimize, strategy, competitors, ab-test, calendar"
+            ],
         )
 
 
@@ -1915,7 +2040,8 @@ def main():
     import sys
 
     if len(sys.argv) < 2:
-        print("""
+        print(
+            """
 SEO Strategist - World-Class YouTube SEO Agent
 ===============================================
 
@@ -1945,7 +2071,8 @@ Examples:
     python -m src.agents.seo_strategist competitors "money mistakes" --top 10
 
 Niches: finance, psychology, storytelling
-        """)
+        """
+        )
         return
 
     strategist = SEOStrategist()

@@ -29,20 +29,21 @@ Usage:
 """
 
 import re
-from datetime import datetime, timedelta, timezone
-from typing import Dict, List, Optional, Any, Tuple
 from dataclasses import dataclass, field
-from enum import Enum
-from loguru import logger
+from datetime import datetime, timedelta, timezone
+from typing import Any, Dict, List, Optional
 
+from loguru import logger
 
 # ============================================================
 # DATA CLASSES
 # ============================================================
 
+
 @dataclass
 class OptimalUploadTime:
     """Result of optimal upload time calculation."""
+
     recommended_datetime: datetime
     target_regions: List[str]
     peak_hours_utc: List[int]
@@ -60,6 +61,7 @@ class OptimalUploadTime:
 @dataclass
 class EngagementAction:
     """A scheduled post-upload engagement action."""
+
     delay_seconds: int
     action_type: str
     description: str
@@ -74,6 +76,7 @@ class EngagementAction:
 @dataclass
 class TitleAnalysisResult:
     """Result of title pattern analysis."""
+
     title: str
     score: float  # 0-100
     has_number: bool
@@ -92,6 +95,7 @@ class TitleAnalysisResult:
 @dataclass
 class KeywordDensityResult:
     """Result of keyword density optimization."""
+
     original_text: str
     optimized_text: str
     original_density: float
@@ -109,6 +113,7 @@ class KeywordDensityResult:
 # ============================================================
 # UPLOAD TIMING OPTIMIZER
 # ============================================================
+
 
 class UploadTimingOptimizer:
     """
@@ -186,7 +191,7 @@ class UploadTimingOptimizer:
         niche: str = "default",
         target_regions: Optional[List[str]] = None,
         days_ahead: int = 7,
-        avoid_hours_utc: Optional[List[int]] = None
+        avoid_hours_utc: Optional[List[int]] = None,
     ) -> OptimalUploadTime:
         """
         Calculate the optimal upload time for a video.
@@ -242,9 +247,7 @@ class UploadTimingOptimizer:
                 continue
 
             for hour in sorted(peak_hours_utc):
-                candidate_dt = candidate_date.replace(
-                    hour=hour, minute=0, second=0, microsecond=0
-                )
+                candidate_dt = candidate_date.replace(hour=hour, minute=0, second=0, microsecond=0)
 
                 # Skip if in the past
                 if candidate_dt <= now:
@@ -258,8 +261,7 @@ class UploadTimingOptimizer:
         if optimal_dt is None:
             # Fallback to tomorrow at peak hour
             optimal_dt = (now + timedelta(days=1)).replace(
-                hour=peak_hours_utc[0] if peak_hours_utc else 19,
-                minute=0, second=0, microsecond=0
+                hour=peak_hours_utc[0] if peak_hours_utc else 19, minute=0, second=0, microsecond=0
             )
 
         # Calculate confidence score
@@ -281,7 +283,7 @@ class UploadTimingOptimizer:
             peak_hours_utc=peak_hours_utc,
             confidence_score=confidence,
             reasoning=reasoning,
-            alternative_times=alternative_times
+            alternative_times=alternative_times,
         )
 
         logger.success(f"Optimal upload time: {result}")
@@ -305,19 +307,12 @@ class UploadTimingOptimizer:
                 hour_scores[utc_hour] = hour_scores.get(utc_hour, 0) + 1
 
         # Sort by score (most regions at peak) then by hour
-        sorted_hours = sorted(
-            hour_scores.items(),
-            key=lambda x: (-x[1], x[0])
-        )
+        sorted_hours = sorted(hour_scores.items(), key=lambda x: (-x[1], x[0]))
 
         return [h for h, _ in sorted_hours[:5]]
 
     def _calculate_confidence(
-        self,
-        dt: datetime,
-        regions: List[str],
-        best_days: List[int],
-        peak_hours: List[int]
+        self, dt: datetime, regions: List[str], best_days: List[int], peak_hours: List[int]
     ) -> float:
         """Calculate confidence score for the recommended time."""
         score = 0.5  # Base score
@@ -348,6 +343,7 @@ class UploadTimingOptimizer:
 # ============================================================
 # FIRST HOUR BOOSTER
 # ============================================================
+
 
 class FirstHourBooster:
     """
@@ -465,7 +461,7 @@ class FirstHourBooster:
         niche: str = "default",
         playlist_ids: Optional[List[str]] = None,
         custom_comment: Optional[str] = None,
-        include_social: bool = True
+        include_social: bool = True,
     ) -> List[EngagementAction]:
         """
         Schedule all post-upload engagement actions.
@@ -494,7 +490,7 @@ class FirstHourBooster:
                 action_type=action_config["action"],
                 description=action_config["description"],
                 priority=action_config["priority"],
-                parameters={"video_id": video_id}
+                parameters={"video_id": video_id},
             )
 
             # Add action-specific parameters
@@ -519,14 +515,13 @@ class FirstHourBooster:
     def _get_engagement_comment(self, niche: str) -> str:
         """Get an engagement comment for the given niche."""
         import random
+
         comments = self.ENGAGEMENT_COMMENTS.get(niche, self.ENGAGEMENT_COMMENTS["default"])
         return random.choice(comments)
 
     def get_community_post_template(self, niche: str) -> str:
         """Get a community post template for the given niche."""
-        return self.COMMUNITY_POST_TEMPLATES.get(
-            niche, self.COMMUNITY_POST_TEMPLATES["default"]
-        )
+        return self.COMMUNITY_POST_TEMPLATES.get(niche, self.COMMUNITY_POST_TEMPLATES["default"])
 
     def get_action_timeline(self, actions: List[EngagementAction]) -> str:
         """Generate a human-readable timeline of actions."""
@@ -541,21 +536,15 @@ class FirstHourBooster:
                 minutes = action.delay_seconds // 60
                 time_str = f"+{minutes}m"
 
-            priority_marker = {
-                "high": "[!]",
-                "medium": "[*]",
-                "low": "[ ]"
-            }.get(action.priority, "[ ]")
+            priority_marker = {"high": "[!]", "medium": "[*]", "low": "[ ]"}.get(
+                action.priority, "[ ]"
+            )
 
             lines.append(f"{time_str:>12} {priority_marker} {action.description}")
 
         return "\n".join(lines)
 
-    def execute_action(
-        self,
-        action: EngagementAction,
-        youtube_service: Any = None
-    ) -> bool:
+    def execute_action(self, action: EngagementAction, youtube_service: Any = None) -> bool:
         """
         Execute a single engagement action.
 
@@ -586,31 +575,28 @@ class FirstHourBooster:
                         body={
                             "snippet": {
                                 "playlistId": playlist_id,
-                                "resourceId": {
-                                    "kind": "youtube#video",
-                                    "videoId": video_id
-                                }
+                                "resourceId": {"kind": "youtube#video", "videoId": video_id},
                             }
-                        }
+                        },
                     ).execute()
                     logger.success(f"Added video to playlist: {playlist_id}")
 
             elif action.action_type == "pin_engagement_comment":
                 comment_text = action.parameters.get("comment_text", "")
                 # Insert comment
-                response = youtube_service.commentThreads().insert(
-                    part="snippet",
-                    body={
-                        "snippet": {
-                            "videoId": video_id,
-                            "topLevelComment": {
-                                "snippet": {
-                                    "textOriginal": comment_text
-                                }
+                response = (
+                    youtube_service.commentThreads()
+                    .insert(
+                        part="snippet",
+                        body={
+                            "snippet": {
+                                "videoId": video_id,
+                                "topLevelComment": {"snippet": {"textOriginal": comment_text}},
                             }
-                        }
-                    }
-                ).execute()
+                        },
+                    )
+                    .execute()
+                )
                 comment_id = response["id"]
                 logger.success(f"Posted engagement comment: {comment_id}")
                 # Note: Pinning requires additional API call
@@ -632,6 +618,7 @@ class FirstHourBooster:
 # ============================================================
 # TITLE PATTERN ANALYZER
 # ============================================================
+
 
 class TitlePatternAnalyzer:
     """
@@ -656,25 +643,66 @@ class TitlePatternAnalyzer:
     # Power words that increase CTR
     POWER_WORDS = {
         "authority": [
-            "ultimate", "proven", "expert", "complete", "definitive",
-            "essential", "comprehensive", "official", "professional"
+            "ultimate",
+            "proven",
+            "expert",
+            "complete",
+            "definitive",
+            "essential",
+            "comprehensive",
+            "official",
+            "professional",
         ],
         "curiosity": [
-            "secret", "hidden", "shocking", "unbelievable", "surprising",
-            "actually", "finally", "revealed", "truth", "nobody",
-            "untold", "dark", "mysterious", "unknown"
+            "secret",
+            "hidden",
+            "shocking",
+            "unbelievable",
+            "surprising",
+            "actually",
+            "finally",
+            "revealed",
+            "truth",
+            "nobody",
+            "untold",
+            "dark",
+            "mysterious",
+            "unknown",
         ],
         "urgency": [
-            "critical", "instant", "guaranteed", "revolutionary",
-            "breakthrough", "urgent", "limited", "exclusive", "now"
+            "critical",
+            "instant",
+            "guaranteed",
+            "revolutionary",
+            "breakthrough",
+            "urgent",
+            "limited",
+            "exclusive",
+            "now",
         ],
         "emotional": [
-            "powerful", "incredible", "amazing", "massive", "terrifying",
-            "genius", "brilliant", "insane", "mind-blowing", "life-changing"
+            "powerful",
+            "incredible",
+            "amazing",
+            "massive",
+            "terrifying",
+            "genius",
+            "brilliant",
+            "insane",
+            "mind-blowing",
+            "life-changing",
         ],
         "negative": [
-            "mistake", "wrong", "fail", "never", "stop", "avoid",
-            "worst", "bad", "dangerous", "warning"
+            "mistake",
+            "wrong",
+            "fail",
+            "never",
+            "stop",
+            "avoid",
+            "worst",
+            "bad",
+            "dangerous",
+            "warning",
         ],
     }
 
@@ -714,7 +742,20 @@ class TitlePatternAnalyzer:
     }
 
     # Question words that increase engagement
-    QUESTION_STARTERS = ["how", "why", "what", "when", "where", "who", "which", "can", "does", "is", "are", "will"]
+    QUESTION_STARTERS = [
+        "how",
+        "why",
+        "what",
+        "when",
+        "where",
+        "who",
+        "which",
+        "can",
+        "does",
+        "is",
+        "are",
+        "will",
+    ]
 
     def __init__(self):
         """Initialize the title pattern analyzer."""
@@ -741,12 +782,12 @@ class TitlePatternAnalyzer:
         char_count = len(title)
 
         # Check for numbers
-        has_number = bool(re.search(r'\d', title))
+        has_number = bool(re.search(r"\d", title))
         if has_number:
             score += 10
             pattern_matches.append("Contains number")
             # Odd numbers perform better
-            numbers = re.findall(r'\d+', title)
+            numbers = re.findall(r"\d+", title)
             for num in numbers:
                 if int(num) % 2 == 1 and int(num) < 20:
                     score += 5
@@ -778,7 +819,7 @@ class TitlePatternAnalyzer:
             pattern_matches.append("Question format")
 
         # Check for brackets (bonus info pattern)
-        has_brackets = bool(re.search(r'[\[\(].+[\]\)]', title))
+        has_brackets = bool(re.search(r"[\[\(].+[\]\)]", title))
         if has_brackets:
             score += 7
             pattern_matches.append("Brackets with bonus info")
@@ -793,7 +834,9 @@ class TitlePatternAnalyzer:
         elif char_count < 40:
             suggestions.append(f"Title is short ({char_count} chars). Optimal is 40-60.")
         else:
-            suggestions.append(f"Title is long ({char_count} chars). Consider shortening to 60 chars max.")
+            suggestions.append(
+                f"Title is long ({char_count} chars). Consider shortening to 60 chars max."
+            )
 
         # Check for niche-specific viral patterns
         niche_patterns = self.VIRAL_PATTERNS.get(niche, self.VIRAL_PATTERNS["default"])
@@ -803,7 +846,7 @@ class TitlePatternAnalyzer:
                 pattern_matches.append(f"Matches niche pattern: {pattern[:30]}...")
 
         # Check for dollar amounts (high CTR in finance)
-        if niche == "finance" and re.search(r'\$[\d,]+', title):
+        if niche == "finance" and re.search(r"\$[\d,]+", title):
             score += 10
             pattern_matches.append("Contains dollar amount")
 
@@ -839,7 +882,7 @@ class TitlePatternAnalyzer:
             character_count=char_count,
             pattern_matches=pattern_matches,
             suggestions=suggestions,
-            viral_potential=viral_potential
+            viral_potential=viral_potential,
         )
 
         logger.info(f"Title analysis: {result}")
@@ -851,10 +894,7 @@ class TitlePatternAnalyzer:
         return result.suggestions
 
     def generate_title_variations(
-        self,
-        topic: str,
-        niche: str = "default",
-        count: int = 5
+        self, topic: str, niche: str = "default", count: int = 5
     ) -> List[str]:
         """
         Generate title variations based on viral patterns.
@@ -923,10 +963,8 @@ class TitlePatternAnalyzer:
 # UTILITY FUNCTIONS
 # ============================================================
 
-def generate_chapters_from_script(
-    script: Dict[str, Any],
-    duration_seconds: int
-) -> str:
+
+def generate_chapters_from_script(script: Dict[str, Any], duration_seconds: int) -> str:
     """
     Auto-generate YouTube chapters from script sections.
 
@@ -998,9 +1036,7 @@ def generate_chapters_from_script(
 
 
 def optimize_description_keywords(
-    description: str,
-    target_keywords: List[str],
-    target_density: float = 0.025
+    description: str, target_keywords: List[str], target_density: float = 0.025
 ) -> KeywordDensityResult:
     """
     Ensure optimal keyword density (2-3%) in video descriptions.
@@ -1032,7 +1068,7 @@ def optimize_description_keywords(
             original_density=0.0,
             optimized_density=0.0,
             keywords_added=[],
-            target_density=target_density
+            target_density=target_density,
         )
 
     # Clean keywords
@@ -1044,7 +1080,7 @@ def optimize_description_keywords(
             original_density=0.0,
             optimized_density=0.0,
             keywords_added=[],
-            target_density=target_density
+            target_density=target_density,
         )
 
     # Calculate original density
@@ -1058,7 +1094,7 @@ def optimize_description_keywords(
             original_density=0.0,
             optimized_density=0.0,
             keywords_added=[],
-            target_density=target_density
+            target_density=target_density,
         )
 
     keyword_count = sum(1 for w in words if any(kw in w for kw in keywords))
@@ -1072,7 +1108,7 @@ def optimize_description_keywords(
             original_density=original_density,
             optimized_density=original_density,
             keywords_added=[],
-            target_density=target_density
+            target_density=target_density,
         )
 
     # Calculate how many keywords to add
@@ -1086,7 +1122,7 @@ def optimize_description_keywords(
             original_density=original_density,
             optimized_density=original_density,
             keywords_added=[],
-            target_density=target_density
+            target_density=target_density,
         )
 
     # Natural keyword insertion phrases
@@ -1120,7 +1156,7 @@ def optimize_description_keywords(
         original_density=original_density,
         optimized_density=new_density,
         keywords_added=added_keywords,
-        target_density=target_density
+        target_density=target_density,
     )
 
     logger.info(f"Keyword density optimized: {result}")
@@ -1131,11 +1167,13 @@ def optimize_description_keywords(
 # CLI ENTRY POINT
 # ============================================================
 
+
 def main():
     """CLI entry point for YouTube optimizer utilities."""
     import sys
 
-    print("""
+    print(
+        """
 YouTube Algorithm Optimization Utilities
 ========================================
 
@@ -1164,7 +1202,8 @@ Examples:
     booster = FirstHourBooster()
     actions = booster.schedule_post_upload_actions("video_id")
     print(booster.get_action_timeline(actions))
-    """)
+    """
+    )
 
     # Demo if no arguments
     if len(sys.argv) < 2:

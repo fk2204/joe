@@ -34,15 +34,17 @@ CLI:
     python run.py thumbnail "My Title" --niche finance --variants 3
 """
 
+import math
 import os
 import re
-import math
 from pathlib import Path
-from typing import Tuple, Optional, List, Dict, Any
+from typing import Any, Dict, List, Optional, Tuple
+
 from loguru import logger
 
 try:
-    from PIL import Image, ImageDraw, ImageFont, ImageFilter, ImageEnhance
+    from PIL import Image, ImageDraw, ImageFilter, ImageFont
+
     PIL_AVAILABLE = True
 except ImportError:
     logger.warning("PIL/Pillow not installed. Install with: pip install pillow")
@@ -51,15 +53,16 @@ except ImportError:
 
 try:
     import cv2
-    import numpy as np
+
     OPENCV_AVAILABLE = True
 except ImportError:
-    logger.debug("OpenCV not installed. Face detection disabled. Install with: pip install opencv-python")
+    logger.debug(
+        "OpenCV not installed. Face detection disabled. Install with: pip install opencv-python"
+    )
     OPENCV_AVAILABLE = False
 
 # Import brand colors from channel_branding
 from .channel_branding import BRAND_COLORS, BrandColors
-
 
 # High-contrast color palettes for maximum visibility
 HIGH_CONTRAST_PALETTES = {
@@ -82,7 +85,7 @@ HIGH_CONTRAST_PALETTES = {
         {"bg": "#1a1a2e", "text": "#FFFFFF", "accent": "#3498db"},  # Dark + White + Blue
         {"bg": "#0a0a14", "text": "#00D4AA", "accent": "#FFD700"},  # Dark + Teal + Gold
         {"bg": "#0d1117", "text": "#f0883e", "accent": "#58a6ff"},  # Dark + Orange + Blue
-    ]
+    ],
 }
 
 
@@ -200,22 +203,122 @@ class ThumbnailGenerator:
 
     # Keywords to emphasize (appear in different color)
     EMPHASIS_WORDS = {
-        "finance": ["$", "money", "rich", "wealth", "million", "billion", "profit", "income", "passive"],
+        "finance": [
+            "$",
+            "money",
+            "rich",
+            "wealth",
+            "million",
+            "billion",
+            "profit",
+            "income",
+            "passive",
+        ],
         "psychology": ["mind", "secret", "hidden", "dark", "truth", "powerful", "brain", "trick"],
-        "storytelling": ["untold", "shocking", "incredible", "mystery", "horror", "true", "real", "story"],
+        "storytelling": [
+            "untold",
+            "shocking",
+            "incredible",
+            "mystery",
+            "horror",
+            "true",
+            "real",
+            "story",
+        ],
     }
 
     # Words to filter out when extracting key words
-    FILTER_WORDS = ["the", "a", "an", "is", "are", "was", "were", "be", "been", "being",
-                    "have", "has", "had", "do", "does", "did", "will", "would", "could",
-                    "should", "may", "might", "must", "shall", "can", "to", "of", "in",
-                    "for", "on", "with", "at", "by", "from", "as", "into", "through",
-                    "during", "before", "after", "above", "below", "between", "under",
-                    "again", "further", "then", "once", "here", "there", "when", "where",
-                    "why", "how", "all", "each", "few", "more", "most", "other", "some",
-                    "such", "no", "nor", "not", "only", "own", "same", "so", "than",
-                    "too", "very", "just", "and", "but", "if", "or", "because", "until",
-                    "while", "this", "that", "these", "those", "i", "me", "my", "you", "your"]
+    FILTER_WORDS = [
+        "the",
+        "a",
+        "an",
+        "is",
+        "are",
+        "was",
+        "were",
+        "be",
+        "been",
+        "being",
+        "have",
+        "has",
+        "had",
+        "do",
+        "does",
+        "did",
+        "will",
+        "would",
+        "could",
+        "should",
+        "may",
+        "might",
+        "must",
+        "shall",
+        "can",
+        "to",
+        "of",
+        "in",
+        "for",
+        "on",
+        "with",
+        "at",
+        "by",
+        "from",
+        "as",
+        "into",
+        "through",
+        "during",
+        "before",
+        "after",
+        "above",
+        "below",
+        "between",
+        "under",
+        "again",
+        "further",
+        "then",
+        "once",
+        "here",
+        "there",
+        "when",
+        "where",
+        "why",
+        "how",
+        "all",
+        "each",
+        "few",
+        "more",
+        "most",
+        "other",
+        "some",
+        "such",
+        "no",
+        "nor",
+        "not",
+        "only",
+        "own",
+        "same",
+        "so",
+        "than",
+        "too",
+        "very",
+        "just",
+        "and",
+        "but",
+        "if",
+        "or",
+        "because",
+        "until",
+        "while",
+        "this",
+        "that",
+        "these",
+        "those",
+        "i",
+        "me",
+        "my",
+        "you",
+        "your",
+    ]
 
     def __init__(self, output_dir: str = None):
         """
@@ -234,7 +337,7 @@ class ThumbnailGenerator:
         self.face_cascade = None
         if OPENCV_AVAILABLE:
             try:
-                cascade_path = cv2.data.haarcascades + 'haarcascade_frontalface_default.xml'
+                cascade_path = cv2.data.haarcascades + "haarcascade_frontalface_default.xml"
                 self.face_cascade = cv2.CascadeClassifier(cascade_path)
                 logger.debug("Face detection initialized")
             except Exception as e:
@@ -263,7 +366,7 @@ class ThumbnailGenerator:
             Extracted key words as a single string
         """
         # Remove special characters except $ and numbers
-        cleaned = re.sub(r'[^\w\s$]', '', title)
+        cleaned = re.sub(r"[^\w\s$]", "", title)
         words = cleaned.split()
 
         # Score each word
@@ -278,7 +381,7 @@ class ThumbnailGenerator:
             score = 0
 
             # Money amounts get highest priority
-            if '$' in word or word.replace(',', '').isdigit():
+            if "$" in word or word.replace(",", "").isdigit():
                 score += 100
 
             # Numbers are impactful
@@ -292,10 +395,31 @@ class ThumbnailGenerator:
                 score += 10
 
             # Emotional/power words
-            power_words = ["how", "why", "secret", "truth", "real", "shocking",
-                          "incredible", "amazing", "worst", "best", "top", "never",
-                          "always", "hidden", "revealed", "proven", "guaranteed",
-                          "mistake", "wrong", "right", "rich", "poor", "free"]
+            power_words = [
+                "how",
+                "why",
+                "secret",
+                "truth",
+                "real",
+                "shocking",
+                "incredible",
+                "amazing",
+                "worst",
+                "best",
+                "top",
+                "never",
+                "always",
+                "hidden",
+                "revealed",
+                "proven",
+                "guaranteed",
+                "mistake",
+                "wrong",
+                "right",
+                "rich",
+                "poor",
+                "free",
+            ]
             if word_lower in power_words:
                 score += 30
 
@@ -311,7 +435,7 @@ class ThumbnailGenerator:
 
         # If we have too few words, add back some filtered words
         if len(key_words) < max_words:
-            remaining = [w for w in words if w not in key_words][:max_words - len(key_words)]
+            remaining = [w for w in words if w not in key_words][: max_words - len(key_words)]
             key_words.extend(remaining)
 
         # Try to maintain some original word order
@@ -322,12 +446,10 @@ class ThumbnailGenerator:
                 if len(ordered) >= max_words:
                     break
 
-        return ' '.join(ordered[:max_words]).upper()
+        return " ".join(ordered[:max_words]).upper()
 
     def _create_gradient_background(
-        self,
-        colors: BrandColors,
-        direction: str = "radial"
+        self, colors: BrandColors, direction: str = "radial"
     ) -> Image.Image:
         """
         Create a gradient background for the thumbnail.
@@ -339,7 +461,7 @@ class ThumbnailGenerator:
         Returns:
             PIL Image with gradient background
         """
-        img = Image.new('RGB', (self.WIDTH, self.HEIGHT))
+        img = Image.new("RGB", (self.WIDTH, self.HEIGHT))
         pixels = img.load()
 
         primary = colors.primary_rgb
@@ -352,7 +474,7 @@ class ThumbnailGenerator:
 
             for y in range(self.HEIGHT):
                 for x in range(self.WIDTH):
-                    dist = math.sqrt((x - cx)**2 + (y - cy)**2)
+                    dist = math.sqrt((x - cx) ** 2 + (y - cy) ** 2)
                     ratio = min(dist / max_dist, 1.0)
 
                     r = int(primary[0] * (1 - ratio) + background[0] * ratio)
@@ -400,7 +522,7 @@ class ThumbnailGenerator:
             PIL Image with vignette effect applied
         """
         # Create a radial gradient mask for the vignette
-        mask = Image.new('L', (self.WIDTH, self.HEIGHT), 255)
+        mask = Image.new("L", (self.WIDTH, self.HEIGHT), 255)
         mask_pixels = mask.load()
 
         cx, cy = self.WIDTH // 2, self.HEIGHT // 2
@@ -409,11 +531,11 @@ class ThumbnailGenerator:
         for y in range(self.HEIGHT):
             for x in range(self.WIDTH):
                 # Calculate distance from center
-                dist = math.sqrt((x - cx)**2 + (y - cy)**2)
+                dist = math.sqrt((x - cx) ** 2 + (y - cy) ** 2)
                 ratio = dist / max_dist
 
                 # Apply vignette curve (more dramatic at edges)
-                vignette_value = 1.0 - (ratio ** 1.5) * strength
+                vignette_value = 1.0 - (ratio**1.5) * strength
                 vignette_value = max(0.3, min(1.0, vignette_value))
 
                 mask_pixels[x, y] = int(255 * vignette_value)
@@ -430,11 +552,7 @@ class ThumbnailGenerator:
             for x in range(self.WIDTH):
                 r, g, b = result_pixels[x, y]
                 factor = mask_pixels[x, y] / 255.0
-                result_pixels[x, y] = (
-                    int(r * factor),
-                    int(g * factor),
-                    int(b * factor)
-                )
+                result_pixels[x, y] = (int(r * factor), int(g * factor), int(b * factor))
 
         return result
 
@@ -457,10 +575,15 @@ class ThumbnailGenerator:
             "C:/Windows/Fonts/arialbd.ttf",
             "C:/Windows/Fonts/arial.ttf",
             # Common font names
-            "impact.ttf", "Impact.ttf",
-            "arialbd.ttf", "Arial Bold.ttf", "Arial-Bold.ttf",
-            "arial.ttf", "Arial.ttf",
-            "DejaVuSans-Bold.ttf", "DejaVuSans.ttf",
+            "impact.ttf",
+            "Impact.ttf",
+            "arialbd.ttf",
+            "Arial Bold.ttf",
+            "Arial-Bold.ttf",
+            "arial.ttf",
+            "Arial.ttf",
+            "DejaVuSans-Bold.ttf",
+            "DejaVuSans.ttf",
             # Linux fonts
             "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
             "/usr/share/fonts/truetype/freefont/FreeSansBold.ttf",
@@ -492,7 +615,7 @@ class ThumbnailGenerator:
             font = self._get_font(size)
 
             # Create temp image to measure text
-            temp = Image.new('RGB', (1, 1))
+            temp = Image.new("RGB", (1, 1))
             draw = ImageDraw.Draw(temp)
             bbox = draw.textbbox((0, 0), text, font=font)
             text_width = bbox[2] - bbox[0]
@@ -503,11 +626,7 @@ class ThumbnailGenerator:
         return self.MIN_FONT_SIZE
 
     def _add_text_overlay(
-        self,
-        image: Image.Image,
-        text: str,
-        niche: str,
-        position: str = "center"
+        self, image: Image.Image, text: str, niche: str, position: str = "center"
     ) -> Image.Image:
         """
         Add large, high-contrast text overlay to the thumbnail.
@@ -574,11 +693,7 @@ class ThumbnailGenerator:
 
         return result
 
-    def _add_accent_elements(
-        self,
-        image: Image.Image,
-        niche: str
-    ) -> Image.Image:
+    def _add_accent_elements(self, image: Image.Image, niche: str) -> Image.Image:
         """
         Add subtle accent elements (lines, shapes) based on niche.
 
@@ -605,11 +720,10 @@ class ThumbnailGenerator:
                 draw.line([(start_x, start_y), (end_x, end_y)], fill=accent_color, width=4)
 
             # Arrow head
-            draw.polygon([
-                (180, self.HEIGHT - 150),
-                (165, self.HEIGHT - 120),
-                (195, self.HEIGHT - 120)
-            ], fill=accent_color)
+            draw.polygon(
+                [(180, self.HEIGHT - 150), (165, self.HEIGHT - 120), (195, self.HEIGHT - 120)],
+                fill=accent_color,
+            )
 
         elif niche == "psychology":
             # Add subtle circles/dots (neural pattern)
@@ -625,7 +739,9 @@ class ThumbnailGenerator:
             draw.rectangle([30, strip_y - 15, 200, strip_y + 15], fill=colors.secondary_rgb)
             for i in range(6):
                 perf_x = 40 + i * 28
-                draw.rectangle([perf_x - 4, strip_y - 10, perf_x + 4, strip_y + 10], fill=colors.background_rgb)
+                draw.rectangle(
+                    [perf_x - 4, strip_y - 10, perf_x + 4, strip_y + 10], fill=colors.background_rgb
+                )
 
         return result
 
@@ -637,7 +753,7 @@ class ThumbnailGenerator:
         background_image: str = None,
         text_position: str = "center",
         include_accents: bool = True,
-        vignette_strength: float = 0.7
+        vignette_strength: float = 0.7,
     ) -> str:
         """
         Generate a viral YouTube thumbnail.
@@ -663,7 +779,7 @@ class ThumbnailGenerator:
             logger.info(f"Using background image: {background_image}")
             img = Image.open(background_image)
             img = img.resize((self.WIDTH, self.HEIGHT), Image.Resampling.LANCZOS)
-            img = img.convert('RGB')
+            img = img.convert("RGB")
 
             # Apply color overlay
             overlay = self._create_gradient_background(colors, "radial")
@@ -687,7 +803,7 @@ class ThumbnailGenerator:
         # Generate output path if not provided
         if not output_path:
             # Create safe filename from title
-            safe_title = re.sub(r'[^\w\s-]', '', title)[:30].strip().replace(' ', '_')
+            safe_title = re.sub(r"[^\w\s-]", "", title)[:30].strip().replace(" ", "_")
             output_path = str(self.output_dir / f"thumb_{safe_title}_{niche}.png")
 
         # Ensure output directory exists
@@ -699,12 +815,7 @@ class ThumbnailGenerator:
 
         return output_path
 
-    def generate_variants(
-        self,
-        title: str,
-        niche: str,
-        count: int = 3
-    ) -> List[str]:
+    def generate_variants(self, title: str, niche: str, count: int = 3) -> List[str]:
         """
         Generate multiple thumbnail variants for A/B testing.
 
@@ -724,7 +835,7 @@ class ThumbnailGenerator:
             position = positions[i % len(positions)]
             vignette = vignette_strengths[i % len(vignette_strengths)]
 
-            safe_title = re.sub(r'[^\w\s-]', '', title)[:20].strip().replace(' ', '_')
+            safe_title = re.sub(r"[^\w\s-]", "", title)[:20].strip().replace(" ", "_")
             output_path = str(self.output_dir / f"thumb_{safe_title}_{niche}_v{i+1}.png")
 
             path = self.generate(
@@ -732,7 +843,7 @@ class ThumbnailGenerator:
                 niche=niche,
                 output_path=output_path,
                 text_position=position,
-                vignette_strength=vignette
+                vignette_strength=vignette,
             )
             variants.append(path)
 
@@ -763,23 +874,22 @@ class ThumbnailGenerator:
 
             # Detect faces
             faces = self.face_cascade.detectMultiScale(
-                gray,
-                scaleFactor=1.1,
-                minNeighbors=5,
-                minSize=(30, 30)
+                gray, scaleFactor=1.1, minNeighbors=5, minSize=(30, 30)
             )
 
             # Convert to list of dicts
             face_boxes = []
-            for (x, y, w, h) in faces:
-                face_boxes.append({
-                    "x": int(x),
-                    "y": int(y),
-                    "width": int(w),
-                    "height": int(h),
-                    "center_x": int(x + w // 2),
-                    "center_y": int(y + h // 2)
-                })
+            for x, y, w, h in faces:
+                face_boxes.append(
+                    {
+                        "x": int(x),
+                        "y": int(y),
+                        "width": int(w),
+                        "height": int(h),
+                        "center_x": int(x + w // 2),
+                        "center_y": int(y + h // 2),
+                    }
+                )
 
             logger.debug(f"Detected {len(face_boxes)} faces in {image_path}")
             return face_boxes
@@ -792,7 +902,7 @@ class ThumbnailGenerator:
         self,
         image_path: str,
         output_path: Optional[str] = None,
-        face_position: str = "right"  # left, right, center
+        face_position: str = "right",  # left, right, center
     ) -> str:
         """
         Auto-frame an image to center on detected face.
@@ -838,11 +948,7 @@ class ThumbnailGenerator:
 
         return output_path
 
-    def _calculate_rule_of_thirds_crop(
-        self,
-        width: int,
-        height: int
-    ) -> Tuple[int, int, int, int]:
+    def _calculate_rule_of_thirds_crop(self, width: int, height: int) -> Tuple[int, int, int, int]:
         """Calculate crop box using rule of thirds."""
         target_aspect = self.WIDTH / self.HEIGHT
         source_aspect = width / height
@@ -859,11 +965,7 @@ class ThumbnailGenerator:
             return (0, y_offset, width, y_offset + new_height)
 
     def _calculate_face_crop(
-        self,
-        width: int,
-        height: int,
-        face: Dict[str, int],
-        face_position: str
+        self, width: int, height: int, face: Dict[str, int], face_position: str
     ) -> Tuple[int, int, int, int]:
         """Calculate crop box to position face correctly."""
         target_aspect = self.WIDTH / self.HEIGHT
@@ -917,11 +1019,7 @@ class ThumbnailGenerator:
         return palettes[variant % len(palettes)]
 
     def add_power_word_overlay(
-        self,
-        image: Image.Image,
-        word: str,
-        position: str = "top-left",
-        style: str = "banner"
+        self, image: Image.Image, word: str, position: str = "top-left", style: str = "banner"
     ) -> Image.Image:
         """
         Add a power word overlay to the thumbnail.
@@ -966,7 +1064,7 @@ class ThumbnailGenerator:
                 (x - padding, y),
                 (x + text_width + padding * 2, y),
                 (x + text_width + padding * 2 + 20, y + banner_height),
-                (x - padding - 20, y + banner_height)
+                (x - padding - 20, y + banner_height),
             ]
             draw.polygon(banner_points, fill=(255, 0, 0))
             draw.text((x, y + padding // 2), word, fill=(255, 255, 255), font=font)
@@ -977,11 +1075,15 @@ class ThumbnailGenerator:
             badge_x = x + text_width // 2
             badge_y = y + text_height // 2 + padding
             draw.ellipse(
-                [badge_x - badge_size//2, badge_y - badge_size//2,
-                 badge_x + badge_size//2, badge_y + badge_size//2],
+                [
+                    badge_x - badge_size // 2,
+                    badge_y - badge_size // 2,
+                    badge_x + badge_size // 2,
+                    badge_y + badge_size // 2,
+                ],
                 fill=(255, 0, 0),
                 outline=(255, 255, 255),
-                width=3
+                width=3,
             )
             # Center text in badge
             text_x = badge_x - text_width // 2
@@ -991,11 +1093,10 @@ class ThumbnailGenerator:
         else:  # stamp
             # Draw stamp-style with border
             draw.rectangle(
-                [x - padding, y,
-                 x + text_width + padding, y + text_height + padding],
+                [x - padding, y, x + text_width + padding, y + text_height + padding],
                 fill=(200, 0, 0),
                 outline=(255, 255, 255),
-                width=3
+                width=3,
             )
             draw.text((x, y + padding // 2), word, fill=(255, 255, 255), font=font)
 
@@ -1007,7 +1108,7 @@ class ThumbnailGenerator:
         title: str,
         niche: str,
         background_image: Optional[str] = None,
-        output_path: Optional[str] = None
+        output_path: Optional[str] = None,
     ) -> str:
         """
         Generate thumbnail from a predefined template.
@@ -1026,24 +1127,26 @@ class ThumbnailGenerator:
         template = templates.get(template_name)
 
         if not template:
-            logger.warning(f"Template '{template_name}' not found for niche '{niche}'. Using default.")
+            logger.warning(
+                f"Template '{template_name}' not found for niche '{niche}'. Using default."
+            )
             return self.generate(title, niche, output_path, background_image)
 
         # Get color scheme from template
         palette = self.get_high_contrast_palette(niche, template.get("color_scheme", 0))
 
         # Create custom brand colors from palette
-        from dataclasses import replace
+
         colors = self._get_brand_colors(niche)
 
         # Generate base thumbnail
         if background_image and os.path.exists(background_image):
             img = Image.open(background_image)
             img = img.resize((self.WIDTH, self.HEIGHT), Image.Resampling.LANCZOS)
-            img = img.convert('RGB')
+            img = img.convert("RGB")
 
             # Apply color overlay from palette
-            overlay = Image.new('RGB', (self.WIDTH, self.HEIGHT), self._hex_to_rgb(palette["bg"]))
+            overlay = Image.new("RGB", (self.WIDTH, self.HEIGHT), self._hex_to_rgb(palette["bg"]))
             img = Image.blend(img, overlay, 0.5)
         else:
             img = self._create_gradient_background(colors, "radial")
@@ -1063,7 +1166,7 @@ class ThumbnailGenerator:
 
         # Generate output path
         if not output_path:
-            safe_title = re.sub(r'[^\w\s-]', '', title)[:20].strip().replace(' ', '_')
+            safe_title = re.sub(r"[^\w\s-]", "", title)[:20].strip().replace(" ", "_")
             output_path = str(self.output_dir / f"thumb_{template_name}_{safe_title}.png")
 
         Path(output_path).parent.mkdir(parents=True, exist_ok=True)
@@ -1074,15 +1177,11 @@ class ThumbnailGenerator:
 
     def _hex_to_rgb(self, hex_color: str) -> Tuple[int, int, int]:
         """Convert hex color to RGB tuple."""
-        hex_color = hex_color.lstrip('#')
-        return tuple(int(hex_color[i:i+2], 16) for i in (0, 2, 4))
+        hex_color = hex_color.lstrip("#")
+        return tuple(int(hex_color[i : i + 2], 16) for i in (0, 2, 4))
 
     def generate_ab_variants(
-        self,
-        title: str,
-        niche: str,
-        count: int = 3,
-        background_image: Optional[str] = None
+        self, title: str, niche: str, count: int = 3, background_image: Optional[str] = None
     ) -> List[Dict[str, Any]]:
         """
         Generate A/B test variants with different designs.
@@ -1123,7 +1222,7 @@ class ThumbnailGenerator:
                 power_word = None
 
             # Generate safe filename
-            safe_title = re.sub(r'[^\w\s-]', '', title)[:20].strip().replace(' ', '_')
+            safe_title = re.sub(r"[^\w\s-]", "", title)[:20].strip().replace(" ", "_")
             output_path = str(self.output_dir / f"thumb_{safe_title}_{niche}_ab{i+1}.png")
 
             # Create custom colors for this variant
@@ -1133,10 +1232,12 @@ class ThumbnailGenerator:
             if background_image and os.path.exists(background_image):
                 img = Image.open(background_image)
                 img = img.resize((self.WIDTH, self.HEIGHT), Image.Resampling.LANCZOS)
-                img = img.convert('RGB')
+                img = img.convert("RGB")
 
                 # Apply color overlay
-                overlay = Image.new('RGB', (self.WIDTH, self.HEIGHT), self._hex_to_rgb(palette["bg"]))
+                overlay = Image.new(
+                    "RGB", (self.WIDTH, self.HEIGHT), self._hex_to_rgb(palette["bg"])
+                )
                 img = Image.blend(img, overlay, 0.4)
             else:
                 img = self._create_gradient_background(colors, "radial")
@@ -1159,19 +1260,21 @@ class ThumbnailGenerator:
             Path(output_path).parent.mkdir(parents=True, exist_ok=True)
             img.save(output_path, "PNG", quality=95)
 
-            variants.append({
-                "variant_id": f"ab{i+1}",
-                "path": output_path,
-                "palette": palette,
-                "text_position": position,
-                "power_word": power_word,
-                "vignette_strength": vignette,
-                "settings": {
-                    "niche": niche,
-                    "title": title,
-                    "background_image": background_image,
+            variants.append(
+                {
+                    "variant_id": f"ab{i+1}",
+                    "path": output_path,
+                    "palette": palette,
+                    "text_position": position,
+                    "power_word": power_word,
+                    "vignette_strength": vignette,
+                    "settings": {
+                        "niche": niche,
+                        "title": title,
+                        "background_image": background_image,
+                    },
                 }
-            })
+            )
 
             logger.info(f"Generated variant {i+1}: {output_path}")
 
@@ -1207,11 +1310,7 @@ class ThumbnailGenerator:
             return {category: POWER_WORDS.get(category, [])}
         return POWER_WORDS
 
-    def generate_batch(
-        self,
-        configs: List[Dict],
-        max_workers: int = 4
-    ) -> List[str]:
+    def generate_batch(self, configs: List[Dict], max_workers: int = 4) -> List[str]:
         """
         Generate multiple thumbnails in parallel.
 
@@ -1242,10 +1341,12 @@ class ThumbnailGenerator:
                     output_path=config.get("output_path"),
                     background_image=config.get("background_image"),
                     text_position=config.get("text_position", "center"),
-                    vignette_strength=config.get("vignette_strength", 0.7)
+                    vignette_strength=config.get("vignette_strength", 0.7),
                 )
             except Exception as e:
-                logger.warning(f"Thumbnail generation failed for '{config.get('title', 'unknown')}': {e}")
+                logger.warning(
+                    f"Thumbnail generation failed for '{config.get('title', 'unknown')}': {e}"
+                )
                 return None
 
         with ThreadPoolExecutor(max_workers=max_workers) as executor:
@@ -1260,7 +1361,9 @@ class ThumbnailGenerator:
         return results
 
 
-def generate_thumbnails_batch(configs: List[Dict], output_dir: str = None, max_workers: int = 4) -> List[str]:
+def generate_thumbnails_batch(
+    configs: List[Dict], output_dir: str = None, max_workers: int = 4
+) -> List[str]:
     """
     Convenience function to generate multiple thumbnails in parallel.
 
@@ -1281,7 +1384,8 @@ def main():
     import sys
 
     if len(sys.argv) < 2:
-        print("""
+        print(
+            """
 YouTube Thumbnail Generator
 ===========================
 
@@ -1307,24 +1411,27 @@ Niches:
     finance      - Dark blue + Gold (#1a1a2e, #FFD700)
     psychology   - Deep purple + Light accent (#0f0f1a, #9b59b6)
     storytelling - Black + Red (#0d0d0d, #e74c3c)
-        """)
+        """
+        )
         return
 
     import argparse
 
     parser = argparse.ArgumentParser(description="Generate YouTube thumbnails")
     parser.add_argument("title", help="Video title")
-    parser.add_argument("--niche", required=True,
-                       choices=["finance", "psychology", "storytelling", "default"],
-                       help="Content niche")
+    parser.add_argument(
+        "--niche",
+        required=True,
+        choices=["finance", "psychology", "storytelling", "default"],
+        help="Content niche",
+    )
     parser.add_argument("--output", "-o", help="Output file path")
-    parser.add_argument("--position", default="center",
-                       choices=["center", "top", "bottom"],
-                       help="Text position")
+    parser.add_argument(
+        "--position", default="center", choices=["center", "top", "bottom"], help="Text position"
+    )
     parser.add_argument("--variants", type=int, help="Generate N variants")
     parser.add_argument("--background", help="Background image path")
-    parser.add_argument("--vignette", type=float, default=0.7,
-                       help="Vignette strength (0.0-1.0)")
+    parser.add_argument("--vignette", type=float, default=0.7, help="Vignette strength (0.0-1.0)")
 
     args = parser.parse_args()
 
@@ -1343,7 +1450,7 @@ Niches:
             output_path=args.output,
             background_image=args.background,
             text_position=args.position,
-            vignette_strength=args.vignette
+            vignette_strength=args.vignette,
         )
         print(f"\nThumbnail generated: {path}")
 

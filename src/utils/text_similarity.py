@@ -54,7 +54,7 @@ def tokenize(text: str) -> List[str]:
     # Convert to lowercase and extract words
     text = text.lower()
     # Remove punctuation and split on whitespace
-    words = re.findall(r'\b[a-z0-9]+\b', text)
+    words = re.findall(r"\b[a-z0-9]+\b", text)
     return words
 
 
@@ -131,7 +131,7 @@ def get_ngrams(text: str, n: int = 3) -> Set[str]:
 
     ngrams = set()
     for i in range(len(padded) - n + 1):
-        ngrams.add(padded[i:i + n])
+        ngrams.add(padded[i : i + n])
 
     return ngrams
 
@@ -226,9 +226,9 @@ def levenshtein_distance(s1: str, s2: str) -> int:
             else:
                 # Minimum of: insertion, deletion, substitution
                 curr_row[j] = 1 + min(
-                    curr_row[j - 1],    # Insertion
-                    prev_row[j],        # Deletion
-                    prev_row[j - 1],    # Substitution
+                    curr_row[j - 1],  # Insertion
+                    prev_row[j],  # Deletion
+                    prev_row[j - 1],  # Substitution
                 )
 
         # Swap rows
@@ -363,6 +363,7 @@ def cosine_word_similarity(text1: str, text2: str) -> float:
         return 0.0
 
     import math
+
     return dot_product / (math.sqrt(magnitude1) * math.sqrt(magnitude2))
 
 
@@ -509,7 +510,7 @@ def fast_similarity(text1: str, text2: str) -> float:
     word_score = overlap / max_overlap if max_overlap > 0 else 0
 
     # Combine length ratio and word overlap
-    return (length_ratio * 0.3 + word_score * 0.7)
+    return length_ratio * 0.3 + word_score * 0.7
 
 
 def find_similar_texts(
@@ -571,6 +572,7 @@ def find_similar_texts(
 # Specialized Similarity Functions for Prompts
 # ============================================================
 
+
 def prompt_similarity(prompt1: str, prompt2: str) -> float:
     """
     Calculate similarity optimized for AI prompts.
@@ -590,9 +592,9 @@ def prompt_similarity(prompt1: str, prompt2: str) -> float:
     # Use weights optimized for prompts
     weights = {
         "word_overlap": 0.35,  # Important for instruction keywords
-        "ngram": 0.25,         # Catches similar phrases
-        "sequence": 0.25,      # Good for template matching
-        "prefix": 0.15,        # Prompts often start similarly
+        "ngram": 0.25,  # Catches similar phrases
+        "sequence": 0.25,  # Good for template matching
+        "prefix": 0.15,  # Prompts often start similarly
     }
 
     return combined_similarity(prompt1, prompt2, weights)
@@ -617,18 +619,18 @@ def normalize_prompt_for_comparison(prompt: str) -> str:
     normalized = prompt.lower()
 
     # Remove extra whitespace
-    normalized = re.sub(r'\s+', ' ', normalized)
+    normalized = re.sub(r"\s+", " ", normalized)
 
     # Replace numbers with placeholder
-    normalized = re.sub(r'\b\d+\b', '<NUM>', normalized)
+    normalized = re.sub(r"\b\d+\b", "<NUM>", normalized)
 
     # Replace quoted strings with placeholder
-    normalized = re.sub(r'"[^"]*"', '<QUOTED>', normalized)
-    normalized = re.sub(r"'[^']*'", '<QUOTED>', normalized)
+    normalized = re.sub(r'"[^"]*"', "<QUOTED>", normalized)
+    normalized = re.sub(r"'[^']*'", "<QUOTED>", normalized)
 
     # Remove common variable parts (URLs, paths, etc.)
-    normalized = re.sub(r'https?://\S+', '<URL>', normalized)
-    normalized = re.sub(r'\S+\.(com|org|net|io)\S*', '<URL>', normalized)
+    normalized = re.sub(r"https?://\S+", "<URL>", normalized)
+    normalized = re.sub(r"\S+\.(com|org|net|io)\S*", "<URL>", normalized)
 
     # Strip and return
     return normalized.strip()
@@ -646,10 +648,19 @@ if __name__ == "__main__":
 
     # Test pairs
     test_pairs = [
-        ("Generate a script about Python programming", "Generate a script about JavaScript programming"),
+        (
+            "Generate a script about Python programming",
+            "Generate a script about JavaScript programming",
+        ),
         ("Generate a title for: AI tutorial", "Generate a title for: Machine Learning guide"),
-        ("Write 5 YouTube tags for a video about cooking", "Write 5 YouTube tags for a video about baking"),
-        ("Create an engaging hook for a finance video", "Create an engaging hook for a money video"),
+        (
+            "Write 5 YouTube tags for a video about cooking",
+            "Write 5 YouTube tags for a video about baking",
+        ),
+        (
+            "Create an engaging hook for a finance video",
+            "Create an engaging hook for a money video",
+        ),
         ("hello world", "goodbye world"),
         ("the quick brown fox", "the quick brown fox"),
     ]

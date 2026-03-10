@@ -1,5 +1,5 @@
 # YouTube modules
-from .uploader import YouTubeUploader
 from .auth import YouTubeAuth
+from .uploader import YouTubeUploader
 
 __all__ = ["YouTubeUploader", "YouTubeAuth"]

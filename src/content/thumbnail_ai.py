@@ -27,17 +27,18 @@ CLI:
     python run.py thumbnail "My Title" --niche finance --variants 3
 """
 
+import io
 import os
 import re
-import io
 import time
-import requests
 from pathlib import Path
-from typing import List, Optional, Dict, Tuple
+from typing import Dict, List, Optional
+
+import requests
 from loguru import logger
 
 try:
-    from PIL import Image, ImageDraw, ImageFont, ImageFilter, ImageEnhance
+    from PIL import Image, ImageDraw, ImageFilter
 except ImportError:
     logger.warning("PIL/Pillow not installed. Install with: pip install pillow")
     Image = None
@@ -48,9 +49,8 @@ except ImportError:
     logger.warning("Replicate not installed. Install with: pip install replicate")
     replicate = None
 
+from .channel_branding import BRAND_COLORS
 from .thumbnail_generator import ThumbnailGenerator
-from .channel_branding import BRAND_COLORS, BrandColors
-
 
 # Niche-specific emotion mappings with detailed prompts for AI face generation
 NICHE_EMOTIONS = {
@@ -58,91 +58,87 @@ NICHE_EMOTIONS = {
         "confident": {
             "prompt": "professional confident businessman in suit, direct eye contact, slight smile, studio lighting, dark background, high quality portrait, 4k, sharp focus",
             "expression": "confident",
-            "description": "Confident businessman"
+            "description": "Confident businessman",
         },
         "surprised": {
             "prompt": "surprised person looking at smartphone screen with wide eyes and open mouth, shocked expression, studio lighting, dark background, high quality portrait, 4k",
             "expression": "surprised",
-            "description": "Surprised at phone"
+            "description": "Surprised at phone",
         },
         "thoughtful": {
             "prompt": "thoughtful professional person with hand on chin, contemplating, serious expression, studio lighting, dark background, high quality portrait, 4k",
             "expression": "thoughtful",
-            "description": "Thoughtful pose"
+            "description": "Thoughtful pose",
         },
         "excited": {
             "prompt": "excited person celebrating success with raised fist, big smile, energetic expression, studio lighting, dark background, high quality portrait, 4k",
             "expression": "excited",
-            "description": "Celebrating success"
+            "description": "Celebrating success",
         },
         "serious": {
             "prompt": "serious businessman with stern look, focused intense gaze, professional attire, studio lighting, dark background, high quality portrait, 4k",
             "expression": "serious",
-            "description": "Serious businessman"
-        }
+            "description": "Serious businessman",
+        },
     },
     "psychology": {
         "secretive": {
             "prompt": "mysterious person with finger on lips in shh gesture, knowing look, slight smile, dramatic lighting, dark background, high quality portrait, 4k",
             "expression": "secretive",
-            "description": "Shh gesture"
+            "description": "Shh gesture",
         },
         "shocked": {
             "prompt": "person with wide-eyed shocked expression, eyebrows raised, mouth slightly open, dramatic lighting, dark background, high quality portrait, 4k",
             "expression": "shocked",
-            "description": "Wide-eyed shocked"
+            "description": "Wide-eyed shocked",
         },
         "knowing": {
             "prompt": "person with knowing smile, one eyebrow slightly raised, wise mysterious expression, dramatic lighting, dark background, high quality portrait, 4k",
             "expression": "knowing",
-            "description": "Knowing smile"
+            "description": "Knowing smile",
         },
         "intrigued": {
             "prompt": "person with intrigued curious expression, head tilted slightly, eyebrows furrowed, dramatic lighting, dark background, high quality portrait, 4k",
             "expression": "intrigued",
-            "description": "Intrigued expression"
+            "description": "Intrigued expression",
         },
         "contemplative": {
             "prompt": "person in deep thought with eyes looking up, contemplative philosophical expression, dramatic lighting, dark background, high quality portrait, 4k",
             "expression": "contemplative",
-            "description": "Deep in thought"
-        }
+            "description": "Deep in thought",
+        },
     },
     "storytelling": {
         "horrified": {
             "prompt": "person with horrified terrified expression, wide eyes full of fear, mouth open in shock, dramatic cinematic lighting, dark background, high quality portrait, 4k",
             "expression": "horrified",
-            "description": "Horrified expression"
+            "description": "Horrified expression",
         },
         "curious": {
             "prompt": "person leaning forward with intense curious expression, eyes wide with interest, dramatic lighting, dark background, high quality portrait, 4k",
             "expression": "curious",
-            "description": "Intense curious lean"
+            "description": "Intense curious lean",
         },
         "surprised": {
             "prompt": "person with hand over mouth in surprise, wide eyes, shocked gasping expression, dramatic lighting, dark background, high quality portrait, 4k",
             "expression": "surprised",
-            "description": "Hand over mouth surprised"
+            "description": "Hand over mouth surprised",
         },
         "mysterious": {
             "prompt": "person with mysterious enigmatic expression, half face in shadow, intense gaze, dramatic cinematic lighting, dark background, high quality portrait, 4k",
             "expression": "mysterious",
-            "description": "Mysterious half-shadow"
+            "description": "Mysterious half-shadow",
         },
         "dramatic": {
             "prompt": "person with dramatic intense expression, strong emotions, powerful gaze, cinematic lighting with red tones, dark background, high quality portrait, 4k",
             "expression": "dramatic",
-            "description": "Dramatic intensity"
-        }
-    }
+            "description": "Dramatic intensity",
+        },
+    },
 }
 
 # Default emotions for each niche (first one used if not specified)
-DEFAULT_EMOTIONS = {
-    "finance": "confident",
-    "psychology": "secretive",
-    "storytelling": "horrified"
-}
+DEFAULT_EMOTIONS = {"finance": "confident", "psychology": "secretive", "storytelling": "horrified"}
 
 
 class AIThumbnailGenerator:
@@ -235,8 +231,8 @@ class AIThumbnailGenerator:
                     "num_outputs": 1,
                     "aspect_ratio": "3:4",  # Portrait orientation
                     "output_format": "png",
-                    "output_quality": 90
-                }
+                    "output_quality": 90,
+                },
             )
 
             # Output is a list of URLs or file objects
@@ -244,9 +240,9 @@ class AIThumbnailGenerator:
                 image_url = output[0]
 
                 # Handle FileOutput object from replicate
-                if hasattr(image_url, 'url'):
+                if hasattr(image_url, "url"):
                     image_url = image_url.url
-                elif hasattr(image_url, 'read'):
+                elif hasattr(image_url, "read"):
                     # It's a file-like object
                     img = Image.open(image_url)
                     logger.success("AI face generated successfully")
@@ -274,10 +270,7 @@ class AIThumbnailGenerator:
             return None
 
     def _composite_face_on_thumbnail(
-        self,
-        background: Image.Image,
-        face: Image.Image,
-        position: str = "right"
+        self, background: Image.Image, face: Image.Image, position: str = "right"
     ) -> Image.Image:
         """
         Composite an AI-generated face onto the thumbnail background.
@@ -312,7 +305,7 @@ class AIThumbnailGenerator:
         y = (thumb_height - face_height) // 2
 
         # Create gradient mask for smooth blending
-        mask = Image.new('L', (face_width, face_height), 255)
+        mask = Image.new("L", (face_width, face_height), 255)
         mask_draw = ImageDraw.Draw(mask)
 
         # Fade on the inner edge (towards text)
@@ -326,14 +319,16 @@ class AIThumbnailGenerator:
             # Fade on right side of face
             for i in range(fade_width):
                 alpha = int(255 * (i / fade_width))
-                mask_draw.line([(face_width - i - 1, 0), (face_width - i - 1, face_height)], fill=alpha)
+                mask_draw.line(
+                    [(face_width - i - 1, 0), (face_width - i - 1, face_height)], fill=alpha
+                )
 
         # Apply slight blur to mask for smoother blending
         mask = mask.filter(ImageFilter.GaussianBlur(radius=10))
 
         # Convert face to RGBA if needed
-        if face_resized.mode != 'RGBA':
-            face_resized = face_resized.convert('RGBA')
+        if face_resized.mode != "RGBA":
+            face_resized = face_resized.convert("RGBA")
 
         # Paste face with mask
         result.paste(face_resized, (x, y), mask)
@@ -341,11 +336,7 @@ class AIThumbnailGenerator:
         return result
 
     def _add_text_to_ai_thumbnail(
-        self,
-        image: Image.Image,
-        text: str,
-        niche: str,
-        face_position: str = "right"
+        self, image: Image.Image, text: str, niche: str, face_position: str = "right"
     ) -> Image.Image:
         """
         Add text overlay to AI thumbnail, positioning opposite to face.
@@ -412,7 +403,7 @@ class AIThumbnailGenerator:
         niche: str,
         emotion: str = None,
         output_path: str = None,
-        face_position: str = "right"
+        face_position: str = "right",
     ) -> str:
         """
         Generate a thumbnail with an AI-generated face.
@@ -442,11 +433,7 @@ class AIThumbnailGenerator:
 
         if face_image is None:
             logger.warning("AI face generation failed. Falling back to text-only thumbnail.")
-            return self.base_generator.generate(
-                title=title,
-                niche=niche,
-                output_path=output_path
-            )
+            return self.base_generator.generate(title=title, niche=niche, output_path=output_path)
 
         # Create background using base generator's method
         colors = BRAND_COLORS.get(niche, BRAND_COLORS["default"])
@@ -467,7 +454,7 @@ class AIThumbnailGenerator:
 
         # Generate output path if not provided
         if not output_path:
-            safe_title = re.sub(r'[^\w\s-]', '', title)[:30].strip().replace(' ', '_')
+            safe_title = re.sub(r"[^\w\s-]", "", title)[:30].strip().replace(" ", "_")
             output_path = str(self.output_dir / f"thumb_ai_{safe_title}_{niche}_{emotion}.png")
 
         # Ensure output directory exists
@@ -479,12 +466,7 @@ class AIThumbnailGenerator:
 
         return output_path
 
-    def generate_ab_test_variants(
-        self,
-        title: str,
-        niche: str,
-        count: int = 3
-    ) -> List[str]:
+    def generate_ab_test_variants(self, title: str, niche: str, count: int = 3) -> List[str]:
         """
         Generate multiple thumbnail variants for A/B testing.
 
@@ -511,8 +493,10 @@ class AIThumbnailGenerator:
             emotion = emotions[i % len(emotions)]
             position = positions[i % len(positions)]
 
-            safe_title = re.sub(r'[^\w\s-]', '', title)[:20].strip().replace(' ', '_')
-            output_path = str(self.output_dir / f"thumb_ai_{safe_title}_{niche}_v{i+1}_{emotion}.png")
+            safe_title = re.sub(r"[^\w\s-]", "", title)[:20].strip().replace(" ", "_")
+            output_path = str(
+                self.output_dir / f"thumb_ai_{safe_title}_{niche}_v{i+1}_{emotion}.png"
+            )
 
             try:
                 path = self.generate_with_ai_face(
@@ -520,7 +504,7 @@ class AIThumbnailGenerator:
                     niche=niche,
                     emotion=emotion,
                     output_path=output_path,
-                    face_position=position
+                    face_position=position,
                 )
                 variants.append(path)
 
@@ -536,7 +520,7 @@ class AIThumbnailGenerator:
                         title=title,
                         niche=niche,
                         output_path=output_path.replace("_ai_", "_fallback_"),
-                        text_position=["center", "top", "bottom"][i % 3]
+                        text_position=["center", "top", "bottom"][i % 3],
                     )
                     variants.append(fallback_path)
                 except Exception as e2:
@@ -556,19 +540,17 @@ class AIThumbnailGenerator:
             List of emotion configurations
         """
         niche_emotions = NICHE_EMOTIONS.get(niche, NICHE_EMOTIONS["finance"])
-        return [
-            {"name": name, **config}
-            for name, config in niche_emotions.items()
-        ]
+        return [{"name": name, **config} for name, config in niche_emotions.items()]
 
 
 def main():
     """CLI entry point for AI thumbnail generation."""
-    import sys
     import argparse
+    import sys
 
     if len(sys.argv) < 2:
-        print("""
+        print(
+            """
 AI-Powered Thumbnail Generator
 ==============================
 
@@ -597,22 +579,27 @@ Emotions by Niche:
 
 Environment Variables:
     REPLICATE_API_KEY    Required for AI face generation
-        """)
+        """
+        )
         return
 
     parser = argparse.ArgumentParser(description="Generate AI-powered thumbnails")
     parser.add_argument("title", nargs="?", help="Video title")
-    parser.add_argument("--niche", required=True,
-                       choices=["finance", "psychology", "storytelling", "default"],
-                       help="Content niche")
+    parser.add_argument(
+        "--niche",
+        required=True,
+        choices=["finance", "psychology", "storytelling", "default"],
+        help="Content niche",
+    )
     parser.add_argument("--emotion", help="Face emotion")
     parser.add_argument("--output", "-o", help="Output file path")
     parser.add_argument("--variants", type=int, help="Generate N A/B test variants")
-    parser.add_argument("--position", default="right",
-                       choices=["right", "left"],
-                       help="Face position")
-    parser.add_argument("--list-emotions", action="store_true",
-                       help="List available emotions for niche")
+    parser.add_argument(
+        "--position", default="right", choices=["right", "left"], help="Face position"
+    )
+    parser.add_argument(
+        "--list-emotions", action="store_true", help="List available emotions for niche"
+    )
 
     args = parser.parse_args()
 
@@ -632,9 +619,7 @@ Environment Variables:
     if args.variants:
         print(f"\nGenerating {args.variants} A/B test variants...")
         paths = generator.generate_ab_test_variants(
-            title=args.title,
-            niche=args.niche,
-            count=args.variants
+            title=args.title, niche=args.niche, count=args.variants
         )
         print(f"\nGenerated {len(paths)} variants:")
         for path in paths:
@@ -645,7 +630,7 @@ Environment Variables:
             niche=args.niche,
             emotion=args.emotion,
             output_path=args.output,
-            face_position=args.position
+            face_position=args.position,
         )
         print(f"\nAI Thumbnail generated: {path}")
 

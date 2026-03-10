@@ -16,12 +16,13 @@ import functools
 import gc
 from contextlib import contextmanager
 from dataclasses import dataclass
-from typing import Any, Callable, Dict, Generator, List, Optional, TypeVar
+from typing import Any, Callable, Dict, Generator, List, TypeVar
 
 from loguru import logger
 
 try:
     import psutil
+
     PSUTIL_AVAILABLE = True
 except ImportError:
     PSUTIL_AVAILABLE = False
@@ -113,6 +114,7 @@ def monitor_memory(func: Callable) -> Callable:
     Returns:
         Wrapped function
     """
+
     @functools.wraps(func)
     def sync_wrapper(*args, **kwargs):
         mem_before = get_process_memory_mb()
@@ -129,9 +131,7 @@ def monitor_memory(func: Callable) -> Callable:
                     f"({mem_before:.0f} -> {mem_after:.0f} MB)"
                 )
             elif mem_delta > 50:
-                logger.debug(
-                    f"{func.__name__} memory delta: +{mem_delta:.0f} MB"
-                )
+                logger.debug(f"{func.__name__} memory delta: +{mem_delta:.0f} MB")
 
         return result
 
@@ -151,9 +151,7 @@ def monitor_memory(func: Callable) -> Callable:
                     f"({mem_before:.0f} -> {mem_after:.0f} MB)"
                 )
             elif mem_delta > 50:
-                logger.debug(
-                    f"{func.__name__} memory delta: +{mem_delta:.0f} MB"
-                )
+                logger.debug(f"{func.__name__} memory delta: +{mem_delta:.0f} MB")
 
         return result
 
@@ -264,9 +262,7 @@ class MemoryTracker:
 
 @contextmanager
 def memory_optimized_context(
-    cleanup_on_exit: bool = True,
-    log_usage: bool = True,
-    context_name: str = ""
+    cleanup_on_exit: bool = True, log_usage: bool = True, context_name: str = ""
 ) -> Generator[MemoryTracker, None, None]:
     """
     Context manager for memory-optimized operations.
@@ -317,7 +313,7 @@ async def process_with_memory_limit(
     process_func: Callable[[T], Any],
     batch_size: int = 5,
     memory_threshold_mb: float = 4096,
-    cleanup_between_batches: bool = True
+    cleanup_between_batches: bool = True,
 ) -> List[Any]:
     """
     Process items in batches with memory management.
@@ -338,7 +334,7 @@ async def process_with_memory_limit(
     tracker = MemoryTracker(threshold_mb=memory_threshold_mb)
 
     for i in range(0, len(items), batch_size):
-        batch = items[i:i + batch_size]
+        batch = items[i : i + batch_size]
         batch_num = i // batch_size + 1
         total_batches = (len(items) + batch_size - 1) // batch_size
 
@@ -385,7 +381,7 @@ def process_with_memory_limit_sync(
     items: List[T],
     process_func: Callable[[T], Any],
     batch_size: int = 5,
-    memory_threshold_mb: float = 4096
+    memory_threshold_mb: float = 4096,
 ) -> List[Any]:
     """
     Synchronous version of process_with_memory_limit.
@@ -403,7 +399,7 @@ def process_with_memory_limit_sync(
     tracker = MemoryTracker(threshold_mb=memory_threshold_mb)
 
     for i in range(0, len(items), batch_size):
-        batch = items[i:i + batch_size]
+        batch = items[i : i + batch_size]
 
         if tracker.is_memory_critical():
             tracker.force_cleanup()

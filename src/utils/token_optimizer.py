@@ -56,40 +56,28 @@ Semantic Caching:
 
 import hashlib
 import json
-import sqlite3
-import zlib
 import re
+import sqlite3
 import threading
+import zlib
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
-from functools import wraps, lru_cache
+from functools import wraps
 from pathlib import Path
-from typing import (
-    Any,
-    Callable,
-    Dict,
-    Generic,
-    List,
-    Optional,
-    Tuple,
-    TypeVar,
-    Union,
-)
+from typing import Any, Callable, Dict, List, Optional, Tuple, TypeVar
 
 from loguru import logger
 
 # Try importing text similarity utilities
 try:
     from src.utils.text_similarity import (
-        word_overlap_similarity,
-        character_ngram_similarity,
-        levenshtein_similarity,
-        combined_similarity,
-        prompt_similarity,
-        normalize_prompt_for_comparison,
         fast_similarity,
+        levenshtein_similarity,
+        normalize_prompt_for_comparison,
+        prompt_similarity,
     )
+
     TEXT_SIMILARITY_AVAILABLE = True
 except ImportError:
     TEXT_SIMILARITY_AVAILABLE = False
@@ -98,14 +86,9 @@ except ImportError:
 # Try importing token_manager components
 try:
     from src.utils.token_manager import (
-        TokenTracker,
-        CostOptimizer,
-        PromptCache,
         PROVIDER_COSTS,
-        get_token_manager,
-        get_cost_optimizer,
-        get_prompt_cache,
         BudgetExceededError,
+        get_token_manager,
     )
 except ImportError:
     # Fallback if running standalone
@@ -151,11 +134,11 @@ TASK_MAX_TOKENS = {
 
 # Different TTLs based on content type for more efficient caching
 CACHE_TTL_BY_TYPE = {
-    "evergreen": 90,      # 90 days for timeless content
-    "trending": 7,        # 7 days for trending topics
-    "news": 1,            # 1 day for news-related content
-    "template": 365,      # 1 year for reusable templates
-    "default": 30,        # 30 days default
+    "evergreen": 90,  # 90 days for timeless content
+    "trending": 7,  # 7 days for trending topics
+    "news": 1,  # 1 day for news-related content
+    "template": 365,  # 1 year for reusable templates
+    "default": 30,  # 30 days default
 }
 
 
@@ -198,8 +181,8 @@ class TokenBudget:
         """Check if we can use the specified number of tokens."""
         self.check_and_reset()
         return (
-            self.used_today + tokens <= self.daily_limit and
-            self.used_this_hour + tokens <= self.hourly_limit
+            self.used_today + tokens <= self.daily_limit
+            and self.used_this_hour + tokens <= self.hourly_limit
         )
 
     def use(self, tokens: int) -> bool:
@@ -250,7 +233,11 @@ class BatchRequest:
     callback: Optional[Callable[[str], None]] = None
     priority: int = 5  # 1 (highest) to 10 (lowest)
     max_tokens: int = 1000
-    request_id: str = field(default_factory=lambda: hashlib.md5(str(datetime.now().timestamp()).encode()).hexdigest()[:8])
+    request_id: str = field(
+        default_factory=lambda: hashlib.md5(str(datetime.now().timestamp()).encode()).hexdigest()[
+            :8
+        ]
+    )
 
 
 @dataclass
@@ -279,18 +266,17 @@ class RoutingDecision:
 # Prompt Compression Strategies
 # ============================================================
 
+
 class CompressionStrategy(ABC):
     """Abstract base for prompt compression strategies."""
 
     @abstractmethod
     def compress(self, text: str) -> str:
         """Compress the text."""
-        pass
 
     @abstractmethod
     def estimate_savings(self, text: str) -> float:
         """Estimate compression savings as a percentage."""
-        pass
 
 
 class WhitespaceCompressor(CompressionStrategy):
@@ -298,9 +284,9 @@ class WhitespaceCompressor(CompressionStrategy):
 
     def compress(self, text: str) -> str:
         # Normalize whitespace
-        text = re.sub(r'\n{3,}', '\n\n', text)  # Max 2 newlines
-        text = re.sub(r' {2,}', ' ', text)       # Single spaces
-        text = re.sub(r'\t+', ' ', text)         # Tabs to spaces
+        text = re.sub(r"\n{3,}", "\n\n", text)  # Max 2 newlines
+        text = re.sub(r" {2,}", " ", text)  # Single spaces
+        text = re.sub(r"\t+", " ", text)  # Tabs to spaces
         return text.strip()
 
     def estimate_savings(self, text: str) -> float:
@@ -313,9 +299,9 @@ class ExampleCondenser(CompressionStrategy):
     """Condense multiple examples into compact format."""
 
     EXAMPLE_PATTERNS = [
-        r'Example \d+:.*?(?=Example \d+:|$)',
-        r'For example,.*?(?=\.|$)',
-        r'e\.g\.,.*?(?=\.|$)',
+        r"Example \d+:.*?(?=Example \d+:|$)",
+        r"For example,.*?(?=\.|$)",
+        r"e\.g\.,.*?(?=\.|$)",
     ]
 
     def compress(self, text: str) -> str:
@@ -328,7 +314,7 @@ class ExampleCondenser(CompressionStrategy):
                 remaining_count = len(matches) - 2
 
                 for match in matches[2:]:
-                    text = text.replace(match, '', 1)
+                    text = text.replace(match, "", 1)
 
                 # Add summary note
                 if remaining_count > 0:
@@ -346,7 +332,7 @@ class InstructionDeduplicator(CompressionStrategy):
     """Remove redundant instructions that appear multiple times."""
 
     def compress(self, text: str) -> str:
-        lines = text.split('\n')
+        lines = text.split("\n")
         seen_instructions = set()
         result = []
 
@@ -355,14 +341,14 @@ class InstructionDeduplicator(CompressionStrategy):
             normalized = line.lower().strip()
 
             # Skip if it's a duplicate instruction
-            if normalized.startswith(('you must', 'always', 'never', 'make sure', 'ensure')):
+            if normalized.startswith(("you must", "always", "never", "make sure", "ensure")):
                 if normalized in seen_instructions:
                     continue
                 seen_instructions.add(normalized)
 
             result.append(line)
 
-        return '\n'.join(result)
+        return "\n".join(result)
 
     def estimate_savings(self, text: str) -> float:
         original = len(text)
@@ -375,14 +361,14 @@ class JSONSchemaMinifier(CompressionStrategy):
 
     def compress(self, text: str) -> str:
         # Find JSON blocks and minify them
-        json_pattern = r'```json\s*(.*?)\s*```'
+        json_pattern = r"```json\s*(.*?)\s*```"
 
         def minify_json(match):
             try:
                 json_str = match.group(1)
                 parsed = json.loads(json_str)
-                minified = json.dumps(parsed, separators=(',', ':'))
-                return f'```json\n{minified}\n```'
+                minified = json.dumps(parsed, separators=(",", ":"))
+                return f"```json\n{minified}\n```"
             except json.JSONDecodeError:
                 return match.group(0)
 
@@ -423,12 +409,7 @@ class VerboseLanguageCondenser(CompressionStrategy):
     def compress(self, text: str) -> str:
         result = text
         for verbose, concise in self.REPLACEMENTS.items():
-            result = re.sub(
-                re.escape(verbose),
-                concise,
-                result,
-                flags=re.IGNORECASE
-            )
+            result = re.sub(re.escape(verbose), concise, result, flags=re.IGNORECASE)
         return result
 
     def estimate_savings(self, text: str) -> float:
@@ -441,6 +422,7 @@ class VerboseLanguageCondenser(CompressionStrategy):
 # Response Extraction Strategies
 # ============================================================
 
+
 class ResponseExtractor:
     """Extract only needed data from AI responses."""
 
@@ -448,7 +430,7 @@ class ResponseExtractor:
     def extract_json(response: str) -> Optional[Dict]:
         """Extract JSON from a response that may contain other text."""
         # Try to find JSON block
-        json_match = re.search(r'```json\s*(.*?)\s*```', response, re.DOTALL)
+        json_match = re.search(r"```json\s*(.*?)\s*```", response, re.DOTALL)
         if json_match:
             try:
                 return json.loads(json_match.group(1))
@@ -456,7 +438,7 @@ class ResponseExtractor:
                 pass
 
         # Try to find bare JSON object
-        brace_match = re.search(r'\{.*\}', response, re.DOTALL)
+        brace_match = re.search(r"\{.*\}", response, re.DOTALL)
         if brace_match:
             try:
                 return json.loads(brace_match.group(0))
@@ -469,26 +451,26 @@ class ResponseExtractor:
     def extract_list(response: str) -> List[str]:
         """Extract a list from a response."""
         # Try numbered list
-        numbered = re.findall(r'^\s*\d+[\.\)]\s*(.+)$', response, re.MULTILINE)
+        numbered = re.findall(r"^\s*\d+[\.\)]\s*(.+)$", response, re.MULTILINE)
         if numbered:
             return numbered
 
         # Try bullet list
-        bulleted = re.findall(r'^\s*[-*]\s*(.+)$', response, re.MULTILINE)
+        bulleted = re.findall(r"^\s*[-*]\s*(.+)$", response, re.MULTILINE)
         if bulleted:
             return bulleted
 
         # Split by newlines as fallback
-        lines = [line.strip() for line in response.split('\n') if line.strip()]
+        lines = [line.strip() for line in response.split("\n") if line.strip()]
         return lines
 
     @staticmethod
     def extract_code(response: str, language: str = None) -> Optional[str]:
         """Extract code block from a response."""
         if language:
-            pattern = rf'```{language}\s*(.*?)\s*```'
+            pattern = rf"```{language}\s*(.*?)\s*```"
         else:
-            pattern = r'```(?:\w+)?\s*(.*?)\s*```'
+            pattern = r"```(?:\w+)?\s*(.*?)\s*```"
 
         match = re.search(pattern, response, re.DOTALL)
         return match.group(1).strip() if match else None
@@ -497,13 +479,13 @@ class ResponseExtractor:
     def extract_section(response: str, section_name: str) -> Optional[str]:
         """Extract a named section from a response."""
         # Look for markdown headers
-        pattern = rf'#+\s*{re.escape(section_name)}[:\s]*(.*?)(?=#+\s|\Z)'
+        pattern = rf"#+\s*{re.escape(section_name)}[:\s]*(.*?)(?=#+\s|\Z)"
         match = re.search(pattern, response, re.DOTALL | re.IGNORECASE)
         if match:
             return match.group(1).strip()
 
         # Look for bold/labeled sections
-        pattern = rf'\*\*{re.escape(section_name)}\*\*[:\s]*(.*?)(?=\*\*|\Z)'
+        pattern = rf"\*\*{re.escape(section_name)}\*\*[:\s]*(.*?)(?=\*\*|\Z)"
         match = re.search(pattern, response, re.DOTALL | re.IGNORECASE)
         if match:
             return match.group(1).strip()
@@ -514,6 +496,7 @@ class ResponseExtractor:
 # ============================================================
 # Semantic Cache
 # ============================================================
+
 
 class SemanticCache:
     """
@@ -574,7 +557,8 @@ class SemanticCache:
     def _init_db(self):
         """Initialize database with prompt prefixes for fast lookup."""
         with sqlite3.connect(self.db_path) as conn:
-            conn.execute("""
+            conn.execute(
+                """
                 CREATE TABLE IF NOT EXISTS semantic_cache (
                     prompt_hash TEXT PRIMARY KEY,
                     prompt_text TEXT NOT NULL,
@@ -588,20 +572,27 @@ class SemanticCache:
                     last_accessed TEXT NOT NULL,
                     expires_at TEXT NOT NULL
                 )
-            """)
+            """
+            )
             # Indexes for fast lookup
-            conn.execute("""
+            conn.execute(
+                """
                 CREATE INDEX IF NOT EXISTS idx_semantic_prefix
                 ON semantic_cache(prompt_prefix)
-            """)
-            conn.execute("""
+            """
+            )
+            conn.execute(
+                """
                 CREATE INDEX IF NOT EXISTS idx_semantic_expires
                 ON semantic_cache(expires_at)
-            """)
-            conn.execute("""
+            """
+            )
+            conn.execute(
+                """
                 CREATE INDEX IF NOT EXISTS idx_semantic_accessed
                 ON semantic_cache(last_accessed)
-            """)
+            """
+            )
 
     def _normalize_prompt(self, prompt: str) -> str:
         """
@@ -616,9 +607,9 @@ class SemanticCache:
         # Fallback normalization
         normalized = prompt.lower().strip()
         # Remove extra whitespace
-        normalized = re.sub(r'\s+', ' ', normalized)
+        normalized = re.sub(r"\s+", " ", normalized)
         # Remove common punctuation variations
-        normalized = re.sub(r'["\']', '', normalized)
+        normalized = re.sub(r'["\']', "", normalized)
         return normalized
 
     def _calculate_similarity(self, prompt1: str, prompt2: str) -> float:
@@ -667,6 +658,7 @@ class SemanticCache:
         # Fallback: use difflib SequenceMatcher
         try:
             from difflib import SequenceMatcher
+
             return SequenceMatcher(None, text1.lower(), text2.lower()).ratio()
         except Exception:
             # Ultimate fallback to word overlap
@@ -696,7 +688,7 @@ class SemanticCache:
                 row = conn.execute(
                     """SELECT response FROM semantic_cache
                        WHERE prompt_hash = ? AND expires_at > ?""",
-                    (prompt_hash, now)
+                    (prompt_hash, now),
                 ).fetchone()
 
                 if row:
@@ -705,7 +697,7 @@ class SemanticCache:
                         """UPDATE semantic_cache
                            SET access_count = access_count + 1, last_accessed = ?
                            WHERE prompt_hash = ?""",
-                        (now, prompt_hash)
+                        (now, prompt_hash),
                     )
                     return row[0]
 
@@ -731,7 +723,7 @@ class SemanticCache:
                        WHERE prompt_prefix LIKE ? AND expires_at > ?
                        ORDER BY access_count DESC
                        LIMIT ?""",
-                    (prefix_match[:20] + '%', now, self.max_candidates)
+                    (prefix_match[:20] + "%", now, self.max_candidates),
                 ).fetchall()
 
                 return [(row[0], row[1]) for row in rows]
@@ -826,9 +818,18 @@ class SemanticCache:
                         response, provider, token_count, access_count,
                         created_at, last_accessed, expires_at)
                        VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?)""",
-                    (prompt_hash, prompt, prefix, normalized, response,
-                     provider, token_count, now.isoformat(), now.isoformat(),
-                     expires_at)
+                    (
+                        prompt_hash,
+                        prompt,
+                        prefix,
+                        normalized,
+                        response,
+                        provider,
+                        token_count,
+                        now.isoformat(),
+                        now.isoformat(),
+                        expires_at,
+                    ),
                 )
 
         logger.debug(f"Semantic cache stored: {prompt_hash[:8]}...")
@@ -841,23 +842,23 @@ class SemanticCache:
             Dictionary with cache statistics
         """
         with sqlite3.connect(self.db_path) as conn:
-            total = conn.execute(
-                "SELECT COUNT(*) FROM semantic_cache"
-            ).fetchone()[0]
+            total = conn.execute("SELECT COUNT(*) FROM semantic_cache").fetchone()[0]
 
             expired = conn.execute(
                 "SELECT COUNT(*) FROM semantic_cache WHERE expires_at < ?",
-                (datetime.now().isoformat(),)
+                (datetime.now().isoformat(),),
             ).fetchone()[0]
 
-            total_accesses = conn.execute(
-                "SELECT SUM(access_count) FROM semantic_cache"
-            ).fetchone()[0] or 0
+            total_accesses = (
+                conn.execute("SELECT SUM(access_count) FROM semantic_cache").fetchone()[0] or 0
+            )
 
         total_lookups = self.exact_hits + self.semantic_hits + self.misses
         exact_rate = self.exact_hits / total_lookups if total_lookups > 0 else 0
         semantic_rate = self.semantic_hits / total_lookups if total_lookups > 0 else 0
-        total_hit_rate = (self.exact_hits + self.semantic_hits) / total_lookups if total_lookups > 0 else 0
+        total_hit_rate = (
+            (self.exact_hits + self.semantic_hits) / total_lookups if total_lookups > 0 else 0
+        )
 
         return {
             "total_entries": total,
@@ -884,10 +885,7 @@ class SemanticCache:
 
         with self._lock:
             with sqlite3.connect(self.db_path) as conn:
-                result = conn.execute(
-                    "DELETE FROM semantic_cache WHERE expires_at < ?",
-                    (now,)
-                )
+                result = conn.execute("DELETE FROM semantic_cache WHERE expires_at < ?", (now,))
                 deleted = result.rowcount
 
         logger.info(f"Cleared {deleted} expired semantic cache entries")
@@ -916,6 +914,7 @@ class SemanticCache:
 # ============================================================
 # Advanced Prompt Cache
 # ============================================================
+
 
 class AdvancedPromptCache:
     """
@@ -952,7 +951,8 @@ class AdvancedPromptCache:
     def _init_db(self):
         """Initialize the SQLite database."""
         with sqlite3.connect(self.db_path) as conn:
-            conn.execute("""
+            conn.execute(
+                """
                 CREATE TABLE IF NOT EXISTS prompt_cache (
                     prompt_hash TEXT PRIMARY KEY,
                     prompt_prefix TEXT,
@@ -964,26 +964,39 @@ class AdvancedPromptCache:
                     created_at TEXT,
                     last_accessed TEXT
                 )
-            """)
-            conn.execute("""
+            """
+            )
+            conn.execute(
+                """
                 CREATE INDEX IF NOT EXISTS idx_prefix ON prompt_cache(prompt_prefix)
-            """)
-            conn.execute("""
+            """
+            )
+            conn.execute(
+                """
                 CREATE INDEX IF NOT EXISTS idx_last_accessed ON prompt_cache(last_accessed)
-            """)
+            """
+            )
             # Additional indexes for optimization
-            conn.execute("""
+            conn.execute(
+                """
                 CREATE INDEX IF NOT EXISTS idx_cache_prefix ON prompt_cache(prompt_prefix)
-            """)
-            conn.execute("""
+            """
+            )
+            conn.execute(
+                """
                 CREATE INDEX IF NOT EXISTS idx_cache_accessed ON prompt_cache(last_accessed)
-            """)
-            conn.execute("""
+            """
+            )
+            conn.execute(
+                """
                 CREATE INDEX IF NOT EXISTS idx_cache_provider ON prompt_cache(provider)
-            """)
-            conn.execute("""
+            """
+            )
+            conn.execute(
+                """
                 CREATE INDEX IF NOT EXISTS idx_cache_created ON prompt_cache(created_at)
-            """)
+            """
+            )
 
     def _hash_prompt(self, prompt: str) -> str:
         """Create a hash of the prompt."""
@@ -995,11 +1008,11 @@ class AdvancedPromptCache:
 
     def _compress(self, data: str) -> bytes:
         """Compress a string."""
-        return zlib.compress(data.encode('utf-8'))
+        return zlib.compress(data.encode("utf-8"))
 
     def _decompress(self, data: bytes) -> str:
         """Decompress bytes to string."""
-        return zlib.decompress(data).decode('utf-8')
+        return zlib.decompress(data).decode("utf-8")
 
     def get(self, prompt: str, similarity_threshold: float = 0.9) -> Optional[str]:
         """
@@ -1032,30 +1045,33 @@ class AdvancedPromptCache:
                     """SELECT response, compressed, token_count, provider
                        FROM prompt_cache
                        WHERE prompt_hash = ? AND last_accessed > ?""",
-                    (prompt_hash, cutoff)
+                    (prompt_hash, cutoff),
                 ).fetchone()
 
                 if row:
                     response = self._decompress(row[0]) if row[1] else row[0]
                     if isinstance(response, bytes):
-                        response = response.decode('utf-8')
+                        response = response.decode("utf-8")
 
                     # Update access stats
                     conn.execute(
                         """UPDATE prompt_cache
                            SET access_count = access_count + 1, last_accessed = ?
                            WHERE prompt_hash = ?""",
-                        (datetime.now().isoformat(), prompt_hash)
+                        (datetime.now().isoformat(), prompt_hash),
                     )
 
                     # Add to memory cache
-                    self._add_to_memory_cache(prompt_hash, CacheEntry(
-                        response=response,
-                        provider=row[3],
-                        token_count=row[2],
-                        created_at=datetime.now(),
-                        compressed=bool(row[1])
-                    ))
+                    self._add_to_memory_cache(
+                        prompt_hash,
+                        CacheEntry(
+                            response=response,
+                            provider=row[3],
+                            token_count=row[2],
+                            created_at=datetime.now(),
+                            compressed=bool(row[1]),
+                        ),
+                    )
 
                     self.hits += 1
                     logger.debug(f"Database cache hit for hash {prompt_hash[:8]}")
@@ -1064,13 +1080,7 @@ class AdvancedPromptCache:
         self.misses += 1
         return None
 
-    def set(
-        self,
-        prompt: str,
-        response: str,
-        provider: str = "",
-        token_count: int = 0
-    ) -> None:
+    def set(self, prompt: str, response: str, provider: str = "", token_count: int = 0) -> None:
         """
         Cache a response for a prompt.
 
@@ -1085,7 +1095,7 @@ class AdvancedPromptCache:
 
         # Compress if response is large
         compressed = len(response) > self.compress_threshold
-        stored_response = self._compress(response) if compressed else response.encode('utf-8')
+        stored_response = self._compress(response) if compressed else response.encode("utf-8")
 
         with self._lock:
             with sqlite3.connect(self.db_path) as conn:
@@ -1094,22 +1104,32 @@ class AdvancedPromptCache:
                        (prompt_hash, prompt_prefix, response, provider, token_count,
                         compressed, access_count, created_at, last_accessed)
                        VALUES (?, ?, ?, ?, ?, ?, 1, ?, ?)""",
-                    (prompt_hash, prompt_prefix, stored_response, provider,
-                     token_count, int(compressed), datetime.now().isoformat(),
-                     datetime.now().isoformat())
+                    (
+                        prompt_hash,
+                        prompt_prefix,
+                        stored_response,
+                        provider,
+                        token_count,
+                        int(compressed),
+                        datetime.now().isoformat(),
+                        datetime.now().isoformat(),
+                    ),
                 )
 
                 # Enforce max entries
                 self._evict_if_needed(conn)
 
         # Add to memory cache
-        self._add_to_memory_cache(prompt_hash, CacheEntry(
-            response=response,
-            provider=provider,
-            token_count=token_count,
-            created_at=datetime.now(),
-            compressed=compressed
-        ))
+        self._add_to_memory_cache(
+            prompt_hash,
+            CacheEntry(
+                response=response,
+                provider=provider,
+                token_count=token_count,
+                created_at=datetime.now(),
+                compressed=compressed,
+            ),
+        )
 
         logger.debug(f"Cached response for hash {prompt_hash[:8]} (compressed={compressed})")
 
@@ -1118,8 +1138,7 @@ class AdvancedPromptCache:
         if len(self._memory_cache) >= self._memory_cache_size:
             # Evict least recently accessed
             oldest_key = min(
-                self._memory_cache.keys(),
-                key=lambda k: self._memory_cache[k].last_accessed
+                self._memory_cache.keys(), key=lambda k: self._memory_cache[k].last_accessed
             )
             del self._memory_cache[oldest_key]
 
@@ -1132,14 +1151,16 @@ class AdvancedPromptCache:
         if count > self.max_entries:
             # Delete oldest 10%
             to_delete = max(1, count // 10)
-            conn.execute(f"""
+            conn.execute(
+                f"""
                 DELETE FROM prompt_cache
                 WHERE prompt_hash IN (
                     SELECT prompt_hash FROM prompt_cache
                     ORDER BY last_accessed ASC
                     LIMIT {to_delete}
                 )
-            """)
+            """
+            )
             logger.info(f"Evicted {to_delete} old cache entries")
 
     def get_stats(self) -> Dict[str, Any]:
@@ -1149,14 +1170,14 @@ class AdvancedPromptCache:
             compressed_count = conn.execute(
                 "SELECT COUNT(*) FROM prompt_cache WHERE compressed = 1"
             ).fetchone()[0]
-            total_accesses = conn.execute(
-                "SELECT SUM(access_count) FROM prompt_cache"
-            ).fetchone()[0] or 0
+            total_accesses = (
+                conn.execute("SELECT SUM(access_count) FROM prompt_cache").fetchone()[0] or 0
+            )
 
             # Get size
-            size_bytes = conn.execute(
-                "SELECT SUM(LENGTH(response)) FROM prompt_cache"
-            ).fetchone()[0] or 0
+            size_bytes = (
+                conn.execute("SELECT SUM(LENGTH(response)) FROM prompt_cache").fetchone()[0] or 0
+            )
 
         hit_rate = self.hits / (self.hits + self.misses) if (self.hits + self.misses) > 0 else 0
 
@@ -1177,10 +1198,7 @@ class AdvancedPromptCache:
 
         with self._lock:
             with sqlite3.connect(self.db_path) as conn:
-                result = conn.execute(
-                    "DELETE FROM prompt_cache WHERE last_accessed < ?",
-                    (cutoff,)
-                )
+                result = conn.execute("DELETE FROM prompt_cache WHERE last_accessed < ?", (cutoff,))
                 deleted = result.rowcount
 
         logger.info(f"Cleared {deleted} expired cache entries")
@@ -1234,7 +1252,7 @@ class AdvancedPromptCache:
                        WHERE prompt_prefix LIKE ? AND last_accessed > ?
                        ORDER BY access_count DESC
                        LIMIT ?""",
-                    (prompt_prefix[:20] + '%', cutoff, max_candidates)
+                    (prompt_prefix[:20] + "%", cutoff, max_candidates),
                 ).fetchall()
 
         if not rows:
@@ -1247,10 +1265,7 @@ class AdvancedPromptCache:
 
         for candidate_prefix, response_data, compressed in rows:
             # Calculate similarity between prompts
-            similarity = self._calculate_prompt_similarity(
-                normalized_prompt,
-                candidate_prefix
-            )
+            similarity = self._calculate_prompt_similarity(normalized_prompt, candidate_prefix)
 
             if similarity >= threshold and similarity > best_similarity:
                 best_similarity = similarity
@@ -1260,7 +1275,7 @@ class AdvancedPromptCache:
                 else:
                     best_match = response_data
                     if isinstance(best_match, bytes):
-                        best_match = best_match.decode('utf-8')
+                        best_match = best_match.decode("utf-8")
 
         if best_match:
             self.hits += 1
@@ -1310,8 +1325,8 @@ class AdvancedPromptCache:
             return 0.0
 
         # Tokenize into words
-        words1 = set(re.findall(r'\b[a-z0-9]+\b', text1.lower()))
-        words2 = set(re.findall(r'\b[a-z0-9]+\b', text2.lower()))
+        words1 = set(re.findall(r"\b[a-z0-9]+\b", text1.lower()))
+        words2 = set(re.findall(r"\b[a-z0-9]+\b", text2.lower()))
 
         if not words1 or not words2:
             return 0.0
@@ -1355,6 +1370,7 @@ class AdvancedPromptCache:
 # Batch Processor
 # ============================================================
 
+
 class BatchProcessor:
     """
     Process multiple requests in batches for efficiency.
@@ -1395,8 +1411,8 @@ class BatchProcessor:
     def get_batch(self) -> List[BatchRequest]:
         """Get the next batch of requests to process."""
         with self._lock:
-            batch = self._queue[:self.batch_size]
-            self._queue = self._queue[self.batch_size:]
+            batch = self._queue[: self.batch_size]
+            self._queue = self._queue[self.batch_size :]
             return batch
 
     def create_combined_prompt(self, batch: List[BatchRequest]) -> str:
@@ -1431,7 +1447,7 @@ Format your response as:
 
         for req in batch:
             # Look for the response section for this ID
-            pattern = rf'\[{req.request_id}\]\s*(.*?)(?=\[[\w]+\]|\Z)'
+            pattern = rf"\[{req.request_id}\]\s*(.*?)(?=\[[\w]+\]|\Z)"
             match = re.search(pattern, response, re.DOTALL)
 
             if match:
@@ -1452,6 +1468,7 @@ Format your response as:
 # ============================================================
 # Smart Router
 # ============================================================
+
 
 class SmartRouter:
     """
@@ -1476,22 +1493,20 @@ class SmartRouter:
         "keyword_extraction": "simple",
         "thumbnail_text": "simple",
         "seo_keywords": "simple",
-
         # UPDATED: These tasks now use Groq (moved from medium to simple)
-        "script_outline": "simple",      # Use Groq - outlines don't need premium
-        "hook_generation": "simple",     # Use Groq - hooks are short
-        "script_revision": "simple",     # Use Groq - revisions are iterative
-        "content_summary": "simple",     # Use Groq - summaries are straightforward
-        "seo_optimization": "simple",    # Use Groq - SEO is formulaic
-        "idea_generation": "simple",     # Use Groq - idea generation is creative but simple
-        "trend_research": "simple",      # Use Groq - research can be done in steps
-        "competitor_analysis": "simple", # Use Groq - analysis can be done incrementally
-
+        "script_outline": "simple",  # Use Groq - outlines don't need premium
+        "hook_generation": "simple",  # Use Groq - hooks are short
+        "script_revision": "simple",  # Use Groq - revisions are iterative
+        "content_summary": "simple",  # Use Groq - summaries are straightforward
+        "seo_optimization": "simple",  # Use Groq - SEO is formulaic
+        "idea_generation": "simple",  # Use Groq - idea generation is creative but simple
+        "trend_research": "simple",  # Use Groq - research can be done in steps
+        "competitor_analysis": "simple",  # Use Groq - analysis can be done incrementally
         # Complex tasks - ONLY these use paid providers when budget allows
-        "full_script": "complex",        # Only full scripts justify paid providers
+        "full_script": "complex",  # Only full scripts justify paid providers
         "research_synthesis": "medium",  # Medium complexity, use Gemini if available
-        "creative_writing": "medium",    # Medium complexity for creative tasks
-        "technical_explanation": "medium", # Medium complexity for technical content
+        "creative_writing": "medium",  # Medium complexity for creative tasks
+        "technical_explanation": "medium",  # Medium complexity for technical content
     }
 
     # Quality scores per provider (1-10)
@@ -1565,12 +1580,14 @@ class SmartRouter:
                 failure_rate = self._get_failure_rate(provider)
                 adjusted_quality = quality * (1 - failure_rate)
 
-                candidates.append({
-                    "provider": provider,
-                    "quality": adjusted_quality,
-                    "cost": cost,
-                    "is_free": provider in self.FREE_PROVIDERS,
-                })
+                candidates.append(
+                    {
+                        "provider": provider,
+                        "quality": adjusted_quality,
+                        "cost": cost,
+                        "is_free": provider in self.FREE_PROVIDERS,
+                    }
+                )
 
         if not candidates:
             # Fallback to cheapest available
@@ -1653,6 +1670,7 @@ class SmartRouter:
 # Main Token Optimizer Class
 # ============================================================
 
+
 class TokenOptimizer:
     """
     Main token optimization system that combines all strategies.
@@ -1723,10 +1741,14 @@ class TokenOptimizer:
 
         # Initialize components
         self.cache = AdvancedPromptCache(ttl_hours=cache_ttl_hours) if enable_caching else None
-        self.semantic_cache = SemanticCache(
-            similarity_threshold=semantic_threshold,
-            ttl_days=cache_ttl_hours // 24 if cache_ttl_hours >= 24 else 1
-        ) if enable_semantic_cache else None
+        self.semantic_cache = (
+            SemanticCache(
+                similarity_threshold=semantic_threshold,
+                ttl_days=cache_ttl_hours // 24 if cache_ttl_hours >= 24 else 1,
+            )
+            if enable_semantic_cache
+            else None
+        )
         self.router = SmartRouter(daily_budget=daily_budget)
         self.batch_processor = BatchProcessor() if enable_batching else None
 
@@ -1756,9 +1778,11 @@ class TokenOptimizer:
             "routing_decisions": 0,
         }
 
-        logger.info(f"TokenOptimizer initialized (budget=${daily_budget}, "
-                   f"compression={enable_compression}, caching={enable_caching}, "
-                   f"semantic_cache={enable_semantic_cache})")
+        logger.info(
+            f"TokenOptimizer initialized (budget=${daily_budget}, "
+            f"compression={enable_compression}, caching={enable_caching}, "
+            f"semantic_cache={enable_semantic_cache})"
+        )
 
     def optimize_prompt(
         self,
@@ -1800,13 +1824,17 @@ class TokenOptimizer:
                 applied.append(type(compressor).__name__)
 
         optimized_tokens = self._estimate_tokens(optimized)
-        savings_percent = (original_tokens - optimized_tokens) / original_tokens if original_tokens > 0 else 0
+        savings_percent = (
+            (original_tokens - optimized_tokens) / original_tokens if original_tokens > 0 else 0
+        )
 
         self._stats["prompts_optimized"] += 1
         self._stats["tokens_saved"] += original_tokens - optimized_tokens
 
-        logger.debug(f"Prompt optimized: {original_tokens} -> {optimized_tokens} tokens "
-                    f"({savings_percent:.1%} savings)")
+        logger.debug(
+            f"Prompt optimized: {original_tokens} -> {optimized_tokens} tokens "
+            f"({savings_percent:.1%} savings)"
+        )
 
         return OptimizationResult(
             original_tokens=original_tokens,
@@ -1841,7 +1869,9 @@ class TokenOptimizer:
         if not self.enable_caching:
             return None
 
-        threshold = semantic_threshold if semantic_threshold is not None else self.semantic_threshold
+        threshold = (
+            semantic_threshold if semantic_threshold is not None else self.semantic_threshold
+        )
 
         # Strategy 1: Try exact match from advanced cache
         if self.cache:
@@ -2087,23 +2117,26 @@ class TokenOptimizer:
         if len(response) <= max_chars:
             return response
 
-        logger.debug(f"Truncating response from {len(response)} to {max_chars} chars for {task_type}")
+        logger.debug(
+            f"Truncating response from {len(response)} to {max_chars} chars for {task_type}"
+        )
 
         if preserve_structure:
             # Try to preserve JSON structure
-            if response.strip().startswith('{') or response.strip().startswith('['):
+            if response.strip().startswith("{") or response.strip().startswith("["):
                 try:
                     # Parse and re-serialize with limits
                     import json
+
                     data = json.loads(response)
                     # Truncate string values recursively
                     truncated_data = self._truncate_json_values(data, max_chars // 2)
-                    return json.dumps(truncated_data, separators=(',', ':'))
+                    return json.dumps(truncated_data, separators=(",", ":"))
                 except json.JSONDecodeError:
                     pass
 
             # Try to preserve list structure
-            lines = response.split('\n')
+            lines = response.split("\n")
             if len(lines) > 1:
                 # Keep as many complete lines as possible
                 result = []
@@ -2114,7 +2147,7 @@ class TokenOptimizer:
                         current_len += len(line) + 1
                     else:
                         break
-                return '\n'.join(result)
+                return "\n".join(result)
 
         # Simple truncation
         return response[:max_chars]
@@ -2127,7 +2160,9 @@ class TokenOptimizer:
         elif isinstance(data, dict):
             return {k: self._truncate_json_values(v, max_total_chars) for k, v in data.items()}
         elif isinstance(data, list):
-            return [self._truncate_json_values(item, max_total_chars) for item in data[:20]]  # Max 20 items
+            return [
+                self._truncate_json_values(item, max_total_chars) for item in data[:20]
+            ]  # Max 20 items
         return data
 
     def batch_requests(
@@ -2181,14 +2216,16 @@ class TokenOptimizer:
                 combined_prompt = self._create_batch_prompt(group, task_type)
                 max_tokens = self.get_max_tokens_for_task(task_type) * len(group)
 
-                batched_requests.append({
-                    "prompt": combined_prompt,
-                    "task_type": task_type,
-                    "is_batch": True,
-                    "batch_size": len(group),
-                    "original_requests": group,
-                    "max_tokens": max_tokens,
-                })
+                batched_requests.append(
+                    {
+                        "prompt": combined_prompt,
+                        "task_type": task_type,
+                        "is_batch": True,
+                        "batch_size": len(group),
+                        "original_requests": group,
+                        "max_tokens": max_tokens,
+                    }
+                )
 
         self._stats["requests_batched"] += sum(len(g) for g in grouped.values() if len(g) > 1)
         logger.info(f"Batched {len(requests)} requests into {len(batched_requests)} API calls")
@@ -2234,7 +2271,7 @@ Format your response as:
 
         for i in range(1, batch_size + 1):
             # Look for the response section for this number
-            pattern = rf'\[{i}\]\s*(.*?)(?=\[{i+1}\]|\Z)'
+            pattern = rf"\[{i}\]\s*(.*?)(?=\[{i+1}\]|\Z)"
             match = re.search(pattern, response, re.DOTALL)
 
             if match:
@@ -2268,8 +2305,7 @@ Format your response as:
             stats["semantic_cache_stats"] = self.semantic_cache.get_stats()
 
         stats["agent_budgets"] = {
-            name: self.get_agent_budget_status(name)
-            for name in self.agent_budgets
+            name: self.get_agent_budget_status(name) for name in self.agent_budgets
         }
 
         return stats
@@ -2285,8 +2321,8 @@ Format your response as:
         report += f"Prompts Optimized: {stats['prompts_optimized']:,}\n"
         report += f"Tokens Saved: {stats['tokens_saved']:,}\n"
 
-        if stats['prompts_optimized'] > 0:
-            avg_savings = stats['tokens_saved'] / stats['prompts_optimized']
+        if stats["prompts_optimized"] > 0:
+            avg_savings = stats["tokens_saved"] / stats["prompts_optimized"]
             report += f"Avg Savings/Prompt: {avg_savings:.0f} tokens\n"
 
         report += f"\nCache Hits: {stats['cache_hits']:,}\n"
@@ -2294,13 +2330,13 @@ Format your response as:
         report += f"  - Exact Hits: {stats['cache_hits'] - stats.get('semantic_hits', 0):,}\n"
         report += f"Cache Misses: {stats['cache_misses']:,}\n"
 
-        if stats['cache_hits'] + stats['cache_misses'] > 0:
-            hit_rate = stats['cache_hits'] / (stats['cache_hits'] + stats['cache_misses'])
+        if stats["cache_hits"] + stats["cache_misses"] > 0:
+            hit_rate = stats["cache_hits"] / (stats["cache_hits"] + stats["cache_misses"])
             report += f"Cache Hit Rate: {hit_rate:.1%}\n"
 
             # Semantic contribution
-            if stats['cache_hits'] > 0:
-                semantic_contribution = stats.get('semantic_hits', 0) / stats['cache_hits']
+            if stats["cache_hits"] > 0:
+                semantic_contribution = stats.get("semantic_hits", 0) / stats["cache_hits"]
                 report += f"Semantic Contribution: {semantic_contribution:.1%}\n"
 
         # Semantic cache specific stats
@@ -2316,8 +2352,10 @@ Format your response as:
 
         # Estimated cost savings
         # Assuming average cost of $0.002 per 1K tokens saved
-        estimated_savings = (stats['tokens_saved'] / 1000) * 0.002
-        cache_savings = (stats['cache_hits'] * 500 / 1000) * 0.002  # Assume 500 tokens per cached response
+        estimated_savings = (stats["tokens_saved"] / 1000) * 0.002
+        cache_savings = (
+            stats["cache_hits"] * 500 / 1000
+        ) * 0.002  # Assume 500 tokens per cached response
         total_savings = estimated_savings + cache_savings
 
         report += f"\n--- Estimated Savings ---\n"
@@ -2407,6 +2445,7 @@ def get_semantic_cache() -> Optional[SemanticCache]:
 # Decorators for Easy Integration
 # ============================================================
 
+
 def with_optimization(task_type: str = "general", use_semantic: bool = True):
     """
     Decorator to automatically optimize prompts and cache responses.
@@ -2433,6 +2472,7 @@ def with_optimization(task_type: str = "general", use_semantic: bool = True):
             # Will find similar cached prompts even with variations
             return response
     """
+
     def decorator(func: Callable) -> Callable:
         @wraps(func)
         def wrapper(prompt: str, *args, **kwargs) -> str:
@@ -2454,7 +2494,9 @@ def with_optimization(task_type: str = "general", use_semantic: bool = True):
             optimizer.cache_response(prompt, response)
 
             return response
+
         return wrapper
+
     return decorator
 
 
@@ -2470,6 +2512,7 @@ def with_routing(task_type: str = "general", require_quality: float = 0.5):
             # Make API call using provider
             return response
     """
+
     def decorator(func: Callable) -> Callable:
         @wraps(func)
         def wrapper(*args, **kwargs) -> Any:
@@ -2479,7 +2522,7 @@ def with_routing(task_type: str = "general", require_quality: float = 0.5):
             decision = optimizer.route_request(task_type, require_quality=require_quality)
 
             # Set provider in kwargs
-            kwargs['provider'] = decision.provider
+            kwargs["provider"] = decision.provider
             logger.info(f"Routing {func.__name__} to {decision.provider}: {decision.reason}")
 
             try:
@@ -2491,13 +2534,17 @@ def with_routing(task_type: str = "general", require_quality: float = 0.5):
 
                 # Try fallback if available
                 if decision.fallback_provider:
-                    logger.warning(f"Primary provider {decision.provider} failed, "
-                                  f"trying fallback {decision.fallback_provider}")
-                    kwargs['provider'] = decision.fallback_provider
+                    logger.warning(
+                        f"Primary provider {decision.provider} failed, "
+                        f"trying fallback {decision.fallback_provider}"
+                    )
+                    kwargs["provider"] = decision.fallback_provider
                     return func(*args, **kwargs)
 
                 raise
+
         return wrapper
+
     return decorator
 
 
@@ -2511,6 +2558,7 @@ def with_budget(agent_name: str):
             # Make API call
             return response
     """
+
     def decorator(func: Callable) -> Callable:
         @wraps(func)
         def wrapper(*args, **kwargs) -> Any:
@@ -2541,7 +2589,9 @@ def with_budget(agent_name: str):
             optimizer.use_agent_budget(agent_name, actual_tokens)
 
             return result
+
         return wrapper
+
     return decorator
 
 

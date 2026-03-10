@@ -25,22 +25,24 @@ Usage:
     optimize_all_databases()
 """
 
-import sqlite3
-import time
-import threading
 import hashlib
-from pathlib import Path
-from typing import Dict, List, Any, Optional, Tuple
-from contextlib import contextmanager
-from dataclasses import dataclass, field
-from datetime import datetime, timedelta
+import sqlite3
+import threading
+import time
 from collections import OrderedDict
+from contextlib import contextmanager
+from dataclasses import dataclass
+from datetime import datetime, timedelta
+from pathlib import Path
+from typing import Any, Dict, List, Optional
+
 from loguru import logger
 
 
 @dataclass
 class QueryStats:
     """Statistics for a single query execution."""
+
     query: str
     execution_time_ms: float
     rows_affected: int
@@ -53,13 +55,14 @@ class QueryStats:
             "execution_time_ms": self.execution_time_ms,
             "rows_affected": self.rows_affected,
             "uses_index": self.uses_index,
-            "scan_type": self.scan_type
+            "scan_type": self.scan_type,
         }
 
 
 @dataclass
 class TableInfo:
     """Information about a database table."""
+
     name: str
     row_count: int
     column_count: int
@@ -74,13 +77,14 @@ class TableInfo:
             "column_count": self.column_count,
             "columns": self.columns,
             "indexes": self.indexes,
-            "size_estimate_kb": self.size_estimate_kb
+            "size_estimate_kb": self.size_estimate_kb,
         }
 
 
 @dataclass
 class IndexRecommendation:
     """A recommended index to create."""
+
     table_name: str
     column_name: str
     index_name: str
@@ -88,7 +92,9 @@ class IndexRecommendation:
     priority: str = "medium"  # low, medium, high
 
     def get_create_sql(self) -> str:
-        return f"CREATE INDEX IF NOT EXISTS {self.index_name} ON {self.table_name}({self.column_name})"
+        return (
+            f"CREATE INDEX IF NOT EXISTS {self.index_name} ON {self.table_name}({self.column_name})"
+        )
 
 
 class DatabaseOptimizer:
@@ -96,9 +102,19 @@ class DatabaseOptimizer:
 
     # Common columns that benefit from indexing
     INDEX_CANDIDATES = [
-        "id", "date", "timestamp", "created_at", "updated_at",
-        "status", "channel_id", "pipeline_id", "task_id",
-        "provider", "operation", "query", "last_accessed"
+        "id",
+        "date",
+        "timestamp",
+        "created_at",
+        "updated_at",
+        "status",
+        "channel_id",
+        "pipeline_id",
+        "task_id",
+        "provider",
+        "operation",
+        "query",
+        "last_accessed",
     ]
 
     # Standard indexes for common query patterns
@@ -181,7 +197,8 @@ class DatabaseOptimizer:
                     # Estimate size (rough approximation)
                     cursor = conn.execute(
                         f"SELECT SUM(LENGTH(CAST({columns[0]} AS TEXT))) FROM {table_name}"
-                        if columns else "SELECT 0"
+                        if columns
+                        else "SELECT 0"
                     )
                     size_result = cursor.fetchone()[0]
                     size_estimate_kb = (size_result or 0) / 1024
@@ -192,7 +209,7 @@ class DatabaseOptimizer:
                         column_count=len(columns),
                         columns=columns,
                         indexes=indexes,
-                        size_estimate_kb=size_estimate_kb
+                        size_estimate_kb=size_estimate_kb,
                     )
                 except Exception as e:
                     logger.warning(f"Error analyzing table {table_name}: {e}")
@@ -223,13 +240,15 @@ class DatabaseOptimizer:
                     for idx_name, columns in self.STANDARD_INDEXES[table_name]:
                         col_list = [c.strip() for c in columns.split(",")]
                         if col_list[0].lower() not in existing_index_cols:
-                            recommendations.append(IndexRecommendation(
-                                table_name=table_name,
-                                column_name=columns,
-                                index_name=idx_name,
-                                reason=f"Standard optimization index for {table_name}",
-                                priority="high"
-                            ))
+                            recommendations.append(
+                                IndexRecommendation(
+                                    table_name=table_name,
+                                    column_name=columns,
+                                    index_name=idx_name,
+                                    reason=f"Standard optimization index for {table_name}",
+                                    priority="high",
+                                )
+                            )
 
                 # Check candidate columns
                 for column in table_info.columns:
@@ -237,13 +256,15 @@ class DatabaseOptimizer:
                     if col_lower in self.INDEX_CANDIDATES and col_lower not in existing_index_cols:
                         # Only recommend if table has significant rows
                         if table_info.row_count > 100:
-                            recommendations.append(IndexRecommendation(
-                                table_name=table_name,
-                                column_name=column,
-                                index_name=f"idx_{table_name}_{column}",
-                                reason=f"Frequently queried column: {column}",
-                                priority="medium" if table_info.row_count > 1000 else "low"
-                            ))
+                            recommendations.append(
+                                IndexRecommendation(
+                                    table_name=table_name,
+                                    column_name=column,
+                                    index_name=f"idx_{table_name}_{column}",
+                                    reason=f"Frequently queried column: {column}",
+                                    priority="medium" if table_info.row_count > 1000 else "low",
+                                )
+                            )
 
         # Sort by priority
         priority_order = {"high": 0, "medium": 1, "low": 2}
@@ -306,7 +327,7 @@ class DatabaseOptimizer:
             "size_after_kb": size_after / 1024,
             "space_freed_kb": space_freed / 1024,
             "space_freed_percent": (space_freed / size_before * 100) if size_before > 0 else 0,
-            "execution_time_ms": execution_time
+            "execution_time_ms": execution_time,
         }
 
         logger.info(
@@ -366,9 +387,10 @@ class DatabaseOptimizer:
             "scan_types": scan_types,
             "plan_details": details,
             "recommendation": (
-                "Query is optimized" if uses_index
+                "Query is optimized"
+                if uses_index
                 else "Consider adding an index for better performance"
-            )
+            ),
         }
 
     def benchmark_query(self, query: str, params: tuple = (), iterations: int = 10) -> QueryStats:
@@ -404,7 +426,7 @@ class DatabaseOptimizer:
             execution_time_ms=avg_time,
             rows_affected=rows_affected,
             uses_index=plan["uses_index"],
-            scan_type=", ".join(plan["scan_types"]) if plan["scan_types"] else "UNKNOWN"
+            scan_type=", ".join(plan["scan_types"]) if plan["scan_types"] else "UNKNOWN",
         )
 
     def get_optimization_report(self) -> str:
@@ -560,7 +582,7 @@ class ConnectionPool:
             return {
                 "available": len(self._pool),
                 "in_use": len(self._in_use),
-                "max_connections": self.max_connections
+                "max_connections": self.max_connections,
             }
 
 
@@ -649,7 +671,7 @@ class QueryCache:
             self._cache[key] = {
                 "result": result,
                 "expires_at": datetime.now() + timedelta(seconds=ttl),
-                "query": query[:100]
+                "query": query[:100],
             }
             self._access_count[key] = 0
 
@@ -685,10 +707,8 @@ class QueryCache:
                 "misses": self._misses,
                 "hit_rate_percent": hit_rate,
                 "most_accessed": sorted(
-                    self._access_count.items(),
-                    key=lambda x: x[1],
-                    reverse=True
-                )[:5]
+                    self._access_count.items(), key=lambda x: x[1], reverse=True
+                )[:5],
             }
 
 
@@ -714,10 +734,7 @@ def optimize_all_databases(data_dir: str = "data") -> Dict[str, Any]:
         logger.info(f"No database files found in {data_dir}")
         return {"databases_found": 0}
 
-    results = {
-        "databases_found": len(db_files),
-        "databases": {}
-    }
+    results = {"databases_found": len(db_files), "databases": {}}
 
     for db_file in db_files:
         db_name = db_file.name
@@ -740,7 +757,7 @@ def optimize_all_databases(data_dir: str = "data") -> Dict[str, Any]:
                 "vacuum": vacuum_result,
                 "indexes_created": len(index_statements),
                 "tables": tables,
-                "status": "success"
+                "status": "success",
             }
 
         except Exception as e:
@@ -748,7 +765,7 @@ def optimize_all_databases(data_dir: str = "data") -> Dict[str, Any]:
             results["databases"][db_name] = {
                 "path": str(db_file),
                 "status": "error",
-                "error": str(e)
+                "error": str(e),
             }
 
     logger.info(f"Optimization complete: {len(db_files)} databases processed")

@@ -30,16 +30,16 @@ Usage:
     Profiler.clear()
 """
 
-import time
 import functools
-import tracemalloc
-import threading
 import statistics
+import threading
+import time
+import tracemalloc
 from contextlib import contextmanager
 from dataclasses import dataclass, field
-from typing import Callable, Any, Dict, List, Optional
 from datetime import datetime
 from pathlib import Path
+from typing import Any, Callable, Dict, List
 
 from loguru import logger
 
@@ -47,6 +47,7 @@ from loguru import logger
 @dataclass
 class ProfileResult:
     """Result of a single profiling operation."""
+
     name: str
     duration_ms: float
     memory_peak_mb: float
@@ -72,6 +73,7 @@ class ProfileResult:
 @dataclass
 class AggregatedStats:
     """Aggregated statistics for a profiled operation."""
+
     name: str
     count: int
     total_duration_ms: float
@@ -174,7 +176,7 @@ class Profiler:
                 duration_ms=duration_ms,
                 memory_peak_mb=peak / 1024 / 1024,
                 memory_current_mb=current / 1024 / 1024,
-                metadata=metadata or {}
+                metadata=metadata or {},
             )
 
             # Store result (thread-safe)
@@ -182,10 +184,7 @@ class Profiler:
                 cls._results.append(result)
 
             # Log the result
-            logger.debug(
-                f"[PROFILE] {name}: {duration_ms:.1f}ms, "
-                f"{peak/1024/1024:.1f}MB peak"
-            )
+            logger.debug(f"[PROFILE] {name}: {duration_ms:.1f}ms, " f"{peak/1024/1024:.1f}MB peak")
 
     @classmethod
     def profile_func(cls, func: Callable = None, *, name: str = None) -> Callable:
@@ -209,6 +208,7 @@ class Profiler:
         Returns:
             Decorated function
         """
+
         def decorator(f: Callable) -> Callable:
             profile_name = name or f.__name__
 
@@ -230,6 +230,7 @@ class Profiler:
 
             # Return appropriate wrapper based on function type
             import asyncio
+
             if asyncio.iscoroutinefunction(f):
                 return async_wrapper
             return wrapper
@@ -336,11 +337,7 @@ class Profiler:
         ]
 
         # Sort by total duration (most time-consuming first)
-        sorted_stats = sorted(
-            stats.values(),
-            key=lambda x: x.total_duration_ms,
-            reverse=True
-        )
+        sorted_stats = sorted(stats.values(), key=lambda x: x.total_duration_ms, reverse=True)
 
         for s in sorted_stats:
             lines.append(
@@ -349,11 +346,13 @@ class Profiler:
                 f"{s.avg_memory_peak_mb:>12.1f}"
             )
 
-        lines.extend([
-            "-" * 80,
-            "",
-            "Top 5 Slowest Operations:",
-        ])
+        lines.extend(
+            [
+                "-" * 80,
+                "",
+                "Top 5 Slowest Operations:",
+            ]
+        )
 
         for i, s in enumerate(sorted_stats[:5], 1):
             lines.append(f"  {i}. {s.name}: {s.total_duration_ms:.1f}ms total ({s.count} calls)")
@@ -378,11 +377,7 @@ class Profiler:
             "|-----------|-------|----------|----------|----------|-------------|",
         ]
 
-        sorted_stats = sorted(
-            stats.values(),
-            key=lambda x: x.total_duration_ms,
-            reverse=True
-        )
+        sorted_stats = sorted(stats.values(), key=lambda x: x.total_duration_ms, reverse=True)
 
         for s in sorted_stats:
             lines.append(
@@ -391,16 +386,16 @@ class Profiler:
                 f"{s.avg_memory_peak_mb:.1f} |"
             )
 
-        lines.extend([
-            "",
-            "## Top 5 Slowest Operations",
-            "",
-        ])
+        lines.extend(
+            [
+                "",
+                "## Top 5 Slowest Operations",
+                "",
+            ]
+        )
 
         for i, s in enumerate(sorted_stats[:5], 1):
-            lines.append(
-                f"{i}. **{s.name}**: {s.total_duration_ms:.1f}ms total ({s.count} calls)"
-            )
+            lines.append(f"{i}. **{s.name}**: {s.total_duration_ms:.1f}ms total ({s.count} calls)")
 
         return "\n".join(lines)
 
@@ -490,6 +485,7 @@ def timed(func: Callable) -> Callable:
         def my_function():
             ...
     """
+
     @functools.wraps(func)
     def wrapper(*args, **kwargs):
         start = time.perf_counter()
@@ -507,6 +503,7 @@ def timed(func: Callable) -> Callable:
         return result
 
     import asyncio
+
     if asyncio.iscoroutinefunction(func):
         return async_wrapper
     return wrapper

@@ -33,18 +33,20 @@ Usage:
 import asyncio
 import json
 import sqlite3
-from datetime import datetime, timedelta, timezone, time as dt_time
-from pathlib import Path
-from typing import Dict, Any, List, Optional, Tuple, Set
-from dataclasses import dataclass, field, asdict
+from dataclasses import asdict, dataclass, field
+from datetime import datetime
+from datetime import timedelta, timezone
 from enum import Enum
-from loguru import logger
+from pathlib import Path
+from typing import Any, Dict, List, Optional, Tuple
+
 import yaml
-import random
+from loguru import logger
 
 
 class DayOfWeek(Enum):
     """Days of the week."""
+
     MONDAY = 0
     TUESDAY = 1
     WEDNESDAY = 2
@@ -56,6 +58,7 @@ class DayOfWeek(Enum):
 
 class SchedulePriority(Enum):
     """Priority levels for scheduled content."""
+
     LOW = 1
     NORMAL = 2
     HIGH = 3
@@ -65,6 +68,7 @@ class SchedulePriority(Enum):
 @dataclass
 class TimeSlot:
     """Represents a time slot for uploading."""
+
     hour: int
     minute: int = 0
     score: float = 0.0
@@ -80,13 +84,14 @@ class TimeSlot:
             "minute": self.minute,
             "time_str": self.time_str,
             "score": self.score,
-            "reason": self.reason
+            "reason": self.reason,
         }
 
 
 @dataclass
 class ScheduledContent:
     """Content scheduled for upload."""
+
     content_id: str
     channel_id: str
     topic: str
@@ -106,6 +111,7 @@ class ScheduledContent:
 @dataclass
 class ContentCalendarEntry:
     """Entry in the content calendar."""
+
     date: str
     day_of_week: str
     channel_id: str
@@ -122,6 +128,7 @@ class ContentCalendarEntry:
 @dataclass
 class Holiday:
     """Holiday definition for scheduling awareness."""
+
     name: str
     date: str  # MM-DD format or YYYY-MM-DD for specific year
     recurring: bool = True
@@ -155,13 +162,13 @@ class OptimalTimeCalculator:
 
     # Day-of-week modifiers (1.0 = no change)
     DAY_MODIFIERS: Dict[int, float] = {
-        0: 0.95,   # Monday - slightly lower
-        1: 1.0,    # Tuesday - baseline
-        2: 1.0,    # Wednesday - baseline
-        3: 1.05,   # Thursday - slight boost
-        4: 0.9,    # Friday - lower engagement
-        5: 0.85,   # Saturday - weekend dip
-        6: 0.9,    # Sunday - recovering
+        0: 0.95,  # Monday - slightly lower
+        1: 1.0,  # Tuesday - baseline
+        2: 1.0,  # Wednesday - baseline
+        3: 1.05,  # Thursday - slight boost
+        4: 0.9,  # Friday - lower engagement
+        5: 0.85,  # Saturday - weekend dip
+        6: 0.9,  # Sunday - recovering
     }
 
     def __init__(self, db_path: Optional[Path] = None):
@@ -172,7 +179,8 @@ class OptimalTimeCalculator:
         """Initialize database for performance tracking."""
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
         with sqlite3.connect(self.db_path) as conn:
-            conn.execute("""
+            conn.execute(
+                """
                 CREATE TABLE IF NOT EXISTS upload_performance (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     channel_id TEXT NOT NULL,
@@ -184,25 +192,29 @@ class OptimalTimeCalculator:
                     uploaded_at TEXT,
                     created_at TEXT DEFAULT CURRENT_TIMESTAMP
                 )
-            """)
-            conn.execute("""
+            """
+            )
+            conn.execute(
+                """
                 CREATE INDEX IF NOT EXISTS idx_upload_perf_channel
                 ON upload_performance(channel_id, upload_hour, upload_day)
-            """)
-            conn.execute("""
+            """
+            )
+            conn.execute(
+                """
                 CREATE INDEX IF NOT EXISTS idx_upload_perf_created
                 ON upload_performance(created_at)
-            """)
-            conn.execute("""
+            """
+            )
+            conn.execute(
+                """
                 CREATE INDEX IF NOT EXISTS idx_upload_perf_views
                 ON upload_performance(views_24h)
-            """)
+            """
+            )
 
     async def calculate_optimal_time(
-        self,
-        channel_id: str,
-        niche: str,
-        target_date: Optional[datetime] = None
+        self, channel_id: str, niche: str, target_date: Optional[datetime] = None
     ) -> TimeSlot:
         """
         Calculate the optimal upload time for a channel.
@@ -219,10 +231,7 @@ class OptimalTimeCalculator:
         day_of_week = target_date.weekday()
 
         # Get base optimal hours for niche
-        base_hours = self.NICHE_OPTIMAL_TIMES.get(
-            niche.lower(),
-            [14, 15, 16, 19, 20]  # Default
-        )
+        base_hours = self.NICHE_OPTIMAL_TIMES.get(niche.lower(), [14, 15, 16, 19, 20])  # Default
 
         # Score each hour
         hour_scores: List[Tuple[int, float, str]] = []
@@ -257,26 +266,21 @@ class OptimalTimeCalculator:
         best_hour, best_score, reason = hour_scores[0]
 
         return TimeSlot(
-            hour=best_hour,
-            minute=0,
-            score=best_score,
-            reason=reason or "Niche optimal time"
+            hour=best_hour, minute=0, score=best_score, reason=reason or "Niche optimal time"
         )
 
-    async def _get_historical_score(
-        self,
-        channel_id: str,
-        hour: int,
-        day_of_week: int
-    ) -> float:
+    async def _get_historical_score(self, channel_id: str, hour: int, day_of_week: int) -> float:
         """Get historical performance score for a time slot."""
         try:
             with sqlite3.connect(self.db_path) as conn:
-                result = conn.execute("""
+                result = conn.execute(
+                    """
                     SELECT AVG(views_24h), AVG(engagement_rate), COUNT(*)
                     FROM upload_performance
                     WHERE channel_id = ? AND upload_hour = ? AND upload_day = ?
-                """, (channel_id, hour, day_of_week)).fetchone()
+                """,
+                    (channel_id, hour, day_of_week),
+                ).fetchone()
 
                 if result and result[2] >= 3:  # Need at least 3 data points
                     avg_views = result[0] or 0
@@ -296,19 +300,27 @@ class OptimalTimeCalculator:
         video_id: str,
         upload_time: datetime,
         views_24h: int,
-        engagement_rate: float
+        engagement_rate: float,
     ):
         """Record upload performance for learning."""
         with sqlite3.connect(self.db_path) as conn:
-            conn.execute("""
+            conn.execute(
+                """
                 INSERT INTO upload_performance
                 (channel_id, video_id, upload_hour, upload_day, views_24h,
                  engagement_rate, uploaded_at)
                 VALUES (?, ?, ?, ?, ?, ?, ?)
-            """, (
-                channel_id, video_id, upload_time.hour, upload_time.weekday(),
-                views_24h, engagement_rate, upload_time.isoformat()
-            ))
+            """,
+                (
+                    channel_id,
+                    video_id,
+                    upload_time.hour,
+                    upload_time.weekday(),
+                    views_24h,
+                    engagement_rate,
+                    upload_time.isoformat(),
+                ),
+            )
 
 
 class AudienceTimezoneAnalyzer:
@@ -347,9 +359,7 @@ class AudienceTimezoneAnalyzer:
         self._audience_cache: Dict[str, Dict[str, float]] = {}
 
     async def analyze_optimal_window(
-        self,
-        channel_id: str,
-        audience_distribution: Optional[Dict[str, float]] = None
+        self, channel_id: str, audience_distribution: Optional[Dict[str, float]] = None
     ) -> List[TimeSlot]:
         """
         Find optimal upload windows based on audience timezones.
@@ -362,8 +372,7 @@ class AudienceTimezoneAnalyzer:
             List of optimal time slots sorted by score
         """
         distribution = audience_distribution or self._audience_cache.get(
-            channel_id,
-            self.DEFAULT_AUDIENCE_DISTRIBUTION
+            channel_id, self.DEFAULT_AUDIENCE_DISTRIBUTION
         )
 
         # Calculate audience awake percentage for each UTC hour
@@ -398,11 +407,7 @@ class AudienceTimezoneAnalyzer:
 
         # Convert to time slots
         slots = [
-            TimeSlot(
-                hour=hour,
-                score=score,
-                reason=f"Audience activity: {score:.1%}"
-            )
+            TimeSlot(hour=hour, score=score, reason=f"Audience activity: {score:.1%}")
             for hour, score in hour_scores.items()
         ]
 
@@ -411,11 +416,7 @@ class AudienceTimezoneAnalyzer:
 
         return slots[:6]  # Return top 6 slots
 
-    async def update_audience_distribution(
-        self,
-        channel_id: str,
-        distribution: Dict[str, float]
-    ):
+    async def update_audience_distribution(self, channel_id: str, distribution: Dict[str, float]):
         """Update stored audience distribution for a channel."""
         # Normalize to 100%
         total = sum(distribution.values())
@@ -427,25 +428,28 @@ class AudienceTimezoneAnalyzer:
         # Persist to database
         try:
             with sqlite3.connect(self.db_path) as conn:
-                conn.execute("""
+                conn.execute(
+                    """
                     CREATE TABLE IF NOT EXISTS audience_distribution (
                         channel_id TEXT PRIMARY KEY,
                         distribution TEXT,
                         updated_at TEXT
                     )
-                """)
-                conn.execute("""
+                """
+                )
+                conn.execute(
+                    """
                     INSERT OR REPLACE INTO audience_distribution
                     (channel_id, distribution, updated_at)
                     VALUES (?, ?, ?)
-                """, (channel_id, json.dumps(distribution), datetime.now().isoformat()))
+                """,
+                    (channel_id, json.dumps(distribution), datetime.now().isoformat()),
+                )
         except Exception as e:
             logger.warning(f"Failed to persist audience distribution: {e}")
 
     async def get_best_time_for_regions(
-        self,
-        target_regions: List[str],
-        weight_by_engagement: bool = True
+        self, target_regions: List[str], weight_by_engagement: bool = True
     ) -> TimeSlot:
         """Get best upload time targeting specific regions."""
         distribution = {
@@ -473,7 +477,8 @@ class CompetitorAvoidance:
         """Initialize competitor tracking database."""
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
         with sqlite3.connect(self.db_path) as conn:
-            conn.execute("""
+            conn.execute(
+                """
                 CREATE TABLE IF NOT EXISTS competitor_uploads (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     competitor_id TEXT NOT NULL,
@@ -483,41 +488,45 @@ class CompetitorAvoidance:
                     video_title TEXT,
                     observed_at TEXT DEFAULT CURRENT_TIMESTAMP
                 )
-            """)
-            conn.execute("""
+            """
+            )
+            conn.execute(
+                """
                 CREATE INDEX IF NOT EXISTS idx_competitor_niche
                 ON competitor_uploads(niche, upload_hour, upload_day)
-            """)
-            conn.execute("""
+            """
+            )
+            conn.execute(
+                """
                 CREATE INDEX IF NOT EXISTS idx_competitor_observed
                 ON competitor_uploads(observed_at)
-            """)
-            conn.execute("""
+            """
+            )
+            conn.execute(
+                """
                 CREATE INDEX IF NOT EXISTS idx_competitor_id
                 ON competitor_uploads(competitor_id)
-            """)
+            """
+            )
 
     async def record_competitor_upload(
-        self,
-        competitor_id: str,
-        niche: str,
-        upload_time: datetime,
-        video_title: str = ""
+        self, competitor_id: str, niche: str, upload_time: datetime, video_title: str = ""
     ):
         """Record a competitor's upload for pattern analysis."""
         with sqlite3.connect(self.db_path) as conn:
-            conn.execute("""
+            conn.execute(
+                """
                 INSERT INTO competitor_uploads
                 (competitor_id, niche, upload_hour, upload_day, video_title)
                 VALUES (?, ?, ?, ?, ?)
-            """, (competitor_id, niche, upload_time.hour, upload_time.weekday(), video_title))
+            """,
+                (competitor_id, niche, upload_time.hour, upload_time.weekday(), video_title),
+            )
 
         logger.debug(f"Recorded competitor upload: {competitor_id} at {upload_time}")
 
     async def get_competitor_hot_hours(
-        self,
-        niche: str,
-        day_of_week: Optional[int] = None
+        self, niche: str, day_of_week: Optional[int] = None
     ) -> List[int]:
         """
         Get hours when competitors frequently upload.
@@ -553,10 +562,7 @@ class CompetitorAvoidance:
         return [r[0] for r in results if r[1] > avg_count * 1.2]
 
     async def find_gap_slots(
-        self,
-        niche: str,
-        target_date: datetime,
-        preferred_hours: List[int]
+        self, niche: str, target_date: datetime, preferred_hours: List[int]
     ) -> List[TimeSlot]:
         """
         Find time slots that avoid competitor uploads.
@@ -589,9 +595,7 @@ class CompetitorAvoidance:
         return gap_slots
 
     async def suggest_counter_schedule(
-        self,
-        niche: str,
-        our_upload_time: datetime
+        self, niche: str, our_upload_time: datetime
     ) -> Dict[str, Any]:
         """
         Analyze if our schedule competes with major competitors.
@@ -599,9 +603,7 @@ class CompetitorAvoidance:
         Returns:
             Dict with competition analysis and suggestions
         """
-        competitor_hours = await self.get_competitor_hot_hours(
-            niche, our_upload_time.weekday()
-        )
+        competitor_hours = await self.get_competitor_hot_hours(niche, our_upload_time.weekday())
 
         our_hour = our_upload_time.hour
         is_competing = our_hour in competitor_hours
@@ -620,9 +622,8 @@ class CompetitorAvoidance:
             "competitor_hot_hours": competitor_hours,
             "suggested_alternatives": suggestions,
             "recommendation": (
-                "Consider shifting upload time" if is_competing
-                else "Good timing - low competition"
-            )
+                "Consider shifting upload time" if is_competing else "Good timing - low competition"
+            ),
         }
 
 
@@ -656,7 +657,7 @@ class ContentCalendar:
         channel_id: str,
         weeks: int = 4,
         start_date: Optional[datetime] = None,
-        topics: Optional[List[str]] = None
+        topics: Optional[List[str]] = None,
     ) -> List[ContentCalendarEntry]:
         """
         Generate a content calendar for the specified period.
@@ -705,7 +706,7 @@ class ContentCalendar:
                     channel_id=channel_id,
                     topic=topic,
                     scheduled_time=optimal_slot.time_str,
-                    niche=niche
+                    niche=niche,
                 )
                 entries.append(entry)
 
@@ -718,7 +719,7 @@ class ContentCalendar:
         self,
         channel_id: str,
         from_date: Optional[datetime] = None,
-        to_date: Optional[datetime] = None
+        to_date: Optional[datetime] = None,
     ) -> List[ContentCalendarEntry]:
         """
         Get calendar entries for a channel within date range.
@@ -742,10 +743,7 @@ class ContentCalendar:
         return filtered
 
     async def update_entry(
-        self,
-        channel_id: str,
-        date: str,
-        updates: Dict[str, Any]
+        self, channel_id: str, date: str, updates: Dict[str, Any]
     ) -> Optional[ContentCalendarEntry]:
         """Update a calendar entry."""
         entries = self._calendar.get(channel_id, [])
@@ -759,11 +757,7 @@ class ContentCalendar:
 
         return None
 
-    async def export_calendar(
-        self,
-        channel_id: str,
-        format: str = "json"
-    ) -> str:
+    async def export_calendar(self, channel_id: str, format: str = "json") -> str:
         """Export calendar to JSON or CSV format."""
         entries = self._calendar.get(channel_id, [])
 
@@ -774,17 +768,13 @@ class ContentCalendar:
             for e in entries:
                 lines.append(
                     f"{e.date},{e.day_of_week},{e.channel_id},"
-                    f"\"{e.topic}\",{e.scheduled_time},{e.niche},{e.status}"
+                    f'"{e.topic}",{e.scheduled_time},{e.niche},{e.status}'
                 )
             return "\n".join(lines)
         else:
             raise ValueError(f"Unsupported format: {format}")
 
-    async def get_upcoming(
-        self,
-        channel_id: str,
-        days: int = 7
-    ) -> List[ContentCalendarEntry]:
+    async def get_upcoming(self, channel_id: str, days: int = 7) -> List[ContentCalendarEntry]:
         """Get upcoming content for the next N days."""
         now = datetime.now(timezone.utc)
         end = now + timedelta(days=days)
@@ -805,7 +795,8 @@ class BatchScheduler:
         """Initialize batch scheduling database."""
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
         with sqlite3.connect(self.db_path) as conn:
-            conn.execute("""
+            conn.execute(
+                """
                 CREATE TABLE IF NOT EXISTS scheduled_content (
                     content_id TEXT PRIMARY KEY,
                     channel_id TEXT NOT NULL,
@@ -817,29 +808,35 @@ class BatchScheduler:
                     metadata TEXT,
                     created_at TEXT DEFAULT CURRENT_TIMESTAMP
                 )
-            """)
-            conn.execute("""
+            """
+            )
+            conn.execute(
+                """
                 CREATE INDEX IF NOT EXISTS idx_scheduled_time
                 ON scheduled_content(scheduled_time, status)
-            """)
-            conn.execute("""
+            """
+            )
+            conn.execute(
+                """
                 CREATE INDEX IF NOT EXISTS idx_scheduled_channel
                 ON scheduled_content(channel_id)
-            """)
-            conn.execute("""
+            """
+            )
+            conn.execute(
+                """
                 CREATE INDEX IF NOT EXISTS idx_scheduled_status
                 ON scheduled_content(status, created_at)
-            """)
-            conn.execute("""
+            """
+            )
+            conn.execute(
+                """
                 CREATE INDEX IF NOT EXISTS idx_scheduled_priority
                 ON scheduled_content(priority, scheduled_time)
-            """)
+            """
+            )
 
     async def batch_schedule(
-        self,
-        items: List[Dict[str, Any]],
-        avoid_conflicts: bool = True,
-        min_gap_hours: int = 2
+        self, items: List[Dict[str, Any]], avoid_conflicts: bool = True, min_gap_hours: int = 2
     ) -> Dict[str, Any]:
         """
         Schedule multiple videos with conflict resolution.
@@ -884,8 +881,7 @@ class BatchScheduler:
                         # Calculate optimal time
                         calculator = OptimalTimeCalculator()
                         slot = await calculator.calculate_optimal_time(
-                            channel_id,
-                            item.get("niche", "general")
+                            channel_id, item.get("niche", "general")
                         )
                         now = datetime.now(timezone.utc)
                         schedule_time = now.replace(
@@ -901,12 +897,14 @@ class BatchScheduler:
                             # Resolve conflict
                             old_time = schedule_time
                             schedule_time = last_scheduled + timedelta(hours=min_gap_hours)
-                            conflicts_resolved.append({
-                                "item": item,
-                                "original_time": old_time.isoformat(),
-                                "new_time": schedule_time.isoformat(),
-                                "reason": f"Too close to previous upload (gap: {gap:.1f}h)"
-                            })
+                            conflicts_resolved.append(
+                                {
+                                    "item": item,
+                                    "original_time": old_time.isoformat(),
+                                    "new_time": schedule_time.isoformat(),
+                                    "reason": f"Too close to previous upload (gap: {gap:.1f}h)",
+                                }
+                            )
 
                     # Create scheduled content
                     content_id = f"batch_{channel_id}_{schedule_time.strftime('%Y%m%d%H%M')}"
@@ -917,7 +915,7 @@ class BatchScheduler:
                         scheduled_time=schedule_time,
                         priority=item.get("priority", SchedulePriority.NORMAL.value),
                         niche=item.get("niche", ""),
-                        metadata=item.get("metadata", {})
+                        metadata=item.get("metadata", {}),
                     )
 
                     # Save to database
@@ -928,10 +926,7 @@ class BatchScheduler:
                     last_scheduled = schedule_time
 
                 except Exception as e:
-                    failed.append({
-                        "item": item,
-                        "error": str(e)
-                    })
+                    failed.append({"item": item, "error": str(e)})
 
         return {
             "scheduled": scheduled,
@@ -939,28 +934,34 @@ class BatchScheduler:
             "failed": failed,
             "total_scheduled": len(scheduled),
             "total_conflicts": len(conflicts_resolved),
-            "total_failed": len(failed)
+            "total_failed": len(failed),
         }
 
     async def _save_content(self, content: ScheduledContent):
         """Save scheduled content to database."""
         with sqlite3.connect(self.db_path) as conn:
-            conn.execute("""
+            conn.execute(
+                """
                 INSERT OR REPLACE INTO scheduled_content
                 (content_id, channel_id, topic, scheduled_time, priority,
                  status, niche, metadata, created_at)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """, (
-                content.content_id, content.channel_id, content.topic,
-                content.scheduled_time.isoformat(), content.priority,
-                content.status, content.niche, json.dumps(content.metadata),
-                content.created_at
-            ))
+            """,
+                (
+                    content.content_id,
+                    content.channel_id,
+                    content.topic,
+                    content.scheduled_time.isoformat(),
+                    content.priority,
+                    content.status,
+                    content.niche,
+                    json.dumps(content.metadata),
+                    content.created_at,
+                ),
+            )
 
     async def get_scheduled(
-        self,
-        channel_id: Optional[str] = None,
-        status: str = "pending"
+        self, channel_id: Optional[str] = None, status: str = "pending"
     ) -> List[ScheduledContent]:
         """Get scheduled content."""
         query = "SELECT * FROM scheduled_content WHERE status = ?"
@@ -986,21 +987,20 @@ class BatchScheduler:
                 status=row["status"],
                 niche=row["niche"] or "",
                 metadata=json.loads(row["metadata"]) if row["metadata"] else {},
-                created_at=row["created_at"]
+                created_at=row["created_at"],
             )
             for row in rows
         ]
 
-    async def update_status(
-        self,
-        content_id: str,
-        status: str
-    ):
+    async def update_status(self, content_id: str, status: str):
         """Update content status."""
         with sqlite3.connect(self.db_path) as conn:
-            conn.execute("""
+            conn.execute(
+                """
                 UPDATE scheduled_content SET status = ? WHERE content_id = ?
-            """, (status, content_id))
+            """,
+                (status, content_id),
+            )
 
         if content_id in self._scheduled_content:
             self._scheduled_content[content_id].status = status
@@ -1010,18 +1010,17 @@ class BatchScheduler:
         await self.update_status(content_id, "cancelled")
         return True
 
-    async def reschedule(
-        self,
-        content_id: str,
-        new_time: datetime
-    ) -> Optional[ScheduledContent]:
+    async def reschedule(self, content_id: str, new_time: datetime) -> Optional[ScheduledContent]:
         """Reschedule an item."""
         with sqlite3.connect(self.db_path) as conn:
-            conn.execute("""
+            conn.execute(
+                """
                 UPDATE scheduled_content
                 SET scheduled_time = ?
                 WHERE content_id = ?
-            """, (new_time.isoformat(), content_id))
+            """,
+                (new_time.isoformat(), content_id),
+            )
 
         if content_id in self._scheduled_content:
             self._scheduled_content[content_id].scheduled_time = new_time
@@ -1067,11 +1066,7 @@ class HolidayAwareness:
         except Exception:
             return None
 
-    async def is_holiday(
-        self,
-        date: datetime,
-        country: str = "US"
-    ) -> Optional[Holiday]:
+    async def is_holiday(self, date: datetime, country: str = "US") -> Optional[Holiday]:
         """
         Check if a date is a holiday.
 
@@ -1098,9 +1093,7 @@ class HolidayAwareness:
         return None
 
     async def should_avoid_upload(
-        self,
-        date: datetime,
-        country: str = "US"
+        self, date: datetime, country: str = "US"
     ) -> Tuple[bool, Optional[str]]:
         """
         Check if uploads should be avoided on a date.
@@ -1115,11 +1108,7 @@ class HolidayAwareness:
 
         return False, None
 
-    async def get_suggested_topics(
-        self,
-        date: datetime,
-        base_niche: str
-    ) -> List[str]:
+    async def get_suggested_topics(self, date: datetime, base_niche: str) -> List[str]:
         """
         Get topic suggestions for a date based on holidays.
 
@@ -1142,10 +1131,7 @@ class HolidayAwareness:
         return suggestions
 
     async def find_next_upload_day(
-        self,
-        start_date: datetime,
-        posting_days: List[int],
-        country: str = "US"
+        self, start_date: datetime, posting_days: List[int], country: str = "US"
     ) -> datetime:
         """
         Find the next valid upload day avoiding holidays.
@@ -1173,9 +1159,7 @@ class HolidayAwareness:
         return start_date + timedelta(days=1)
 
     async def get_upcoming_holidays(
-        self,
-        days: int = 30,
-        country: str = "US"
+        self, days: int = 30, country: str = "US"
     ) -> List[Dict[str, Any]]:
         """Get upcoming holidays within the specified period."""
         now = datetime.now()
@@ -1188,12 +1172,14 @@ class HolidayAwareness:
 
             holiday_date = self._parse_holiday_date(holiday, now.year)
             if holiday_date and now <= holiday_date <= end:
-                upcoming.append({
-                    "name": holiday.name,
-                    "date": holiday_date.strftime("%Y-%m-%d"),
-                    "avoid_upload": holiday.avoid_upload,
-                    "boost_topics": holiday.boost_topics
-                })
+                upcoming.append(
+                    {
+                        "name": holiday.name,
+                        "date": holiday_date.strftime("%Y-%m-%d"),
+                        "avoid_upload": holiday.avoid_upload,
+                        "boost_topics": holiday.boost_topics,
+                    }
+                )
 
         upcoming.sort(key=lambda x: x["date"])
         return upcoming
@@ -1224,7 +1210,7 @@ class SmartScheduler:
         niche: str,
         target_date: Optional[datetime] = None,
         avoid_competitors: bool = True,
-        consider_holidays: bool = True
+        consider_holidays: bool = True,
     ) -> Dict[str, Any]:
         """
         Get the optimal upload time considering all factors.
@@ -1248,8 +1234,7 @@ class SmartScheduler:
                 # Find next valid day
                 posting_days = [0, 1, 2, 3, 4, 5, 6]  # All days as fallback
                 target_date = await self.holiday_awareness.find_next_upload_day(
-                    target_date + timedelta(days=1),
-                    posting_days
+                    target_date + timedelta(days=1), posting_days
                 )
 
         # Get base optimal time
@@ -1273,17 +1258,16 @@ class SmartScheduler:
                 for gap_slot in gap_slots:
                     if gap_slot.hour in [s.hour for s in audience_slots[:5]]:
                         base_slot = gap_slot
-                        competitor_analysis = await self.competitor_avoidance.suggest_counter_schedule(
-                            niche, target_date.replace(hour=gap_slot.hour)
+                        competitor_analysis = (
+                            await self.competitor_avoidance.suggest_counter_schedule(
+                                niche, target_date.replace(hour=gap_slot.hour)
+                            )
                         )
                         break
 
         # Build final recommendation
         final_time = target_date.replace(
-            hour=base_slot.hour,
-            minute=base_slot.minute,
-            second=0,
-            microsecond=0
+            hour=base_slot.hour, minute=base_slot.minute, second=0, microsecond=0
         )
 
         return {
@@ -1301,38 +1285,25 @@ class SmartScheduler:
                 "day_of_week",
                 "audience_timezones",
                 "competitor_avoidance" if avoid_competitors else None,
-                "holiday_awareness" if consider_holidays else None
-            ]
+                "holiday_awareness" if consider_holidays else None,
+            ],
         }
 
     async def plan_content_calendar(
-        self,
-        channel_id: str,
-        weeks: int = 4,
-        start_date: Optional[datetime] = None
+        self, channel_id: str, weeks: int = 4, start_date: Optional[datetime] = None
     ) -> List[ContentCalendarEntry]:
         """
         Plan a content calendar for the specified period.
         """
-        return await self.content_calendar.generate_calendar(
-            channel_id, weeks, start_date
-        )
+        return await self.content_calendar.generate_calendar(channel_id, weeks, start_date)
 
-    async def batch_schedule(
-        self,
-        items: List[Dict[str, Any]],
-        **kwargs
-    ) -> Dict[str, Any]:
+    async def batch_schedule(self, items: List[Dict[str, Any]], **kwargs) -> Dict[str, Any]:
         """
         Schedule multiple videos efficiently.
         """
         return await self.batch_scheduler.batch_schedule(items, **kwargs)
 
-    async def get_upcoming_content(
-        self,
-        channel_id: str,
-        days: int = 7
-    ) -> Dict[str, Any]:
+    async def get_upcoming_content(self, channel_id: str, days: int = 7) -> Dict[str, Any]:
         """
         Get all upcoming scheduled content for a channel.
         """
@@ -1343,7 +1314,7 @@ class SmartScheduler:
         return {
             "calendar": [e.to_dict() for e in calendar],
             "scheduled": [s.to_dict() for s in scheduled],
-            "upcoming_holidays": holidays
+            "upcoming_holidays": holidays,
         }
 
     async def record_upload_performance(
@@ -1352,7 +1323,7 @@ class SmartScheduler:
         video_id: str,
         upload_time: datetime,
         views_24h: int,
-        engagement_rate: float
+        engagement_rate: float,
     ):
         """
         Record upload performance for learning.

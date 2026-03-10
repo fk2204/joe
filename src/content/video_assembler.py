@@ -20,20 +20,23 @@ Audio Enhancement (optional):
     )
 """
 
-import os
 import gc
+import os
 import subprocess
-from pathlib import Path
-from typing import List, Dict, Optional, Tuple, Union
 from dataclasses import dataclass
+from pathlib import Path
+from typing import List, Optional, Tuple
+
 from loguru import logger
 
 # Import shared video utilities
-from .video_utils import two_pass_encode as _two_pass_encode, find_ffmpeg, FFMPEG_PARAMS_REGULAR, FFMPEG_PARAMS_SHORTS
+from .video_utils import find_ffmpeg
+from .video_utils import two_pass_encode as _two_pass_encode
 
 # Import audio processor for normalization
 try:
     from .audio_processor import AudioProcessor
+
     AUDIO_PROCESSOR_AVAILABLE = True
 except ImportError:
     AUDIO_PROCESSOR_AVAILABLE = False
@@ -42,6 +45,7 @@ except ImportError:
 # Import AI video providers for B-roll generation
 try:
     from .ai_video_providers import AIVideoProviderRouter, get_ai_video_provider
+
     AI_VIDEO_AVAILABLE = True
 except ImportError:
     AI_VIDEO_AVAILABLE = False
@@ -51,8 +55,13 @@ except ImportError:
 
 try:
     from moviepy.editor import (
-        VideoFileClip, AudioFileClip, ImageClip, TextClip,
-        CompositeVideoClip, concatenate_videoclips, ColorClip
+        AudioFileClip,
+        ColorClip,
+        CompositeVideoClip,
+        ImageClip,
+        TextClip,
+        VideoFileClip,
+        concatenate_videoclips,
     )
     from moviepy.video.fx.all import fadein, fadeout
 except ImportError:
@@ -67,10 +76,11 @@ except ImportError:
 @dataclass
 class VideoSegment:
     """Represents a segment of the video."""
-    start_time: float       # Start time in seconds
-    end_time: float         # End time in seconds
-    content_type: str       # text, image, video, color
-    content: str            # File path or text content
+
+    start_time: float  # Start time in seconds
+    end_time: float  # End time in seconds
+    content_type: str  # text, image, video, color
+    content: str  # File path or text content
     text_overlay: Optional[str] = None
 
 
@@ -79,25 +89,41 @@ class VideoAssembler:
 
     # Optimized FFmpeg parameters for YouTube streaming
     FFMPEG_PARAMS_REGULAR = [
-        "-movflags", "+faststart",    # Enable web streaming
-        "-profile:v", "high",          # H.264 High Profile
-        "-level", "4.2",               # Level 4.2 for 1080p30
-        "-bf", "3",                    # 3 B-frames
-        "-g", "60",                    # GOP size = 2x framerate
-        "-keyint_min", "30",           # Minimum GOP
-        "-sc_threshold", "0",          # Fixed GOP
-        "-threads", "0",               # Auto thread detection
+        "-movflags",
+        "+faststart",  # Enable web streaming
+        "-profile:v",
+        "high",  # H.264 High Profile
+        "-level",
+        "4.2",  # Level 4.2 for 1080p30
+        "-bf",
+        "3",  # 3 B-frames
+        "-g",
+        "60",  # GOP size = 2x framerate
+        "-keyint_min",
+        "30",  # Minimum GOP
+        "-sc_threshold",
+        "0",  # Fixed GOP
+        "-threads",
+        "0",  # Auto thread detection
     ]
 
     FFMPEG_PARAMS_SHORTS = [
-        "-movflags", "+faststart",    # Enable web streaming
-        "-profile:v", "high",          # H.264 High Profile
-        "-level", "4.2",               # Level 4.2 for 1080p
-        "-bf", "2",                    # 2 B-frames for faster encode
-        "-g", "60",                    # GOP size
-        "-keyint_min", "30",           # Minimum GOP
-        "-sc_threshold", "0",          # Fixed GOP
-        "-threads", "0",               # Auto thread detection
+        "-movflags",
+        "+faststart",  # Enable web streaming
+        "-profile:v",
+        "high",  # H.264 High Profile
+        "-level",
+        "4.2",  # Level 4.2 for 1080p
+        "-bf",
+        "2",  # 2 B-frames for faster encode
+        "-g",
+        "60",  # GOP size
+        "-keyint_min",
+        "30",  # Minimum GOP
+        "-sc_threshold",
+        "0",  # Fixed GOP
+        "-threads",
+        "0",  # Auto thread detection
     ]
 
     def __init__(
@@ -105,7 +131,7 @@ class VideoAssembler:
         resolution: Tuple[int, int] = (1920, 1080),
         fps: int = 30,
         background_color: Tuple[int, int, int] = (20, 20, 30),
-        content_type: str = "regular"
+        content_type: str = "regular",
     ):
         """
         Initialize the video assembler.
@@ -145,7 +171,9 @@ class VideoAssembler:
             except Exception as e:
                 logger.debug(f"AudioProcessor initialization failed: {e}")
 
-        logger.info(f"VideoAssembler: {resolution[0]}x{resolution[1]} @ {fps}fps (content_type={content_type})")
+        logger.info(
+            f"VideoAssembler: {resolution[0]}x{resolution[1]} @ {fps}fps (content_type={content_type})"
+        )
 
     def _check_nvenc_available(self) -> bool:
         """Check if NVIDIA NVENC hardware encoder is available."""
@@ -154,8 +182,7 @@ class VideoAssembler:
 
         try:
             result = subprocess.run(
-                ["ffmpeg", "-hide_banner", "-encoders"],
-                capture_output=True, text=True, timeout=5
+                ["ffmpeg", "-hide_banner", "-encoders"], capture_output=True, text=True, timeout=5
             )
             self._nvenc_available = "h264_nvenc" in result.stdout
             if self._nvenc_available:
@@ -177,21 +204,32 @@ class VideoAssembler:
 
         if use_nvenc and self._check_nvenc_available():
             # NVENC-specific optimizations
-            params.extend([
-                "-rc", "vbr",           # Variable bitrate
-                "-cq", "23",            # Constant quality
-                "-spatial-aq", "1",     # Spatial adaptive quantization
-                "-temporal-aq", "1",    # Temporal adaptive quantization
-            ])
+            params.extend(
+                [
+                    "-rc",
+                    "vbr",  # Variable bitrate
+                    "-cq",
+                    "23",  # Constant quality
+                    "-spatial-aq",
+                    "1",  # Spatial adaptive quantization
+                    "-temporal-aq",
+                    "1",  # Temporal adaptive quantization
+                ]
+            )
         else:
             # libx264-specific optimization
-            params.extend([
-                "-crf", "23",           # Constant rate factor
-            ])
+            params.extend(
+                [
+                    "-crf",
+                    "23",  # Constant rate factor
+                ]
+            )
 
         return params
 
-    def _calculate_optimal_bitrate(self, has_motion: bool = False, content_type: str = "regular") -> str:
+    def _calculate_optimal_bitrate(
+        self, has_motion: bool = False, content_type: str = "regular"
+    ) -> str:
         """Calculate optimal bitrate based on content characteristics."""
         if content_type == "shorts":
             return "6000k" if has_motion else "5000k"
@@ -205,7 +243,7 @@ class VideoAssembler:
         input_file: str,
         output_file: str,
         target_bitrate: str = "8M",
-        max_bitrate: str = "12M"
+        max_bitrate: str = "12M",
     ) -> Optional[str]:
         """
         Perform two-pass encoding for maximum quality at target bitrate.
@@ -236,7 +274,7 @@ class VideoAssembler:
         fontsize: int = 60,
         color: str = "white",
         bg_color: Optional[str] = None,
-        position: str = "center"
+        position: str = "center",
     ) -> TextClip:
         """
         Create a text clip.
@@ -250,30 +288,29 @@ class VideoAssembler:
             position: Position (center, top, bottom)
         """
         try:
-            clip = TextClip(
-                text,
-                fontsize=fontsize,
-                color=color,
-                bg_color=bg_color,
-                size=(self.width - 100, None),
-                method="caption"
-            ).set_duration(duration).set_position(position)
+            clip = (
+                TextClip(
+                    text,
+                    fontsize=fontsize,
+                    color=color,
+                    bg_color=bg_color,
+                    size=(self.width - 100, None),
+                    method="caption",
+                )
+                .set_duration(duration)
+                .set_position(position)
+            )
             return clip
         except Exception as e:
             logger.warning(f"TextClip failed: {e}. Using image-based text.")
             return self._create_text_image_clip(text, duration, fontsize, color, position)
 
     def _create_text_image_clip(
-        self,
-        text: str,
-        duration: float,
-        fontsize: int,
-        color: str,
-        position: str
+        self, text: str, duration: float, fontsize: int, color: str, position: str
     ) -> ImageClip:
         """Create text as an image clip (fallback method)."""
         # Create image with PIL
-        img = Image.new('RGBA', self.resolution, (0, 0, 0, 0))
+        img = Image.new("RGBA", self.resolution, (0, 0, 0, 0))
         draw = ImageDraw.Draw(img)
 
         # Try to use a system font
@@ -314,23 +351,14 @@ class VideoAssembler:
         return clip
 
     def create_background_clip(
-        self,
-        duration: float,
-        color: Optional[Tuple[int, int, int]] = None
+        self, duration: float, color: Optional[Tuple[int, int, int]] = None
     ) -> ColorClip:
         """Create a solid color background clip."""
         color = color or self.background_color
-        return ColorClip(
-            size=self.resolution,
-            color=color,
-            duration=duration
-        )
+        return ColorClip(size=self.resolution, color=color, duration=duration)
 
     def create_title_card(
-        self,
-        title: str,
-        subtitle: Optional[str] = None,
-        duration: float = 5.0
+        self, title: str, subtitle: Optional[str] = None, duration: float = 5.0
     ) -> CompositeVideoClip:
         """
         Create a title card for the video intro.
@@ -348,11 +376,7 @@ class VideoAssembler:
 
         # Title
         title_clip = self.create_text_clip(
-            title,
-            duration,
-            fontsize=80,
-            color="white",
-            position="center"
+            title, duration, fontsize=80, color="white", position="center"
         )
         clips.append(title_clip)
 
@@ -363,7 +387,7 @@ class VideoAssembler:
                 duration,
                 fontsize=40,
                 color="#aaaaaa",
-                position=("center", self.height // 2 + 80)
+                position=("center", self.height // 2 + 80),
             )
             clips.append(sub_clip)
 
@@ -379,7 +403,7 @@ class VideoAssembler:
         subtitle_file: Optional[str] = None,
         normalize_audio: bool = False,
         background_music: Optional[str] = None,
-        music_volume: float = 0.15
+        music_volume: float = 0.15,
     ) -> str:
         """
         Create a video from audio narration.
@@ -408,7 +432,7 @@ class VideoAssembler:
         temp_audio_file = None
 
         if self.audio_processor and (normalize_audio or background_music):
-            temp_audio_file = str(Path(output_file).with_suffix('.processed_audio.mp3'))
+            temp_audio_file = str(Path(output_file).with_suffix(".processed_audio.mp3"))
 
             if background_music and os.path.exists(background_music):
                 # Mix with background music (this also normalizes)
@@ -418,7 +442,7 @@ class VideoAssembler:
                     music_file=background_music,
                     output_file=temp_audio_file,
                     music_volume=music_volume,
-                    normalize_before_mix=True
+                    normalize_before_mix=True,
                 )
                 if result:
                     processed_audio_file = result
@@ -454,11 +478,7 @@ class VideoAssembler:
                 seg_duration = segment.end_time - segment.start_time
 
                 if segment.content_type == "text":
-                    clip = self.create_text_clip(
-                        segment.content,
-                        seg_duration,
-                        fontsize=50
-                    )
+                    clip = self.create_text_clip(segment.content, seg_duration, fontsize=50)
                 elif segment.content_type == "image":
                     clip = ImageClip(segment.content).set_duration(seg_duration)
                     clip = clip.resize(self.resolution)
@@ -502,7 +522,7 @@ class VideoAssembler:
                 preset=self.encoding_preset,
                 threads=0,  # Auto-detect threads
                 logger=None,  # Suppress moviepy's verbose output
-                ffmpeg_params=self._get_ffmpeg_params(use_nvenc=self._check_nvenc_available())
+                ffmpeg_params=self._get_ffmpeg_params(use_nvenc=self._check_nvenc_available()),
             )
 
             logger.success(f"Video created: {output_file}")
@@ -532,7 +552,7 @@ class VideoAssembler:
         title: str,
         subtitle: Optional[str] = None,
         background_color: Tuple[int, int, int] = (30, 30, 60),
-        text_color: str = "white"
+        text_color: str = "white",
     ) -> str:
         """
         Create a video thumbnail.
@@ -551,7 +571,7 @@ class VideoAssembler:
 
         # Create image
         size = (1280, 720)  # YouTube thumbnail size
-        img = Image.new('RGB', size, background_color)
+        img = Image.new("RGB", size, background_color)
         draw = ImageDraw.Draw(img)
 
         # Load fonts
@@ -591,11 +611,7 @@ class VideoAssembler:
         return output_file
 
     def add_background_music(
-        self,
-        video_file: str,
-        music_file: str,
-        output_file: str,
-        music_volume: float = 0.1
+        self, video_file: str, music_file: str, output_file: str, music_volume: float = 0.1
     ) -> str:
         """
         Add background music to a video.
@@ -635,6 +651,7 @@ class VideoAssembler:
             # Mix with original audio
             if video.audio:
                 from moviepy.audio.AudioClip import CompositeAudioClip
+
                 final_audio = CompositeAudioClip([video.audio, music])
                 video = video.set_audio(final_audio)
             else:
@@ -650,7 +667,7 @@ class VideoAssembler:
                 preset=self.encoding_preset,
                 threads=0,
                 logger=None,
-                ffmpeg_params=self._get_ffmpeg_params(use_nvenc=self._check_nvenc_available())
+                ffmpeg_params=self._get_ffmpeg_params(use_nvenc=self._check_nvenc_available()),
             )
 
             logger.success(f"Music added: {output_file}")
@@ -675,7 +692,7 @@ class VideoAssembler:
         niche: str = "default",
         duration: int = 5,
         provider: Optional[str] = None,
-        fallback_to_stock: bool = True
+        fallback_to_stock: bool = True,
     ) -> List[Optional[str]]:
         """
         Generate AI B-roll clips for script segments.
@@ -698,16 +715,12 @@ class VideoAssembler:
         """
         if not AI_VIDEO_AVAILABLE:
             logger.warning(
-                "AI video providers not available. "
-                "Install with: pip install runwayml httpx"
+                "AI video providers not available. " "Install with: pip install runwayml httpx"
             )
             if fallback_to_stock:
-                return await self._fallback_to_stock_footage(
-                    script_segments, output_dir, niche
-                )
+                return await self._fallback_to_stock_footage(script_segments, output_dir, niche)
             return [None] * len(script_segments)
 
-        import asyncio
 
         # Create output directory
         Path(output_dir).mkdir(parents=True, exist_ok=True)
@@ -727,9 +740,7 @@ class VideoAssembler:
             if not router.providers:
                 logger.warning("No AI video providers available")
                 if fallback_to_stock:
-                    return await self._fallback_to_stock_footage(
-                        script_segments, output_dir, niche
-                    )
+                    return await self._fallback_to_stock_footage(script_segments, output_dir, niche)
                 return [None] * len(script_segments)
 
         # Style and niche prompt enhancements
@@ -769,14 +780,14 @@ class VideoAssembler:
                         prompt=enhanced_prompt,
                         output_file=output_file,
                         duration=duration,
-                        aspect_ratio="16:9"
+                        aspect_ratio="16:9",
                     )
                 else:
                     result = await router.generate_video(
                         prompt=enhanced_prompt,
                         output_file=output_file,
                         duration=duration,
-                        aspect_ratio="16:9"
+                        aspect_ratio="16:9",
                     )
 
                 if result.success and result.local_path:
@@ -785,9 +796,7 @@ class VideoAssembler:
                 else:
                     logger.warning(f"AI generation failed: {result.error}")
                     if fallback_to_stock:
-                        fallback = await self._fallback_single_stock(
-                            segment, output_dir, niche, i
-                        )
+                        fallback = await self._fallback_single_stock(segment, output_dir, niche, i)
                         results.append(fallback)
                     else:
                         results.append(None)
@@ -795,9 +804,7 @@ class VideoAssembler:
             except Exception as e:
                 logger.error(f"AI B-roll generation error: {e}")
                 if fallback_to_stock:
-                    fallback = await self._fallback_single_stock(
-                        segment, output_dir, niche, i
-                    )
+                    fallback = await self._fallback_single_stock(segment, output_dir, niche, i)
                     results.append(fallback)
                 else:
                     results.append(None)
@@ -805,10 +812,7 @@ class VideoAssembler:
         return results
 
     async def _fallback_to_stock_footage(
-        self,
-        script_segments: List[str],
-        output_dir: str,
-        niche: str
+        self, script_segments: List[str], output_dir: str, niche: str
     ) -> List[Optional[str]]:
         """Fallback to stock footage for all segments."""
         logger.info("Falling back to stock footage for all segments")
@@ -819,11 +823,7 @@ class VideoAssembler:
         return results
 
     async def _fallback_single_stock(
-        self,
-        segment: str,
-        output_dir: str,
-        niche: str,
-        index: int
+        self, segment: str, output_dir: str, niche: str, index: int
     ) -> Optional[str]:
         """Get single stock footage clip as fallback."""
         try:
@@ -866,12 +866,33 @@ class VideoAssembler:
         }
 
         # Get words from text
-        words = re.findall(r'\b[a-zA-Z]{4,}\b', text.lower())
+        words = re.findall(r"\b[a-zA-Z]{4,}\b", text.lower())
 
         # Remove common words
-        stopwords = {"this", "that", "with", "from", "have", "will", "your", "about",
-                     "when", "what", "which", "where", "there", "their", "they",
-                     "would", "could", "should", "into", "more", "some", "very"}
+        stopwords = {
+            "this",
+            "that",
+            "with",
+            "from",
+            "have",
+            "will",
+            "your",
+            "about",
+            "when",
+            "what",
+            "which",
+            "where",
+            "there",
+            "their",
+            "they",
+            "would",
+            "could",
+            "should",
+            "into",
+            "more",
+            "some",
+            "very",
+        }
         keywords = [w for w in words if w not in stopwords]
 
         # Add niche-specific keywords
@@ -890,7 +911,7 @@ class VideoAssembler:
         style: str = "cinematic",
         ai_provider: Optional[str] = None,
         fallback_to_stock: bool = True,
-        normalize_audio: bool = True
+        normalize_audio: bool = True,
     ) -> str:
         """
         Create a video with AI-generated B-roll clips.
@@ -928,7 +949,7 @@ class VideoAssembler:
                 style=style,
                 niche=niche,
                 provider=ai_provider,
-                fallback_to_stock=fallback_to_stock
+                fallback_to_stock=fallback_to_stock,
             )
 
         broll_clips = asyncio.run(_generate())
@@ -942,7 +963,7 @@ class VideoAssembler:
                 audio_file=audio_file,
                 output_file=output_file,
                 title=title,
-                normalize_audio=normalize_audio
+                normalize_audio=normalize_audio,
             )
 
         # Load audio to get duration
@@ -959,7 +980,7 @@ class VideoAssembler:
                 start_time=i * segment_duration,
                 end_time=(i + 1) * segment_duration,
                 content_type="video",
-                content=clip_path
+                content=clip_path,
             )
             segments.append(segment)
 
@@ -969,12 +990,13 @@ class VideoAssembler:
             output_file=output_file,
             title=title,
             segments=segments,
-            normalize_audio=normalize_audio
+            normalize_audio=normalize_audio,
         )
 
         # Cleanup temp B-roll directory
         try:
             import shutil
+
             shutil.rmtree(broll_dir, ignore_errors=True)
         except Exception:
             pass
@@ -992,7 +1014,7 @@ if __name__ == "__main__":
     assembler.create_thumbnail(
         output_file="output/test_thumbnail.png",
         title="Python Tutorial",
-        subtitle="Learn Python in 10 Minutes"
+        subtitle="Learn Python in 10 Minutes",
     )
 
     print("\nTo create a full video, you need an audio file.")

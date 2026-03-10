@@ -40,46 +40,46 @@ MASTERING_PRESETS: Dict[str, MasteringPreset] = {
     "finance": MasteringPreset(
         name="Finance/Authority",
         eq_bands=[
-            (200, 1.0, 2.0),    # Boost low-mids for authority
+            (200, 1.0, 2.0),  # Boost low-mids for authority
             (5000, 2.0, -1.0),  # Slight cut for smoothness
         ],
         compression_threshold=-18.0,
         compression_ratio=3.0,
         target_lufs=-14.0,
-        description="Authoritative, clear voice for finance content"
+        description="Authoritative, clear voice for finance content",
     ),
     "psychology": MasteringPreset(
         name="Psychology/Warm",
         eq_bands=[
-            (100, 1.0, 3.0),    # Boost lows for warmth
-            (3500, 1.0, 2.0),   # Boost presence for clarity
+            (100, 1.0, 3.0),  # Boost lows for warmth
+            (3500, 1.0, 2.0),  # Boost presence for clarity
         ],
         compression_threshold=-20.0,
         compression_ratio=2.5,
         target_lufs=-14.0,
-        description="Warm, intimate voice for psychology content"
+        description="Warm, intimate voice for psychology content",
     ),
     "storytelling": MasteringPreset(
         name="Storytelling/Dramatic",
         eq_bands=[
-            (80, 1.0, 4.0),     # Deep bass for drama
+            (80, 1.0, 4.0),  # Deep bass for drama
             (10000, 1.0, 3.0),  # Air for presence
         ],
         compression_threshold=-16.0,
         compression_ratio=4.0,
         target_lufs=-14.0,
-        description="Dramatic, cinematic voice for storytelling"
+        description="Dramatic, cinematic voice for storytelling",
     ),
     "default": MasteringPreset(
         name="Default/Balanced",
         eq_bands=[
-            (150, 1.0, 1.5),    # Slight low boost
-            (4000, 1.5, 1.0),   # Slight presence boost
+            (150, 1.0, 1.5),  # Slight low boost
+            (4000, 1.5, 1.0),  # Slight presence boost
         ],
         compression_threshold=-18.0,
         compression_ratio=3.0,
         target_lufs=-14.0,
-        description="Balanced mastering for general content"
+        description="Balanced mastering for general content",
     ),
 }
 
@@ -114,7 +114,7 @@ class AudioMasteringPipeline:
         niche: str = "default",
         target_lufs: Optional[float] = None,
         noise_reduction: bool = True,
-        normalize: bool = True
+        normalize: bool = True,
     ) -> str:
         """
         Apply full mastering chain to voice track.
@@ -136,33 +136,29 @@ class AudioMasteringPipeline:
 
         # Build filter chain
         filter_chain = self._build_mastering_chain(
-            preset=preset,
-            target_lufs=lufs,
-            noise_reduction=noise_reduction,
-            normalize=normalize
+            preset=preset, target_lufs=lufs, noise_reduction=noise_reduction, normalize=normalize
         )
 
         # Run FFmpeg
         cmd = [
             self.ffmpeg,
-            "-i", input_file,
-            "-af", filter_chain,
-            "-c:a", "aac",
-            "-b:a", "192k",
+            "-i",
+            input_file,
+            "-af",
+            filter_chain,
+            "-c:a",
+            "aac",
+            "-b:a",
+            "192k",
             "-y",  # Overwrite
-            output_file
+            output_file,
         ]
 
         logger.info(f"Mastering voice: {input_file} -> {output_file}")
         logger.debug(f"Filter chain: {filter_chain}")
 
         try:
-            result = subprocess.run(
-                cmd,
-                capture_output=True,
-                text=True,
-                check=True
-            )
+            result = subprocess.run(cmd, capture_output=True, text=True, check=True)
             logger.info(f"Mastering complete: {output_file}")
 
             # Verify loudness
@@ -183,7 +179,7 @@ class AudioMasteringPipeline:
         output_file: str,
         duck_level: float = -12.0,
         attack_ms: float = 200,
-        release_ms: float = 500
+        release_ms: float = 500,
     ) -> str:
         """
         Apply sidechain ducking - lower music when voice is present.
@@ -210,13 +206,18 @@ class AudioMasteringPipeline:
 
         cmd = [
             self.ffmpeg,
-            "-i", voice_file,
-            "-i", music_file,
-            "-filter_complex", filter_complex,
-            "-c:a", "aac",
-            "-b:a", "192k",
+            "-i",
+            voice_file,
+            "-i",
+            music_file,
+            "-filter_complex",
+            filter_complex,
+            "-c:a",
+            "aac",
+            "-b:a",
+            "192k",
             "-y",
-            output_file
+            output_file,
         ]
 
         logger.info(f"Applying music ducking: {voice_file} + {music_file}")
@@ -229,12 +230,7 @@ class AudioMasteringPipeline:
             logger.error(f"Ducking failed: {e.stderr}")
             raise
 
-    def master_batch(
-        self,
-        files: List[str],
-        output_dir: str,
-        niche: str = "default"
-    ) -> List[str]:
+    def master_batch(self, files: List[str], output_dir: str, niche: str = "default") -> List[str]:
         """
         Master multiple audio files.
 
@@ -256,9 +252,7 @@ class AudioMasteringPipeline:
 
             try:
                 result = self.master_voice_track(
-                    input_file=input_file,
-                    output_file=str(output_file),
-                    niche=niche
+                    input_file=input_file, output_file=str(output_file), niche=niche
                 )
                 mastered.append(result)
             except Exception as e:
@@ -267,11 +261,7 @@ class AudioMasteringPipeline:
         logger.info(f"Batch mastering complete: {len(mastered)}/{len(files)} successful")
         return mastered
 
-    def enhance_for_youtube(
-        self,
-        input_file: str,
-        output_file: str
-    ) -> str:
+    def enhance_for_youtube(self, input_file: str, output_file: str) -> str:
         """
         Quick enhancement optimized for YouTube.
 
@@ -288,20 +278,20 @@ class AudioMasteringPipeline:
         Returns:
             Path to enhanced audio
         """
-        filter_chain = (
-            "afftdn=nf=-25,"
-            "highpass=f=80,"
-            "loudnorm=I=-14:TP=-1:LRA=11"
-        )
+        filter_chain = "afftdn=nf=-25," "highpass=f=80," "loudnorm=I=-14:TP=-1:LRA=11"
 
         cmd = [
             self.ffmpeg,
-            "-i", input_file,
-            "-af", filter_chain,
-            "-c:a", "aac",
-            "-b:a", "192k",
+            "-i",
+            input_file,
+            "-af",
+            filter_chain,
+            "-c:a",
+            "aac",
+            "-b:a",
+            "192k",
             "-y",
-            output_file
+            output_file,
         ]
 
         subprocess.run(cmd, capture_output=True, check=True)
@@ -309,11 +299,7 @@ class AudioMasteringPipeline:
         return output_file
 
     def _build_mastering_chain(
-        self,
-        preset: MasteringPreset,
-        target_lufs: float,
-        noise_reduction: bool,
-        normalize: bool
+        self, preset: MasteringPreset, target_lufs: float, noise_reduction: bool, normalize: bool
     ) -> str:
         """Build FFmpeg audio filter chain."""
         filters = []
@@ -327,9 +313,7 @@ class AudioMasteringPipeline:
 
         # 3. EQ bands from preset
         for freq, width, gain in preset.eq_bands:
-            filters.append(
-                f"equalizer=f={freq}:width_type=o:width={width}:g={gain}"
-            )
+            filters.append(f"equalizer=f={freq}:width_type=o:width={width}:g={gain}")
 
         # 4. De-esser (reduce harsh S sounds)
         filters.append("deesser=i=0.05:m=0.5:f=6000:s=o")
@@ -355,21 +339,21 @@ class AudioMasteringPipeline:
         """Measure integrated loudness of audio file."""
         cmd = [
             self.ffmpeg,
-            "-i", audio_file,
-            "-af", "loudnorm=I=-14:print_format=json",
-            "-f", "null",
-            "-"
+            "-i",
+            audio_file,
+            "-af",
+            "loudnorm=I=-14:print_format=json",
+            "-f",
+            "null",
+            "-",
         ]
 
         try:
-            result = subprocess.run(
-                cmd,
-                capture_output=True,
-                text=True
-            )
+            result = subprocess.run(cmd, capture_output=True, text=True)
 
             # Parse LUFS from output
             import re
+
             match = re.search(r'"input_i"\s*:\s*"(-?\d+\.?\d*)"', result.stderr)
             if match:
                 return float(match.group(1))
@@ -401,11 +385,8 @@ class AudioMasteringPipeline:
 
 # Convenience functions
 
-def master_voice(
-    input_file: str,
-    output_file: str,
-    niche: str = "default"
-) -> str:
+
+def master_voice(input_file: str, output_file: str, niche: str = "default") -> str:
     """Quick voice mastering function."""
     pipeline = AudioMasteringPipeline()
     return pipeline.master_voice_track(input_file, output_file, niche)

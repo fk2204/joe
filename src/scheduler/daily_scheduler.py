@@ -21,12 +21,13 @@ Schedule (UTC):
         Default: 2 hours after each regular video
 """
 
-import sys
 import random
-import yaml
+import sys
+from datetime import datetime
 from pathlib import Path
-from datetime import datetime, timedelta
-from typing import Optional, Dict, Any, List
+from typing import Any, Dict, List, Optional
+
+import yaml
 
 # Add project root to path
 PROJECT_ROOT = Path(__file__).parent.parent.parent
@@ -39,20 +40,17 @@ logger.remove()
 logger.add(
     sys.stderr,
     format="<green>{time:YYYY-MM-DD HH:mm:ss}</green> | <level>{level: <8}</level> | <level>{message}</level>",
-    level="INFO"
+    level="INFO",
 )
 logger.add(
-    "logs/scheduler_{time:YYYY-MM-DD}.log",
-    rotation="1 day",
-    retention="30 days",
-    level="DEBUG"
+    "logs/scheduler_{time:YYYY-MM-DD}.log", rotation="1 day", retention="30 days", level="DEBUG"
 )
 logger.add(
     "logs/shorts_scheduler_{time:YYYY-MM-DD}.log",
     rotation="1 day",
     retention="30 days",
     level="DEBUG",
-    filter=lambda record: "shorts" in record["message"].lower()
+    filter=lambda record: "shorts" in record["message"].lower(),
 )
 
 
@@ -75,12 +73,15 @@ POSTING_SCHEDULE = {
             "financial freedom tips",
             "budgeting tips that work",
             "money mistakes to avoid",
-            "wealth building strategies"
+            "wealth building strategies",
         ],
-        "voice": "en-US-GuyNeural"
+        "voice": "en-US-GuyNeural",
     },
     "mind_unlocked": {
-        "times": ["15:00", "20:00"],  # 2 videos/day: US morning (10AM EST) + prime evening (3PM EST)
+        "times": [
+            "15:00",
+            "20:00",
+        ],  # 2 videos/day: US morning (10AM EST) + prime evening (3PM EST)
         "topics": [
             "dark psychology tricks",
             "stoicism life lessons",
@@ -89,9 +90,9 @@ POSTING_SCHEDULE = {
             "how to read people",
             "emotional intelligence tips",
             "psychology of persuasion",
-            "cognitive biases explained"
+            "cognitive biases explained",
         ],
-        "voice": "en-US-JennyNeural"
+        "voice": "en-US-JennyNeural",
     },
     "untold_stories": {
         "times": ["13:00", "19:00"],  # 2 videos/day: lunch viewers + prime evening slot
@@ -103,10 +104,10 @@ POSTING_SCHEDULE = {
             "internet mysteries explained",
             "famous disappearances",
             "scary stories that are true",
-            "conspiracy theories debunked"
+            "conspiracy theories debunked",
         ],
-        "voice": "en-GB-RyanNeural"
-    }
+        "voice": "en-GB-RyanNeural",
+    },
 }
 
 # Default privacy (change to "public" when ready)
@@ -116,6 +117,7 @@ DEFAULT_PRIVACY = "unlisted"
 # ============================================================
 # SHORTS SCHEDULE CONFIGURATION
 # ============================================================
+
 
 def load_shorts_config() -> Dict[str, Any]:
     """
@@ -127,7 +129,7 @@ def load_shorts_config() -> Dict[str, Any]:
         "enabled": True,
         "post_after_regular": True,
         "delay_hours": 2,
-        "standalone_times": ["12:00", "18:00"]
+        "standalone_times": ["12:00", "18:00"],
     }
 
     try:
@@ -265,10 +267,9 @@ def get_shorts_times_flat(regular_times: List[str], delay_hours: Any = 2) -> Lis
 # VIDEO CREATION FUNCTION
 # ============================================================
 
+
 def create_and_upload_video(
-    channel_id: str,
-    topic: Optional[str] = None,
-    privacy: str = DEFAULT_PRIVACY
+    channel_id: str, topic: Optional[str] = None, privacy: str = DEFAULT_PRIVACY
 ) -> dict:
     """
     Create and upload a video to a specific channel.
@@ -276,8 +277,8 @@ def create_and_upload_video(
     Returns:
         dict with success status and details
     """
-    from src.youtube.multi_channel import MultiChannelManager
     from src.agents.subagents import AgentOrchestrator
+    from src.youtube.multi_channel import MultiChannelManager
 
     config = POSTING_SCHEDULE.get(channel_id)
     if not config:
@@ -307,18 +308,14 @@ def create_and_upload_video(
         orchestrator.production_agent.set_voice(config["voice"])
 
         # Create video (without upload - we'll use multi_channel manager)
-        project = orchestrator.create_video(
-            niche=topic,
-            channel=channel_id,
-            upload=False
-        )
+        project = orchestrator.create_video(niche=topic, channel=channel_id, upload=False)
 
         if project.status != "completed" or not project.video_file:
             return {
                 "success": False,
                 "error": f"Video creation failed: {project.errors}",
                 "channel": channel_id,
-                "topic": topic
+                "topic": topic,
             }
 
         # Prepare metadata
@@ -339,7 +336,7 @@ Subscribe for more content!
             description=description,
             tags=tags,
             privacy=privacy,
-            thumbnail_file=project.thumbnail_file
+            thumbnail_file=project.thumbnail_file,
         )
 
         if video_url:
@@ -350,35 +347,31 @@ Subscribe for more content!
                 "channel_name": manager.channels[channel_id].name,
                 "title": title,
                 "video_url": video_url,
-                "topic": topic
+                "topic": topic,
             }
         else:
             return {
                 "success": False,
                 "error": "Upload failed",
                 "channel": channel_id,
-                "topic": topic
+                "topic": topic,
             }
 
     except Exception as e:
         logger.error(f"Error: {e}")
-        return {
-            "success": False,
-            "error": str(e),
-            "channel": channel_id,
-            "topic": topic
-        }
+        return {"success": False, "error": str(e), "channel": channel_id, "topic": topic}
 
 
 # ============================================================
 # SHORTS CREATION FUNCTION
 # ============================================================
 
+
 def create_and_upload_short(
     channel_id: str,
     topic: Optional[str] = None,
     privacy: str = DEFAULT_PRIVACY,
-    short_index: int = 0
+    short_index: int = 0,
 ) -> dict:
     """
     Create and upload a YouTube Short to a specific channel.
@@ -395,7 +388,7 @@ def create_and_upload_short(
     Returns:
         dict with success status and details
     """
-    from src.automation.runner import task_short_with_upload, task_short_pipeline
+    from src.automation.runner import task_short_pipeline, task_short_with_upload
 
     config = POSTING_SCHEDULE.get(channel_id)
     if not config:
@@ -408,10 +401,10 @@ def create_and_upload_short(
         # This ensures each Short in a batch gets a different topic
         if short_index == 0:
             # First Short: random from first half of topics
-            topic = random.choice(topics[:max(1, len(topics)//2)])
+            topic = random.choice(topics[: max(1, len(topics) // 2)])
         else:
             # Second/subsequent Shorts: random from second half of topics
-            topic = random.choice(topics[max(1, len(topics)//2):])
+            topic = random.choice(topics[max(1, len(topics) // 2) :])
 
     short_num = short_index + 1
     logger.info(f"")
@@ -444,7 +437,7 @@ def create_and_upload_short(
                 "video_url": video_url,
                 "video_file": video_file,
                 "topic": topic,
-                "format": "short"
+                "format": "short",
             }
         else:
             return {
@@ -452,7 +445,7 @@ def create_and_upload_short(
                 "error": result.get("error", "Shorts creation failed"),
                 "channel": channel_id,
                 "topic": topic,
-                "format": "short"
+                "format": "short",
             }
 
     except Exception as e:
@@ -462,13 +455,14 @@ def create_and_upload_short(
             "error": str(e),
             "channel": channel_id,
             "topic": topic,
-            "format": "short"
+            "format": "short",
         }
 
 
 # ============================================================
 # SCHEDULER
 # ============================================================
+
 
 def run_scheduled_cleanup():
     """
@@ -478,10 +472,13 @@ def run_scheduled_cleanup():
     """
     try:
         from src.utils.cleanup import run_scheduled_cleanup as do_cleanup
+
         result = do_cleanup()
 
         if result.get("skipped"):
-            logger.info(f"Cleanup skipped: {result.get('reason')} ({result.get('free_gb', 0):.1f} GB free)")
+            logger.info(
+                f"Cleanup skipped: {result.get('reason')} ({result.get('free_gb', 0):.1f} GB free)"
+            )
         else:
             logger.success(
                 f"Cleanup complete: {result.get('files_deleted', 0)} files deleted, "
@@ -520,7 +517,7 @@ def run_scheduler(include_videos: bool = True, include_shorts: bool = True):
         CronTrigger(hour=4, minute=0),
         id="daily_cleanup",
         name="Daily disk cleanup",
-        misfire_grace_time=3600  # 1 hour grace period
+        misfire_grace_time=3600,  # 1 hour grace period
     )
     logger.info("  Scheduled daily cleanup: 04:00 UTC")
 
@@ -537,7 +534,9 @@ def run_scheduler(include_videos: bool = True, include_shorts: bool = True):
 
                 # Build trigger with day_of_week if configured
                 if day_of_week:
-                    trigger = CronTrigger(day_of_week=day_of_week, hour=int(hour), minute=int(minute))
+                    trigger = CronTrigger(
+                        day_of_week=day_of_week, hour=int(hour), minute=int(minute)
+                    )
                     days_str = day_of_week
                 else:
                     trigger = CronTrigger(hour=int(hour), minute=int(minute))
@@ -549,7 +548,7 @@ def run_scheduler(include_videos: bool = True, include_shorts: bool = True):
                     args=[channel_id],
                     id=job_id,
                     name=f"{channel_id} video at {time_str}",
-                    misfire_grace_time=3600  # 1 hour grace period
+                    misfire_grace_time=3600,  # 1 hour grace period
                 )
                 video_job_count += 1
                 logger.info(f"  Scheduled video: {channel_id} at {time_str} UTC ({days_str})")
@@ -572,7 +571,9 @@ def run_scheduler(include_videos: bool = True, include_shorts: bool = True):
 
             # Add Shorts scheduled after regular videos (supports multiple Shorts per video)
             if shorts_config.get("post_after_regular", True):
-                delay_hours = shorts_config.get("delay_hours", [2])  # Default to [2] if not specified
+                delay_hours = shorts_config.get(
+                    "delay_hours", [2]
+                )  # Default to [2] if not specified
                 regular_times = config["times"]
                 after_video_shorts = calculate_shorts_times(regular_times, delay_hours)
                 shorts_schedule_list.extend(after_video_shorts)
@@ -585,7 +586,9 @@ def run_scheduler(include_videos: bool = True, include_shorts: bool = True):
                     delays_str = f"+{delay_hours}h"
                     shorts_per_video = 1
                 times_flat = get_shorts_times_flat(regular_times, delay_hours)
-                logger.info(f"  Shorts for {channel_id}: {shorts_per_video} per video ({delays_str}): {times_flat}")
+                logger.info(
+                    f"  Shorts for {channel_id}: {shorts_per_video} per video ({delays_str}): {times_flat}"
+                )
 
             # Add standalone Shorts times (these are always short_index=0)
             standalone_times = shorts_config.get("standalone_times", [])
@@ -605,7 +608,9 @@ def run_scheduler(include_videos: bool = True, include_shorts: bool = True):
 
                 # Build trigger with day_of_week if configured
                 if day_of_week:
-                    trigger = CronTrigger(day_of_week=day_of_week, hour=int(hour), minute=int(minute))
+                    trigger = CronTrigger(
+                        day_of_week=day_of_week, hour=int(hour), minute=int(minute)
+                    )
                     days_str = day_of_week
                 else:
                     trigger = CronTrigger(hour=int(hour), minute=int(minute))
@@ -619,7 +624,7 @@ def run_scheduler(include_videos: bool = True, include_shorts: bool = True):
                     kwargs={"short_index": short_index},
                     id=job_id,
                     name=f"{channel_id} short #{short_index+1} at {time_str}",
-                    misfire_grace_time=3600  # 1 hour grace period
+                    misfire_grace_time=3600,  # 1 hour grace period
                 )
                 shorts_job_count += 1
                 logger.info(f"  Scheduled short #{short_index+1}: {channel_id} at {time_str} UTC")
@@ -838,7 +843,13 @@ def show_status():
             shorts_times_flat = sorted(set(shorts_times_flat))
             # Total Shorts = (videos * shorts_per_video) + standalone
             num_shorts_from_videos = len(config["times"]) * shorts_per_video
-            num_standalone = len([t for t in standalone if t not in get_shorts_times_flat(config["times"], delay_hours)])
+            num_standalone = len(
+                [
+                    t
+                    for t in standalone
+                    if t not in get_shorts_times_flat(config["times"], delay_hours)
+                ]
+            )
             num_shorts = num_shorts_from_videos + num_standalone
             total_shorts += num_shorts
 
@@ -894,13 +905,16 @@ def show_status():
     # Show current disk usage summary
     try:
         from src.utils.cleanup import get_disk_usage
+
         usage = get_disk_usage()
         system_disk = usage.get("system_disk", {})
         if system_disk:
             print("  Current Disk Status:")
             print("  --------------------")
             print(f"  Project size: {usage.get('total_formatted', 'N/A')}")
-            print(f"  Disk free: {system_disk.get('free_formatted', 'N/A')} ({100 - system_disk.get('used_percent', 0):.1f}%)")
+            print(
+                f"  Disk free: {system_disk.get('free_formatted', 'N/A')} ({100 - system_disk.get('used_percent', 0):.1f}%)"
+            )
             print()
     except Exception:
         pass  # Silently skip if cleanup module not available
@@ -915,8 +929,12 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description="Joe Scheduler")
     parser.add_argument("--test", action="store_true", help="Run one video per channel immediately")
-    parser.add_argument("--test-shorts", action="store_true", help="Run one Short per channel immediately")
-    parser.add_argument("--test-all", action="store_true", help="Run one video AND one Short per channel")
+    parser.add_argument(
+        "--test-shorts", action="store_true", help="Run one Short per channel immediately"
+    )
+    parser.add_argument(
+        "--test-all", action="store_true", help="Run one video AND one Short per channel"
+    )
     parser.add_argument("--status", action="store_true", help="Show scheduler status")
     parser.add_argument("--channel", type=str, help="Run single video for specific channel")
     parser.add_argument("--short", type=str, help="Run single Short for specific channel")

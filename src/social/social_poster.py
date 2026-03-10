@@ -5,22 +5,20 @@ Post to social media platforms immediately after YouTube upload
 to drive initial engagement and algorithm boost.
 """
 
-from dataclasses import dataclass, field
-from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Any, Callable
-from pathlib import Path
-from abc import ABC, abstractmethod
-from enum import Enum
 import json
 import os
-import asyncio
 import threading
 import time
+from abc import ABC, abstractmethod
+from dataclasses import dataclass, field
+from datetime import datetime, timedelta
+from enum import Enum
+from typing import Any, Dict, List, Optional
+
 from loguru import logger
 
 # Import shared poster base class
 from .platform_base import BasePoster
-from .social_utils import parse_http_error
 
 
 class Platform(Enum):
@@ -34,6 +32,7 @@ class Platform(Enum):
 @dataclass
 class SocialPost:
     """A social media post."""
+
     platform: Platform
     content: str
     url: Optional[str] = None
@@ -67,17 +66,14 @@ class SocialPlatform(ABC):
     @abstractmethod
     def post(self, content: str, url: str = None, image: str = None, **kwargs) -> Dict[str, Any]:
         """Post content to the platform."""
-        pass
 
     @abstractmethod
     def is_configured(self) -> bool:
         """Check if platform is properly configured."""
-        pass
 
     @abstractmethod
     def get_platform_name(self) -> str:
         """Get the display name of the platform."""
-        pass
 
     def validate_content(self, content: str) -> tuple[bool, str]:
         """Validate content for platform-specific requirements."""
@@ -131,7 +127,7 @@ class TwitterPoster(SocialPlatform, BasePoster):
                 consumer_key=self.api_key,
                 consumer_secret=self.api_secret,
                 access_token=self.access_token,
-                access_token_secret=self.access_secret
+                access_token_secret=self.access_secret,
             )
 
             # Handle media upload if image provided
@@ -139,8 +135,7 @@ class TwitterPoster(SocialPlatform, BasePoster):
             if image and os.path.exists(image):
                 # Need v1.1 API for media upload
                 auth = tweepy.OAuth1UserHandler(
-                    self.api_key, self.api_secret,
-                    self.access_token, self.access_secret
+                    self.api_key, self.api_secret, self.access_token, self.access_secret
                 )
                 api_v1 = tweepy.API(auth)
                 media = api_v1.media_upload(image)
@@ -149,12 +144,12 @@ class TwitterPoster(SocialPlatform, BasePoster):
             # Post tweet
             response = client.create_tweet(text=content, media_ids=media_ids)
 
-            logger.info("[Twitter] Posted successfully: {}", response.data['id'])
+            logger.info("[Twitter] Posted successfully: {}", response.data["id"])
             return {
                 "success": True,
-                "post_id": str(response.data['id']),
+                "post_id": str(response.data["id"]),
                 "platform": "twitter",
-                "url": f"https://twitter.com/i/web/status/{response.data['id']}"
+                "url": f"https://twitter.com/i/web/status/{response.data['id']}",
             }
 
         except ImportError:
@@ -183,21 +178,30 @@ class RedditPoster(SocialPlatform, BasePoster):
     def is_configured(self) -> bool:
         return all([self.client_id, self.client_secret, self.username, self.password])
 
-    def post(self, content: str, url: str = None, image: str = None,
-             subreddit: str = None, title: str = None, **kwargs) -> Dict[str, Any]:
+    def post(
+        self,
+        content: str,
+        url: str = None,
+        image: str = None,
+        subreddit: str = None,
+        title: str = None,
+        **kwargs,
+    ) -> Dict[str, Any]:
         """Post to Reddit."""
         if not subreddit:
             return {"success": False, "error": "Subreddit is required", "platform": "reddit"}
 
         if not self.is_configured():
-            logger.warning("[Reddit] Not configured - would post to r/{}: {}", subreddit, content[:50])
+            logger.warning(
+                "[Reddit] Not configured - would post to r/{}: {}", subreddit, content[:50]
+            )
             return {
                 "success": False,
                 "error": "Reddit not configured - missing API credentials",
                 "platform": "reddit",
                 "simulated": True,
                 "subreddit": subreddit,
-                "content_preview": content[:100]
+                "content_preview": content[:100],
             }
 
         try:
@@ -208,7 +212,7 @@ class RedditPoster(SocialPlatform, BasePoster):
                 client_secret=self.client_secret,
                 username=self.username,
                 password=self.password,
-                user_agent=self.user_agent
+                user_agent=self.user_agent,
             )
 
             sub = reddit.subreddit(subreddit)
@@ -232,7 +236,7 @@ class RedditPoster(SocialPlatform, BasePoster):
                 "post_id": submission.id,
                 "platform": "reddit",
                 "url": f"https://reddit.com{submission.permalink}",
-                "subreddit": subreddit
+                "subreddit": subreddit,
             }
 
         except ImportError:
@@ -253,7 +257,7 @@ class RedditPoster(SocialPlatform, BasePoster):
             "post_id": f"sim_reddit_{int(time.time())}",
             "platform": "reddit",
             "simulated": True,
-            "subreddit": subreddit
+            "subreddit": subreddit,
         }
 
 
@@ -280,8 +284,15 @@ class DiscordPoster(SocialPlatform):
     def is_configured(self) -> bool:
         return bool(self.webhook_url or self.webhook_urls)
 
-    def post(self, content: str, url: str = None, image: str = None,
-             channel: str = None, embed: bool = True, **kwargs) -> Dict[str, Any]:
+    def post(
+        self,
+        content: str,
+        url: str = None,
+        image: str = None,
+        channel: str = None,
+        embed: bool = True,
+        **kwargs,
+    ) -> Dict[str, Any]:
         """Post to Discord via webhook."""
         # Determine which webhook to use
         webhook = self.webhook_url
@@ -295,7 +306,7 @@ class DiscordPoster(SocialPlatform):
                 "error": "Discord not configured - no webhook URL",
                 "platform": "discord",
                 "simulated": True,
-                "content_preview": content[:100]
+                "content_preview": content[:100],
             }
 
         try:
@@ -305,17 +316,21 @@ class DiscordPoster(SocialPlatform):
             if embed and url:
                 # Create rich embed
                 payload = {
-                    "embeds": [{
-                        "title": content[:256],  # Discord embed title limit
-                        "url": url,
-                        "color": 16711680,  # Red color for YouTube
-                        "footer": {"text": "Joe Bot"}
-                    }]
+                    "embeds": [
+                        {
+                            "title": content[:256],  # Discord embed title limit
+                            "url": url,
+                            "color": 16711680,  # Red color for YouTube
+                            "footer": {"text": "Joe Bot"},
+                        }
+                    ]
                 }
                 if image and os.path.exists(image):
                     # For local images, we'd need to upload separately
                     # For now, just note it in the embed
-                    payload["embeds"][0]["image"] = {"url": image} if image.startswith("http") else None
+                    payload["embeds"][0]["image"] = (
+                        {"url": image} if image.startswith("http") else None
+                    )
             else:
                 # Simple text message
                 full_content = content
@@ -327,11 +342,7 @@ class DiscordPoster(SocialPlatform):
 
             if response.status_code in (200, 204):
                 logger.info("[Discord] Posted successfully to channel")
-                return {
-                    "success": True,
-                    "platform": "discord",
-                    "channel": channel
-                }
+                return {"success": True, "platform": "discord", "channel": channel}
             else:
                 error = f"HTTP {response.status_code}: {response.text}"
                 logger.error("[Discord] Failed: {}", error)
@@ -339,7 +350,11 @@ class DiscordPoster(SocialPlatform):
 
         except ImportError:
             logger.error("[Discord] requests library not available")
-            return {"success": False, "error": "requests library not installed", "platform": "discord"}
+            return {
+                "success": False,
+                "error": "requests library not installed",
+                "platform": "discord",
+            }
         except Exception as e:
             logger.error("[Discord] Failed to post: {}", str(e))
             return {"success": False, "error": str(e), "platform": "discord"}
@@ -367,7 +382,7 @@ class LinkedInPoster(SocialPlatform):
                 "error": "LinkedIn not configured - missing access token or person URN",
                 "platform": "linkedin",
                 "simulated": True,
-                "content_preview": content[:100]
+                "content_preview": content[:100],
             }
 
         try:
@@ -376,7 +391,7 @@ class LinkedInPoster(SocialPlatform):
             headers = {
                 "Authorization": f"Bearer {self.access_token}",
                 "Content-Type": "application/json",
-                "X-Restli-Protocol-Version": "2.0.0"
+                "X-Restli-Protocol-Version": "2.0.0",
             }
 
             # Build share content
@@ -386,36 +401,29 @@ class LinkedInPoster(SocialPlatform):
                 "specificContent": {
                     "com.linkedin.ugc.ShareContent": {
                         "shareCommentary": {"text": content},
-                        "shareMediaCategory": "ARTICLE" if url else "NONE"
+                        "shareMediaCategory": "ARTICLE" if url else "NONE",
                     }
                 },
-                "visibility": {
-                    "com.linkedin.ugc.MemberNetworkVisibility": "PUBLIC"
-                }
+                "visibility": {"com.linkedin.ugc.MemberNetworkVisibility": "PUBLIC"},
             }
 
             # Add URL if provided
             if url:
-                share_content["specificContent"]["com.linkedin.ugc.ShareContent"]["media"] = [{
-                    "status": "READY",
-                    "originalUrl": url
-                }]
+                share_content["specificContent"]["com.linkedin.ugc.ShareContent"]["media"] = [
+                    {"status": "READY", "originalUrl": url}
+                ]
 
             response = requests.post(
                 "https://api.linkedin.com/v2/ugcPosts",
                 headers=headers,
                 json=share_content,
-                timeout=15
+                timeout=15,
             )
 
             if response.status_code == 201:
                 post_id = response.json().get("id", "")
                 logger.info("[LinkedIn] Posted successfully: {}", post_id)
-                return {
-                    "success": True,
-                    "post_id": post_id,
-                    "platform": "linkedin"
-                }
+                return {"success": True, "post_id": post_id, "platform": "linkedin"}
             else:
                 error = f"HTTP {response.status_code}: {response.text}"
                 logger.error("[LinkedIn] Failed: {}", error)
@@ -423,7 +431,11 @@ class LinkedInPoster(SocialPlatform):
 
         except ImportError:
             logger.error("[LinkedIn] requests library not available")
-            return {"success": False, "error": "requests library not installed", "platform": "linkedin"}
+            return {
+                "success": False,
+                "error": "requests library not installed",
+                "platform": "linkedin",
+            }
         except Exception as e:
             logger.error("[LinkedIn] Failed to post: {}", str(e))
             return {"success": False, "error": str(e), "platform": "linkedin"}
@@ -451,7 +463,7 @@ class FacebookPoster(SocialPlatform):
                 "error": "Facebook not configured - missing page access token or page ID",
                 "platform": "facebook",
                 "simulated": True,
-                "content_preview": content[:100]
+                "content_preview": content[:100],
             }
 
         try:
@@ -459,10 +471,7 @@ class FacebookPoster(SocialPlatform):
 
             endpoint = f"https://graph.facebook.com/v18.0/{self.page_id}/feed"
 
-            payload = {
-                "message": content,
-                "access_token": self.page_access_token
-            }
+            payload = {"message": content, "access_token": self.page_access_token}
 
             if url:
                 payload["link"] = url
@@ -476,7 +485,7 @@ class FacebookPoster(SocialPlatform):
                     "success": True,
                     "post_id": post_id,
                     "platform": "facebook",
-                    "url": f"https://facebook.com/{post_id}"
+                    "url": f"https://facebook.com/{post_id}",
                 }
             else:
                 error = f"HTTP {response.status_code}: {response.json()}"
@@ -485,7 +494,11 @@ class FacebookPoster(SocialPlatform):
 
         except ImportError:
             logger.error("[Facebook] requests library not available")
-            return {"success": False, "error": "requests library not installed", "platform": "facebook"}
+            return {
+                "success": False,
+                "error": "requests library not installed",
+                "platform": "facebook",
+            }
         except Exception as e:
             logger.error("[Facebook] Failed to post: {}", str(e))
             return {"success": False, "error": str(e), "platform": "facebook"}
@@ -520,7 +533,7 @@ class SocialMediaManager:
             status[platform.value] = {
                 "name": poster.get_platform_name(),
                 "configured": poster.is_configured(),
-                "platform": platform.value
+                "platform": platform.value,
             }
         return status
 
@@ -530,7 +543,7 @@ class SocialMediaManager:
         video_url: str,
         niche: str,
         platform: Platform,
-        custom_message: str = None
+        custom_message: str = None,
     ) -> str:
         """Generate platform-specific post content."""
         hashtags = self._get_niche_hashtags(niche)
@@ -538,24 +551,12 @@ class SocialMediaManager:
 
         templates = {
             Platform.TWITTER: (
-                "{custom}\n\n"
-                "{title}\n\n"
-                "{url}\n\n"
-                "{hashtags}"
-            ) if custom_message else (
-                "New video just dropped!\n\n"
-                "{title}\n\n"
-                "{url}\n\n"
-                "{hashtags}"
+                ("{custom}\n\n" "{title}\n\n" "{url}\n\n" "{hashtags}")
+                if custom_message
+                else ("New video just dropped!\n\n" "{title}\n\n" "{url}\n\n" "{hashtags}")
             ),
-            Platform.REDDIT: (
-                "{title}"
-            ),
-            Platform.DISCORD: (
-                "**New Upload!**\n\n"
-                "**{title}**\n\n"
-                "{url}"
-            ),
+            Platform.REDDIT: ("{title}"),
+            Platform.DISCORD: ("**New Upload!**\n\n" "**{title}**\n\n" "{url}"),
             Platform.LINKEDIN: (
                 "I just published a new video on a topic I'm passionate about:\n\n"
                 "{title}\n\n"
@@ -563,31 +564,52 @@ class SocialMediaManager:
                 "{url}\n\n"
                 "{hashtags}"
             ),
-            Platform.FACEBOOK: (
-                "New video alert!\n\n"
-                "{title}\n\n"
-                "Watch here: {url}"
-            ),
+            Platform.FACEBOOK: ("New video alert!\n\n" "{title}\n\n" "Watch here: {url}"),
         }
 
         template = templates.get(platform, "{title}\n{url}")
 
         return template.format(
-            title=video_title,
-            url=video_url,
-            hashtags=hashtag_str,
-            custom=custom_message or ""
+            title=video_title, url=video_url, hashtags=hashtag_str, custom=custom_message or ""
         ).strip()
 
     def _get_niche_hashtags(self, niche: str) -> List[str]:
         """Get relevant hashtags for a niche."""
         hashtag_map = {
-            "finance": ["investing", "money", "finance", "wealth", "passiveincome", "financialfreedom"],
-            "psychology": ["psychology", "mindset", "selfimprovement", "mentalhealth", "motivation", "growth"],
-            "storytelling": ["storytelling", "truecrime", "mystery", "documentary", "stories", "realstories"],
+            "finance": [
+                "investing",
+                "money",
+                "finance",
+                "wealth",
+                "passiveincome",
+                "financialfreedom",
+            ],
+            "psychology": [
+                "psychology",
+                "mindset",
+                "selfimprovement",
+                "mentalhealth",
+                "motivation",
+                "growth",
+            ],
+            "storytelling": [
+                "storytelling",
+                "truecrime",
+                "mystery",
+                "documentary",
+                "stories",
+                "realstories",
+            ],
             "tech": ["technology", "tech", "coding", "programming", "ai", "innovation"],
             "gaming": ["gaming", "gamer", "videogames", "gameplay", "twitch", "esports"],
-            "education": ["education", "learning", "knowledge", "facts", "educational", "didyouknow"],
+            "education": [
+                "education",
+                "learning",
+                "knowledge",
+                "facts",
+                "educational",
+                "didyouknow",
+            ],
             "entertainment": ["entertainment", "viral", "trending", "funny", "comedy", "mustwatch"],
             "health": ["health", "fitness", "wellness", "healthylifestyle", "nutrition", "workout"],
             "business": ["business", "entrepreneur", "startup", "success", "hustle", "leadership"],
@@ -609,17 +631,19 @@ class SocialMediaManager:
         niche: str,
         thumbnail_path: Optional[str] = None,
         custom_message: Optional[str] = None,
-        **kwargs
+        **kwargs,
     ) -> SocialPost:
         """Post to a specific platform."""
-        content = self.generate_post_content(video_title, video_url, niche, platform, custom_message)
+        content = self.generate_post_content(
+            video_title, video_url, niche, platform, custom_message
+        )
 
         post = SocialPost(
             platform=platform,
             content=content,
             url=video_url,
             image_path=thumbnail_path,
-            hashtags=self._get_niche_hashtags(niche)
+            hashtags=self._get_niche_hashtags(niche),
         )
 
         try:
@@ -647,7 +671,7 @@ class SocialMediaManager:
         niche: str,
         thumbnail_path: Optional[str] = None,
         platforms: Optional[List[Platform]] = None,
-        reddit_subreddits: Optional[List[str]] = None
+        reddit_subreddits: Optional[List[str]] = None,
     ) -> List[SocialPost]:
         """Post to all configured platforms (or specified subset)."""
         results = []
@@ -662,8 +686,7 @@ class SocialMediaManager:
                 # Post to multiple subreddits
                 for subreddit in reddit_subreddits:
                     post = self.post_to_platform(
-                        platform, video_title, video_url, niche,
-                        thumbnail_path, subreddit=subreddit
+                        platform, video_title, video_url, niche, thumbnail_path, subreddit=subreddit
                     )
                     results.append(post)
             else:
@@ -682,7 +705,7 @@ class SocialMediaManager:
         niche: str,
         delay_minutes: int,
         thumbnail_path: Optional[str] = None,
-        **kwargs
+        **kwargs,
     ) -> Dict[str, Any]:
         """Schedule a post for later."""
         scheduled_time = datetime.now() + timedelta(minutes=delay_minutes)
@@ -695,19 +718,23 @@ class SocialMediaManager:
             "thumbnail_path": thumbnail_path,
             "scheduled_time": scheduled_time,
             "kwargs": kwargs,
-            "executed": False
+            "executed": False,
         }
 
         self._scheduled_tasks.append(task)
 
-        logger.info("Scheduled {} post for {} ({} minutes from now)",
-                   platform.value, scheduled_time.isoformat(), delay_minutes)
+        logger.info(
+            "Scheduled {} post for {} ({} minutes from now)",
+            platform.value,
+            scheduled_time.isoformat(),
+            delay_minutes,
+        )
 
         return {
             "scheduled": True,
             "platform": platform.value,
             "scheduled_time": scheduled_time.isoformat(),
-            "delay_minutes": delay_minutes
+            "delay_minutes": delay_minutes,
         }
 
     def schedule_first_hour_posts(
@@ -716,7 +743,7 @@ class SocialMediaManager:
         video_url: str,
         niche: str,
         thumbnail_path: Optional[str] = None,
-        reddit_subreddits: Optional[List[str]] = None
+        reddit_subreddits: Optional[List[str]] = None,
     ) -> Dict[str, Any]:
         """
         Schedule posts optimized for first-hour engagement boost.
@@ -749,15 +776,21 @@ class SocialMediaManager:
                     if platform == Platform.REDDIT and reddit_subreddits:
                         for subreddit in reddit_subreddits:
                             post = self.post_to_platform(
-                                platform, video_title, video_url, niche,
-                                thumbnail_path, subreddit=subreddit
+                                platform,
+                                video_title,
+                                video_url,
+                                niche,
+                                thumbnail_path,
+                                subreddit=subreddit,
                             )
-                            scheduled_posts.append({
-                                "platform": platform.value,
-                                "delay": 0,
-                                "status": "posted" if post.posted else "failed",
-                                "post_id": post.post_id
-                            })
+                            scheduled_posts.append(
+                                {
+                                    "platform": platform.value,
+                                    "delay": 0,
+                                    "status": "posted" if post.posted else "failed",
+                                    "post_id": post.post_id,
+                                }
+                            )
                     else:
                         # Add custom message for reminder post
                         custom_msg = None
@@ -765,15 +798,21 @@ class SocialMediaManager:
                             custom_msg = "In case you missed it..."
 
                         post = self.post_to_platform(
-                            platform, video_title, video_url, niche,
-                            thumbnail_path, custom_message=custom_msg
+                            platform,
+                            video_title,
+                            video_url,
+                            niche,
+                            thumbnail_path,
+                            custom_message=custom_msg,
                         )
-                        scheduled_posts.append({
-                            "platform": platform.value,
-                            "delay": 0,
-                            "status": "posted" if post.posted else "failed",
-                            "post_id": post.post_id
-                        })
+                        scheduled_posts.append(
+                            {
+                                "platform": platform.value,
+                                "delay": 0,
+                                "status": "posted" if post.posted else "failed",
+                                "post_id": post.post_id,
+                            }
+                        )
                 else:
                     # Schedule for later
                     kwargs = {}
@@ -783,21 +822,28 @@ class SocialMediaManager:
                         kwargs["custom_message"] = "In case you missed it..."
 
                     result = self.schedule_post(
-                        platform, video_title, video_url, niche,
-                        delay_minutes, thumbnail_path, **kwargs
+                        platform,
+                        video_title,
+                        video_url,
+                        niche,
+                        delay_minutes,
+                        thumbnail_path,
+                        **kwargs,
                     )
-                    scheduled_posts.append({
-                        "platform": platform.value,
-                        "delay": delay_minutes,
-                        "status": "scheduled",
-                        "scheduled_time": result["scheduled_time"]
-                    })
+                    scheduled_posts.append(
+                        {
+                            "platform": platform.value,
+                            "delay": delay_minutes,
+                            "status": "scheduled",
+                            "scheduled_time": result["scheduled_time"],
+                        }
+                    )
 
         return {
             "strategy": "first_hour_boost",
             "total_posts": len(scheduled_posts),
             "configured_platforms": [p.value for p in self.get_configured_platforms()],
-            "posts": scheduled_posts
+            "posts": scheduled_posts,
         }
 
     def run_scheduled_posts(self) -> List[SocialPost]:
@@ -816,14 +862,16 @@ class SocialMediaManager:
                     task["video_url"],
                     task["niche"],
                     task["thumbnail_path"],
-                    **task["kwargs"]
+                    **task["kwargs"],
                 )
                 task["executed"] = True
                 results.append(post)
 
-                logger.info("Executed scheduled post to {}: {}",
-                           task["platform"].value,
-                           "success" if post.posted else f"failed - {post.error}")
+                logger.info(
+                    "Executed scheduled post to {}: {}",
+                    task["platform"].value,
+                    "success" if post.posted else f"failed - {post.error}",
+                )
 
         return results
 
@@ -861,7 +909,7 @@ class SocialMediaManager:
 
     def export_history(self, filepath: str):
         """Export post history to JSON file."""
-        with open(filepath, 'w') as f:
+        with open(filepath, "w") as f:
             json.dump([p.to_dict() for p in self.post_history], f, indent=2)
         logger.info("Exported {} posts to {}", len(self.post_history), filepath)
 
@@ -872,7 +920,7 @@ def post_video_to_social(
     video_url: str,
     niche: str,
     thumbnail: str = None,
-    platforms: List[Platform] = None
+    platforms: List[Platform] = None,
 ) -> List[SocialPost]:
     """Quick function to post video to all social platforms."""
     manager = SocialMediaManager()
@@ -884,7 +932,7 @@ def schedule_first_hour_boost(
     video_url: str,
     niche: str,
     thumbnail: str = None,
-    reddit_subreddits: List[str] = None
+    reddit_subreddits: List[str] = None,
 ) -> Dict[str, Any]:
     """Schedule posts for first-hour engagement boost."""
     manager = SocialMediaManager()
@@ -930,11 +978,7 @@ if __name__ == "__main__":
     print("=" * 60)
 
     results = manager.post_to_all(
-        test_title,
-        test_url,
-        test_niche,
-        thumbnail_path=None,
-        reddit_subreddits=["personalfinance"]
+        test_title, test_url, test_niche, thumbnail_path=None, reddit_subreddits=["personalfinance"]
     )
 
     for post in results:
@@ -947,11 +991,9 @@ if __name__ == "__main__":
     print("=" * 60)
 
     schedule_result = manager.schedule_first_hour_posts(
-        "Test Video Title",
-        "https://youtube.com/watch?v=test123",
-        "tech"
+        "Test Video Title", "https://youtube.com/watch?v=test123", "tech"
     )
 
     print(f"\nTotal scheduled posts: {schedule_result['total_posts']}")
-    for post_info in schedule_result['posts']:
+    for post_info in schedule_result["posts"]:
         print(f"  {post_info['platform']:12} : +{post_info['delay']}min - {post_info['status']}")

@@ -11,10 +11,12 @@ Usage:
     # With professional enhancement
     await tts.generate_enhanced("Hello!", "output.mp3", enhance=True)
 """
-from fish_audio_sdk import Session, TTSRequest
-from pathlib import Path
-from loguru import logger
+
 import os
+from pathlib import Path
+
+from fish_audio_sdk import Session, TTSRequest
+from loguru import logger
 
 
 class FishAudioTTS:
@@ -57,7 +59,7 @@ class FishAudioTTS:
         voice: str = "male_us",
         enhance: bool = True,
         noise_reduction: bool = True,
-        normalize_lufs: float = -14.0
+        normalize_lufs: float = -14.0,
     ) -> str:
         """
         Generate speech with professional broadcast-quality enhancement.
@@ -99,7 +101,7 @@ class FishAudioTTS:
                     input_file=raw_audio,
                     output_file=output_file,
                     noise_reduction=noise_reduction,
-                    normalize_lufs=normalize_lufs
+                    normalize_lufs=normalize_lufs,
                 )
 
                 if enhanced:

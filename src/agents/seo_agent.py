@@ -19,32 +19,29 @@ Usage:
     result = agent.generate_tags(transcript, niche="finance")
 """
 
-import os
 import json
+import os
 import re
+from dataclasses import asdict, dataclass, field
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, Any, List, Optional
-from dataclasses import dataclass, field, asdict
+from typing import Any, Dict, List, Optional
+
 from loguru import logger
 
-from ..utils.token_manager import (
-    get_token_manager,
-    get_cost_optimizer,
-    get_prompt_cache
-)
 from ..utils.best_practices import (
-    validate_title,
-    get_best_practices,
     POWER_WORDS,
-    VIRAL_TITLE_PATTERNS,
-    SEO_PATTERNS
+    SEO_PATTERNS,
+    get_best_practices,
+    validate_title,
 )
+from ..utils.token_manager import get_cost_optimizer, get_prompt_cache, get_token_manager
 
 
 @dataclass
 class SEOResult:
     """Result from SEO agent operations."""
+
     success: bool
     operation: str
     original: Dict[str, Any] = field(default_factory=dict)
@@ -64,12 +61,14 @@ class SEOResult:
     def summary(self) -> str:
         """Generate human-readable summary."""
         improvement = self.score_after - self.score_before
-        direction = "improved" if improvement > 0 else "unchanged" if improvement == 0 else "decreased"
+        direction = (
+            "improved" if improvement > 0 else "unchanged" if improvement == 0 else "decreased"
+        )
 
         lines = [
             f"SEO Optimization: {direction.upper()}",
             f"Score: {self.score_before} -> {self.score_after} ({'+' if improvement >= 0 else ''}{improvement})",
-            ""
+            "",
         ]
 
         if self.changes:
@@ -128,12 +127,7 @@ class SEOAgent:
 
         logger.info(f"SEOAgent initialized with provider: {provider}")
 
-    def optimize_title(
-        self,
-        title: str,
-        niche: str = "default",
-        use_ai: bool = False
-    ) -> SEOResult:
+    def optimize_title(self, title: str, niche: str = "default", use_ai: bool = False) -> SEOResult:
         """
         Optimize a video title for SEO and CTR.
 
@@ -168,7 +162,7 @@ class SEOAgent:
                 changes.append(f"Added current year ({self.CURRENT_YEAR})")
 
         # 2. Add numbers if missing
-        if not re.search(r'\d+', optimized_title):
+        if not re.search(r"\d+", optimized_title):
             # Try to add a number at the start
             number_patterns = {
                 "how to": "5 Ways to",
@@ -179,7 +173,9 @@ class SEOAgent:
             }
             for pattern, replacement in number_patterns.items():
                 if pattern in optimized_title.lower():
-                    optimized_title = optimized_title.lower().replace(pattern, replacement.lower(), 1)
+                    optimized_title = optimized_title.lower().replace(
+                        pattern, replacement.lower(), 1
+                    )
                     optimized_title = optimized_title.title()
                     changes.append("Added specific number")
                     break
@@ -195,7 +191,7 @@ class SEOAgent:
             niche_power_words = {
                 "finance": "Secret",
                 "psychology": "Hidden",
-                "storytelling": "Untold"
+                "storytelling": "Untold",
             }
             if niche in niche_power_words:
                 power_word = niche_power_words[niche]
@@ -234,17 +230,14 @@ class SEOAgent:
             changes=changes,
             tokens_used=0 if not use_ai else 500,
             cost=0.0,
-            provider="rule_based" if not use_ai else self.provider
+            provider="rule_based" if not use_ai else self.provider,
         )
 
         logger.success(f"[SEOAgent] Title optimized: {score_before} -> {score_after}")
         return result
 
     def optimize_description(
-        self,
-        description: str,
-        title: str = "",
-        niche: str = "default"
+        self, description: str, title: str = "", niche: str = "default"
     ) -> SEOResult:
         """
         Optimize a video description for SEO.
@@ -271,9 +264,11 @@ class SEOAgent:
             changes.append("Warning: Description is short (< 200 chars)")
 
         # 2. Add timestamps if missing
-        if not re.search(r'\d{1,2}:\d{2}', description):
+        if not re.search(r"\d{1,2}:\d{2}", description):
             # Add placeholder timestamps
-            timestamp_section = "\n\nTimestamps:\n00:00 Introduction\n01:00 Main Content\n05:00 Conclusion"
+            timestamp_section = (
+                "\n\nTimestamps:\n00:00 Introduction\n01:00 Main Content\n05:00 Conclusion"
+            )
             optimized_desc += timestamp_section
             changes.append("Added timestamp placeholders")
 
@@ -297,7 +292,7 @@ class SEOAgent:
             niche_hashtags = {
                 "finance": "#PersonalFinance #MoneyTips #Investing",
                 "psychology": "#Psychology #MindHacks #SelfImprovement",
-                "storytelling": "#TrueStory #Documentary #Explained"
+                "storytelling": "#TrueStory #Documentary #Explained",
             }
             hashtags = niche_hashtags.get(niche, "#YouTube #Educational")
             optimized_desc += f"\n\n{hashtags}"
@@ -324,18 +319,13 @@ class SEOAgent:
             changes=changes,
             tokens_used=0,
             cost=0.0,
-            provider="rule_based"
+            provider="rule_based",
         )
 
         logger.success(f"[SEOAgent] Description optimized")
         return result
 
-    def optimize_tags(
-        self,
-        tags: List[str],
-        title: str = "",
-        niche: str = "default"
-    ) -> SEOResult:
+    def optimize_tags(self, tags: List[str], title: str = "", niche: str = "default") -> SEOResult:
         """
         Optimize video tags for SEO.
 
@@ -368,9 +358,15 @@ class SEOAgent:
                 changes.append(f"Added required tag: {req_tag}")
 
         # 2. Add title words as tags
-        title_words = re.findall(r'\b\w{4,}\b', title.lower())
+        title_words = re.findall(r"\b\w{4,}\b", title.lower())
         for word in title_words[:5]:
-            if word not in current_tags_lower and word not in ["that", "this", "with", "from", "your"]:
+            if word not in current_tags_lower and word not in [
+                "that",
+                "this",
+                "with",
+                "from",
+                "your",
+            ]:
                 optimized_tags.append(word)
                 changes.append(f"Added title keyword: {word}")
 
@@ -395,7 +391,11 @@ class SEOAgent:
 
         # Score
         score_before = min(100, len(tags) * 6)
-        score_after = min(100, len(optimized_tags) * 6 + sum(1 for t in required_tags if t.lower() in [x.lower() for x in optimized_tags]) * 5)
+        score_after = min(
+            100,
+            len(optimized_tags) * 6
+            + sum(1 for t in required_tags if t.lower() in [x.lower() for x in optimized_tags]) * 5,
+        )
 
         result = SEOResult(
             success=True,
@@ -407,7 +407,7 @@ class SEOAgent:
             changes=changes,
             tokens_used=0,
             cost=0.0,
-            provider="rule_based"
+            provider="rule_based",
         )
 
         logger.success(f"[SEOAgent] Tags optimized: {len(tags)} -> {len(optimized_tags)}")
@@ -419,7 +419,7 @@ class SEOAgent:
         description: str,
         tags: List[str],
         niche: str = "default",
-        use_ai: bool = False
+        use_ai: bool = False,
     ) -> SEOResult:
         """
         Optimize all metadata at once.
@@ -443,23 +443,23 @@ class SEOAgent:
         tags_result = self.optimize_tags(tags, title, niche)
 
         # Combine results
-        original = {
-            "title": title,
-            "description": description,
-            "tags": tags
-        }
+        original = {"title": title, "description": description, "tags": tags}
 
         optimized = {
             "title": title_result.optimized.get("title", title),
             "description": desc_result.optimized.get("description", description),
-            "tags": tags_result.optimized.get("tags", tags)
+            "tags": tags_result.optimized.get("tags", tags),
         }
 
         changes = title_result.changes + desc_result.changes + tags_result.changes
 
         # Combined score
-        score_before = (title_result.score_before + desc_result.score_before + tags_result.score_before) // 3
-        score_after = (title_result.score_after + desc_result.score_after + tags_result.score_after) // 3
+        score_before = (
+            title_result.score_before + desc_result.score_before + tags_result.score_before
+        ) // 3
+        score_after = (
+            title_result.score_after + desc_result.score_after + tags_result.score_after
+        ) // 3
 
         result = SEOResult(
             success=True,
@@ -471,17 +471,14 @@ class SEOAgent:
             changes=changes,
             tokens_used=title_result.tokens_used,
             cost=title_result.cost,
-            provider=title_result.provider
+            provider=title_result.provider,
         )
 
         logger.success(f"[SEOAgent] Full metadata optimized: {score_before} -> {score_after}")
         return result
 
     def generate_tags(
-        self,
-        content: str,
-        niche: str = "default",
-        use_ai: bool = False
+        self, content: str, niche: str = "default", use_ai: bool = False
     ) -> SEOResult:
         """
         Generate tags from content/transcript.
@@ -498,11 +495,38 @@ class SEOAgent:
         logger.info(f"[SEOAgent] Generating tags from content")
 
         # Extract keywords from content
-        words = re.findall(r'\b\w{4,}\b', content.lower())
+        words = re.findall(r"\b\w{4,}\b", content.lower())
 
         # Count frequency
         word_counts = {}
-        stopwords = {"this", "that", "with", "from", "your", "have", "been", "were", "they", "their", "about", "which", "would", "could", "should", "there", "where", "when", "what", "will", "into", "just", "more", "some", "very", "than"}
+        stopwords = {
+            "this",
+            "that",
+            "with",
+            "from",
+            "your",
+            "have",
+            "been",
+            "were",
+            "they",
+            "their",
+            "about",
+            "which",
+            "would",
+            "could",
+            "should",
+            "there",
+            "where",
+            "when",
+            "what",
+            "will",
+            "into",
+            "just",
+            "more",
+            "some",
+            "very",
+            "than",
+        }
 
         for word in words:
             if word not in stopwords and len(word) > 3:
@@ -530,16 +554,12 @@ class SEOAgent:
             changes=[f"Generated {len(tags)} tags from content"],
             tokens_used=0,
             cost=0.0,
-            provider="rule_based"
+            provider="rule_based",
         )
 
         return result
 
-    def _ai_enhance_title(
-        self,
-        title: str,
-        niche: str
-    ) -> Optional[Dict[str, Any]]:
+    def _ai_enhance_title(self, title: str, niche: str) -> Optional[Dict[str, Any]]:
         """Use AI to enhance title."""
         # Check cache first
         cache_key = f"seo_title_{hash(title)}_{niche}"
@@ -547,11 +567,12 @@ class SEOAgent:
         if cached:
             try:
                 return json.loads(cached)
-            except:
+            except Exception:
                 pass
 
         try:
             from ..content.script_writer import get_provider
+
             ai = get_provider(self.provider, self.api_key)
 
             prompt = f"""Improve this YouTube video title for {niche} content:
@@ -580,7 +601,7 @@ Respond with ONLY a JSON object:
                 provider=self.provider,
                 input_tokens=300,
                 output_tokens=100,
-                operation="seo_ai_title"
+                operation="seo_ai_title",
             )
 
             # Cache result
@@ -596,7 +617,7 @@ Respond with ONLY a JSON object:
         """Parse JSON from AI response."""
         try:
             return json.loads(content)
-        except:
+        except Exception:
             pass
 
         # Try extracting from markdown
@@ -606,7 +627,7 @@ Respond with ONLY a JSON object:
             if end > start:
                 try:
                     return json.loads(content[start:end].strip())
-                except:
+                except Exception:
                     pass
 
         # Try finding JSON object
@@ -615,7 +636,7 @@ Respond with ONLY a JSON object:
         if start != -1 and end > start:
             try:
                 return json.loads(content[start:end])
-            except:
+            except Exception:
                 pass
 
         return {}
@@ -644,7 +665,7 @@ Respond with ONLY a JSON object:
                 description=data.get("description", ""),
                 tags=data.get("tags", []),
                 niche=niche,
-                use_ai=use_ai
+                use_ai=use_ai,
             )
 
         # If title provided
@@ -658,11 +679,7 @@ Respond with ONLY a JSON object:
                 content = f.read()
             return self.generate_tags(content, niche, use_ai)
 
-        return SEOResult(
-            success=False,
-            operation="unknown",
-            error="No input provided"
-        )
+        return SEOResult(success=False, operation="unknown", error="No input provided")
 
 
 # CLI entry point
@@ -671,7 +688,8 @@ def main():
     import sys
 
     if len(sys.argv) < 2:
-        print("""
+        print(
+            """
 SEO Optimizer Agent - Metadata Optimization
 
 Usage:
@@ -692,7 +710,8 @@ Examples:
     python -m src.agents.seo_agent --title "Money tips" --niche finance
     python -m src.agents.seo_agent --file output/video.json --niche psychology --ai
     python -m src.agents.seo_agent --transcript output/script.txt --generate-tags
-        """)
+        """
+        )
         return
 
     # Parse arguments
@@ -747,7 +766,9 @@ Examples:
                 if isinstance(value, list):
                     print(f"  {key}: {', '.join(value[:5])}...")
                 else:
-                    print(f"  {key}: {value[:80]}..." if len(str(value)) > 80 else f"  {key}: {value}")
+                    print(
+                        f"  {key}: {value[:80]}..." if len(str(value)) > 80 else f"  {key}: {value}"
+                    )
 
     # Save if requested
     if save_result:

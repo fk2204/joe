@@ -22,29 +22,30 @@ Usage:
     )
 """
 
+import json
 import os
 import re
-import json
-import requests
-from typing import Optional, Dict, Any, List
-from dataclasses import dataclass
 from abc import ABC, abstractmethod
+from dataclasses import dataclass
 from datetime import datetime
+from typing import Any, Dict, List, Optional
+
+import requests
 from loguru import logger
-from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
+from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_exponential
 
 # Import best practices module for validation and compliance
 try:
     from src.utils.best_practices import (
-        validate_title,
-        validate_hook,
-        get_best_practices,
-        suggest_improvements,
-        pre_publish_checklist,
-        get_niche_metrics,
-        ValidationResult,
         PrePublishChecklist,
+        ValidationResult,
+        get_best_practices,
+        pre_publish_checklist,
+        suggest_improvements,
+        validate_hook,
+        validate_title,
     )
+
     BEST_PRACTICES_AVAILABLE = True
 except ImportError:
     BEST_PRACTICES_AVAILABLE = False
@@ -52,7 +53,8 @@ except ImportError:
 
 # Import token optimizer for cost-efficient token limits
 try:
-    from src.utils.token_optimizer import TASK_MAX_TOKENS, get_token_optimizer
+    from src.utils.token_optimizer import TASK_MAX_TOKENS
+
     TOKEN_OPTIMIZER_AVAILABLE = True
 except ImportError:
     TOKEN_OPTIMIZER_AVAILABLE = False
@@ -72,6 +74,7 @@ except ImportError:
 # Import Viral Hooks Generator for retention optimization
 try:
     from src.content.viral_hooks import ViralHookGenerator
+
     VIRAL_HOOKS_AVAILABLE = True
 except ImportError:
     VIRAL_HOOKS_AVAILABLE = False
@@ -80,6 +83,7 @@ except ImportError:
 # Import Metadata Optimizer for title/description optimization
 try:
     from src.seo.metadata_optimizer import MetadataOptimizer
+
     METADATA_OPTIMIZER_AVAILABLE = True
 except ImportError:
     METADATA_OPTIMIZER_AVAILABLE = False
@@ -95,14 +99,38 @@ except ImportError:
 # Updated with psychology triggers: loss aversion, curiosity gap, social proof
 POWER_WORDS = [
     # Authority/Trust triggers
-    "Ultimate", "Proven", "Expert", "Complete", "Definitive", "Essential",
+    "Ultimate",
+    "Proven",
+    "Expert",
+    "Complete",
+    "Definitive",
+    "Essential",
     # Curiosity/Intrigue triggers
-    "Secret", "Hidden", "Shocking", "Unbelievable", "Surprising", "Actually",
-    "Finally", "Revealed", "Truth", "Nobody", "Untold", "Dark",
+    "Secret",
+    "Hidden",
+    "Shocking",
+    "Unbelievable",
+    "Surprising",
+    "Actually",
+    "Finally",
+    "Revealed",
+    "Truth",
+    "Nobody",
+    "Untold",
+    "Dark",
     # Urgency/FOMO triggers
-    "Critical", "Instant", "Guaranteed", "Revolutionary", "Breakthrough",
+    "Critical",
+    "Instant",
+    "Guaranteed",
+    "Revolutionary",
+    "Breakthrough",
     # Emotional triggers
-    "Powerful", "Incredible", "Amazing", "Massive", "Terrifying", "Genius"
+    "Powerful",
+    "Incredible",
+    "Amazing",
+    "Massive",
+    "Terrifying",
+    "Genius",
 ]
 
 # ============================================================
@@ -126,7 +154,6 @@ VIRAL_TITLE_TEMPLATES = {
         "Warren Buffett's {number} Rules of Investing",
         "The Hidden Truth About {financial_product}",
     ],
-
     # PSYCHOLOGY NICHE (mind_unlocked) - Channels: Psych2Go, Brainy Dose, The Infographics Show
     "psychology": [
         "{number} Signs of {personality_type}",
@@ -142,7 +169,6 @@ VIRAL_TITLE_TEMPLATES = {
         "The Psychology of {topic}: Why You {action}",
         "{number} Things Only {personality_type} Will Understand",
     ],
-
     # STORYTELLING NICHE (untold_stories) - Channels: JCS, Truly Criminal, Lazy Masquerade
     "storytelling": [
         "The Untold Story of {subject}",
@@ -172,28 +198,23 @@ HOOK_FORMULAS = {
         "Stop. What you're about to see changes everything...",
         "Forget everything you've been told about {topic}...",
         "This is the one thing nobody tells you about {topic}...",
-
         # Loss Aversion (strongest trigger - "must click")
         "You're losing ${amount} every year without knowing it...",
         "Right now, {percentage}% of your {resource} is being wasted...",
         "This mistake is costing you {consequence}...",
-
         # Curiosity Gap (32% increase in watch time)
         "What if I told you {surprising_claim}?",
         "In the next {duration}, I'll show you {promise}...",
         "There's a reason {authority} doesn't want you to know this...",
-
         # Stats Shock (high credibility)
         "Only {percentage}% of people know this. Here's why it matters...",
         "{number} out of {total} people fail at this. Here's how to be different...",
         "In {year}, {shocking_stat}. And it's getting worse...",
-
         # Story Lead (immediate tension)
         "In {year}, someone discovered something that changed everything...",
         "What happened next shocked everyone...",
         "Nobody believed it would work. They were wrong...",
     ],
-
     # Finance-specific hooks
     "finance": [
         "If you invested ${amount} in {investment} {timeframe} ago, you'd have ${result} today...",
@@ -202,7 +223,6 @@ HOOK_FORMULAS = {
         "{percentage}% of your paycheck is disappearing, and here's where it goes...",
         "In {year}, a man turned ${small_amount} into ${large_amount} using this exact method...",
     ],
-
     # Psychology-specific hooks
     "psychology": [
         "Your brain is lying to you right now, and you don't even know it...",
@@ -211,7 +231,6 @@ HOOK_FORMULAS = {
         "In the next {duration}, you'll be able to read anyone's thoughts...",
         "They've been using this against you since you were {age} years old...",
     ],
-
     # Storytelling-specific hooks
     "storytelling": [
         "The door slammed. He had exactly {seconds} seconds to decide...",
@@ -224,24 +243,57 @@ HOOK_FORMULAS = {
 
 # Convert number words to digits (digits perform better in titles)
 NUMBER_WORDS_TO_DIGITS = {
-    "zero": "0", "one": "1", "two": "2", "three": "3", "four": "4",
-    "five": "5", "six": "6", "seven": "7", "eight": "8", "nine": "9",
-    "ten": "10", "eleven": "11", "twelve": "12", "thirteen": "13",
-    "fourteen": "14", "fifteen": "15", "sixteen": "16", "seventeen": "17",
-    "eighteen": "18", "nineteen": "19", "twenty": "20"
+    "zero": "0",
+    "one": "1",
+    "two": "2",
+    "three": "3",
+    "four": "4",
+    "five": "5",
+    "six": "6",
+    "seven": "7",
+    "eight": "8",
+    "nine": "9",
+    "ten": "10",
+    "eleven": "11",
+    "twelve": "12",
+    "thirteen": "13",
+    "fourteen": "14",
+    "fifteen": "15",
+    "sixteen": "16",
+    "seventeen": "17",
+    "eighteen": "18",
+    "nineteen": "19",
+    "twenty": "20",
 }
 
 # Topics that benefit from having the current year in the title
 YEAR_RELEVANT_TOPICS = [
-    "best", "top", "guide", "tutorial", "how to", "tips", "tricks",
-    "strategy", "strategies", "review", "comparison", "vs", "trends",
-    "update", "new", "latest", "current", "modern", "today"
+    "best",
+    "top",
+    "guide",
+    "tutorial",
+    "how to",
+    "tips",
+    "tricks",
+    "strategy",
+    "strategies",
+    "review",
+    "comparison",
+    "vs",
+    "trends",
+    "update",
+    "new",
+    "latest",
+    "current",
+    "modern",
+    "today",
 ]
 
 
 # ============================================================
 # Natural Pacing Injector for AI Authenticity
 # ============================================================
+
 
 class NaturalPacingInjector:
     """
@@ -273,40 +325,106 @@ class NaturalPacingInjector:
 
     # Transition words that benefit from a pause after them
     TRANSITION_WORDS = [
-        "however", "therefore", "but", "so", "now", "finally",
-        "furthermore", "moreover", "meanwhile", "consequently",
-        "nevertheless", "nonetheless", "additionally", "subsequently",
-        "accordingly", "hence", "thus", "indeed", "certainly",
-        "first", "second", "third", "lastly", "ultimately"
+        "however",
+        "therefore",
+        "but",
+        "so",
+        "now",
+        "finally",
+        "furthermore",
+        "moreover",
+        "meanwhile",
+        "consequently",
+        "nevertheless",
+        "nonetheless",
+        "additionally",
+        "subsequently",
+        "accordingly",
+        "hence",
+        "thus",
+        "indeed",
+        "certainly",
+        "first",
+        "second",
+        "third",
+        "lastly",
+        "ultimately",
     ]
 
     # Extended pause words list (from v2 implementation)
     PAUSE_AFTER_WORDS = [
-        'however', 'therefore', 'furthermore', 'moreover', 'additionally',
-        'consequently', 'nevertheless', 'meanwhile', 'but', 'so', 'and',
-        'now', 'first', 'second', 'third', 'finally', 'next', 'then',
-        'importantly', 'interestingly', 'surprisingly', 'actually',
+        "however",
+        "therefore",
+        "furthermore",
+        "moreover",
+        "additionally",
+        "consequently",
+        "nevertheless",
+        "meanwhile",
+        "but",
+        "so",
+        "and",
+        "now",
+        "first",
+        "second",
+        "third",
+        "finally",
+        "next",
+        "then",
+        "importantly",
+        "interestingly",
+        "surprisingly",
+        "actually",
     ]
 
     # Words that often deserve emphasis in educational/informational content
     EMPHASIS_WORDS = [
-        "critical", "crucial", "essential", "important", "key",
-        "never", "always", "must", "only", "exactly",
-        "secret", "hidden", "shocking", "surprising", "incredible",
-        "revolutionary", "breakthrough", "powerful", "guaranteed"
+        "critical",
+        "crucial",
+        "essential",
+        "important",
+        "key",
+        "never",
+        "always",
+        "must",
+        "only",
+        "exactly",
+        "secret",
+        "hidden",
+        "shocking",
+        "surprising",
+        "incredible",
+        "revolutionary",
+        "breakthrough",
+        "powerful",
+        "guaranteed",
     ]
 
     # Extended emphasis words (from v2 implementation)
     EMPHASIS_WORDS_EXTENDED = [
-        'never', 'always', 'every', 'absolutely', 'completely', 'totally',
-        'exactly', 'precisely', 'definitely', 'certainly', 'critical',
-        'essential', 'crucial', 'important', 'key', 'major', 'significant',
+        "never",
+        "always",
+        "every",
+        "absolutely",
+        "completely",
+        "totally",
+        "exactly",
+        "precisely",
+        "definitely",
+        "certainly",
+        "critical",
+        "essential",
+        "crucial",
+        "important",
+        "key",
+        "major",
+        "significant",
     ]
 
     # Pause durations in milliseconds (SSML approach)
-    PAUSE_BREATH = 250       # Short breath pause
-    PAUSE_TRANSITION = 350   # After transition words
-    PAUSE_EMPHASIS = 200     # Before emphasized words
+    PAUSE_BREATH = 250  # Short breath pause
+    PAUSE_TRANSITION = 350  # After transition words
+    PAUSE_EMPHASIS = 200  # Before emphasized words
 
     def __init__(
         self,
@@ -316,7 +434,7 @@ class NaturalPacingInjector:
         enable_emphasis_markers: bool = True,
         breath_marker: str = "<breath/>",
         short_pause_marker: str = "<pause:short/>",
-        medium_pause_marker: str = "<pause:medium/>"
+        medium_pause_marker: str = "<pause:medium/>",
     ):
         """
         Initialize the NaturalPacingInjector.
@@ -338,11 +456,13 @@ class NaturalPacingInjector:
         self.short_pause_marker = short_pause_marker
         self.medium_pause_marker = medium_pause_marker
 
-        logger.debug(f"NaturalPacingInjector initialized: threshold={long_sentence_threshold} words")
+        logger.debug(
+            f"NaturalPacingInjector initialized: threshold={long_sentence_threshold} words"
+        )
 
     def _split_into_sentences(self, text: str) -> list:
         """Split text into sentences."""
-        sentence_pattern = r'(?<=[.!?])\s+'
+        sentence_pattern = r"(?<=[.!?])\s+"
         sentences = re.split(sentence_pattern, text.strip())
         return [s.strip() for s in sentences if s.strip()]
 
@@ -383,7 +503,7 @@ class NaturalPacingInjector:
             if word_count > self.long_sentence_threshold:
                 result_parts.append(f' <break time="{self.PAUSE_BREATH}ms"/>')
 
-        result = ''.join(result_parts)
+        result = "".join(result_parts)
         logger.debug(f"Added breath markers to sentences > {self.long_sentence_threshold} words")
         return result
 
@@ -410,11 +530,11 @@ class NaturalPacingInjector:
             # Case-insensitive match but preserve original case
             patterns = [
                 # "However," -> "However,<break>"
-                (rf'\b({word})\s*,\s*', rf'\1, <break time="{self.PAUSE_TRANSITION}ms"/> '),
+                (rf"\b({word})\s*,\s*", rf'\1, <break time="{self.PAUSE_TRANSITION}ms"/> '),
                 # "However " at sentence start -> "However<break>"
-                (rf'^({word})\s+', rf'\1 <break time="{self.PAUSE_TRANSITION}ms"/> '),
+                (rf"^({word})\s+", rf'\1 <break time="{self.PAUSE_TRANSITION}ms"/> '),
                 # ". However " -> ". However<break>"
-                (rf'([.!?]\s+)({word})\s+', rf'\1\2 <break time="{self.PAUSE_TRANSITION}ms"/> '),
+                (rf"([.!?]\s+)({word})\s+", rf'\1\2 <break time="{self.PAUSE_TRANSITION}ms"/> '),
             ]
 
             for pattern, replacement in patterns:
@@ -444,7 +564,7 @@ class NaturalPacingInjector:
         for word in self.EMPHASIS_WORDS:
             # Wrap the word in emphasis tags (preserve original case)
             # Only match whole words not already in SSML tags
-            pattern = rf'\b({word})\b(?![^<]*>)'
+            pattern = rf"\b({word})\b(?![^<]*>)"
             replacement = rf'<emphasis level="moderate">\1</emphasis>'
             result = re.sub(pattern, replacement, result, flags=re.IGNORECASE)
 
@@ -523,7 +643,7 @@ class NaturalPacingInjector:
             return narration
 
         # Split into sentences
-        sentences = re.split(r'(?<=[.!?])\s+', narration)
+        sentences = re.split(r"(?<=[.!?])\s+", narration)
         result_sentences = []
 
         for sentence in sentences:
@@ -537,7 +657,7 @@ class NaturalPacingInjector:
             else:
                 result_sentences.append(sentence)
 
-        return ' '.join(result_sentences)
+        return " ".join(result_sentences)
 
     def inject_pause_markers(self, narration: str) -> str:
         """
@@ -561,22 +681,12 @@ class NaturalPacingInjector:
         for word in self.PAUSE_AFTER_WORDS:
             # Pattern: word at start of sentence or after punctuation
             # Add comma if not already present (creates natural pause)
-            pattern = rf'(?<=[.!?]\s)({word})\s+(?!,)'
-            result = re.sub(
-                pattern,
-                rf'\1, ',
-                result,
-                flags=re.IGNORECASE
-            )
+            pattern = rf"(?<=[.!?]\s)({word})\s+(?!,)"
+            result = re.sub(pattern, rf"\1, ", result, flags=re.IGNORECASE)
 
             # Also handle sentence starts
-            pattern = rf'^({word})\s+(?!,)'
-            result = re.sub(
-                pattern,
-                rf'\1, ',
-                result,
-                flags=re.IGNORECASE | re.MULTILINE
-            )
+            pattern = rf"^({word})\s+(?!,)"
+            result = re.sub(pattern, rf"\1, ", result, flags=re.IGNORECASE | re.MULTILINE)
 
         return result
 
@@ -603,8 +713,8 @@ class NaturalPacingInjector:
         # Add short pauses before emphasis words (if no comma already)
         for word in self.EMPHASIS_WORDS_EXTENDED:
             # Pattern: space before emphasis word (not at sentence start)
-            pattern = rf'(?<=[a-z])\s+({word})\b'
-            replacement = rf' - \1'  # Em-dash creates natural pause
+            pattern = rf"(?<=[a-z])\s+({word})\b"
+            replacement = rf" - \1"  # Em-dash creates natural pause
             result = re.sub(pattern, replacement, result, flags=re.IGNORECASE, count=3)
 
         # Break up long clauses with commas
@@ -615,12 +725,12 @@ class NaturalPacingInjector:
             if len(words) > 8:
                 # Add comma after ~half the words
                 mid = len(words) // 2
-                words[mid] = words[mid] + ','
-                return ' '.join(words)
+                words[mid] = words[mid] + ","
+                return " ".join(words)
             return text
 
         # Find long stretches without punctuation
-        pattern = r'[^.!?,;:]{80,}'
+        pattern = r"[^.!?,;:]{80,}"
         result = re.sub(pattern, add_clause_break, result)
 
         return result
@@ -675,14 +785,14 @@ class NaturalPacingInjector:
         result = narration
 
         # Remove breath markers
-        result = result.replace(self.breath_marker, '')
+        result = result.replace(self.breath_marker, "")
 
         # Remove pause markers
-        result = result.replace(self.short_pause_marker, '')
-        result = result.replace(self.medium_pause_marker, '')
+        result = result.replace(self.short_pause_marker, "")
+        result = result.replace(self.medium_pause_marker, "")
 
         # Clean up any double spaces
-        result = re.sub(r'\s+', ' ', result)
+        result = re.sub(r"\s+", " ", result)
 
         return result.strip()
 
@@ -690,6 +800,7 @@ class NaturalPacingInjector:
 # ============================================================
 # AI Provider Backends
 # ============================================================
+
 
 class AIProvider(ABC):
     """Abstract base class for AI providers."""
@@ -721,9 +832,9 @@ class OllamaProvider(AIProvider):
                 "model": self.model,
                 "prompt": prompt,
                 "stream": False,
-                "options": {"num_predict": max_tokens}
+                "options": {"num_predict": max_tokens},
             },
-            timeout=120
+            timeout=120,
         )
         response.raise_for_status()
         return response.json()["response"]
@@ -748,21 +859,18 @@ class GroqProvider(AIProvider):
     @retry(
         stop=stop_after_attempt(3),
         wait=wait_exponential(multiplier=1, min=2, max=10),
-        retry=retry_if_exception_type((requests.RequestException, ConnectionError, TimeoutError))
+        retry=retry_if_exception_type((requests.RequestException, ConnectionError, TimeoutError)),
     )
     def generate(self, prompt: str, max_tokens: int = 4096) -> str:
         response = requests.post(
             "https://api.groq.com/openai/v1/chat/completions",
-            headers={
-                "Authorization": f"Bearer {self.api_key}",
-                "Content-Type": "application/json"
-            },
+            headers={"Authorization": f"Bearer {self.api_key}", "Content-Type": "application/json"},
             json={
                 "model": self.model,
                 "messages": [{"role": "user", "content": prompt}],
-                "max_tokens": max_tokens
+                "max_tokens": max_tokens,
             },
-            timeout=60
+            timeout=60,
         )
         response.raise_for_status()
         return response.json()["choices"][0]["message"]["content"]
@@ -787,7 +895,7 @@ class GeminiProvider(AIProvider):
     @retry(
         stop=stop_after_attempt(3),
         wait=wait_exponential(multiplier=1, min=2, max=10),
-        retry=retry_if_exception_type((requests.RequestException, ConnectionError, TimeoutError))
+        retry=retry_if_exception_type((requests.RequestException, ConnectionError, TimeoutError)),
     )
     def generate(self, prompt: str, max_tokens: int = 4096) -> str:
         response = requests.post(
@@ -796,9 +904,9 @@ class GeminiProvider(AIProvider):
             params={"key": self.api_key},
             json={
                 "contents": [{"parts": [{"text": prompt}]}],
-                "generationConfig": {"maxOutputTokens": max_tokens}
+                "generationConfig": {"maxOutputTokens": max_tokens},
             },
-            timeout=60
+            timeout=60,
         )
         response.raise_for_status()
         return response.json()["candidates"][0]["content"]["parts"][0]["text"]
@@ -816,6 +924,7 @@ class ClaudeProvider(AIProvider):
     def __init__(self, api_key: Optional[str] = None, model: str = "claude-sonnet-4-20250514"):
         try:
             from anthropic import Anthropic, APIConnectionError, APITimeoutError, RateLimitError
+
             self._api_connection_error = APIConnectionError
             self._api_timeout_error = APITimeoutError
             self._rate_limit_error = RateLimitError
@@ -835,7 +944,7 @@ class ClaudeProvider(AIProvider):
     @retry(
         stop=stop_after_attempt(3),
         wait=wait_exponential(multiplier=1, min=2, max=10),
-        retry=retry_if_exception_type((ConnectionError, TimeoutError))
+        retry=retry_if_exception_type((ConnectionError, TimeoutError)),
     )
     def _generate_with_retry(self, prompt: str, max_tokens: int) -> str:
         """Generate with retry logic for network errors (not auth errors)."""
@@ -843,7 +952,7 @@ class ClaudeProvider(AIProvider):
             response = self.client.messages.create(
                 model=self.model,
                 max_tokens=max_tokens,
-                messages=[{"role": "user", "content": prompt}]
+                messages=[{"role": "user", "content": prompt}],
             )
             return response.content[0].text
         except self._api_connection_error as e:
@@ -876,21 +985,18 @@ class OpenAIProvider(AIProvider):
     @retry(
         stop=stop_after_attempt(3),
         wait=wait_exponential(multiplier=1, min=2, max=10),
-        retry=retry_if_exception_type((requests.RequestException, ConnectionError, TimeoutError))
+        retry=retry_if_exception_type((requests.RequestException, ConnectionError, TimeoutError)),
     )
     def generate(self, prompt: str, max_tokens: int = 4096) -> str:
         response = requests.post(
             "https://api.openai.com/v1/chat/completions",
-            headers={
-                "Authorization": f"Bearer {self.api_key}",
-                "Content-Type": "application/json"
-            },
+            headers={"Authorization": f"Bearer {self.api_key}", "Content-Type": "application/json"},
             json={
                 "model": self.model,
                 "messages": [{"role": "user", "content": prompt}],
-                "max_tokens": max_tokens
+                "max_tokens": max_tokens,
             },
-            timeout=60
+            timeout=60,
         )
         response.raise_for_status()
         return response.json()["choices"][0]["message"]["content"]
@@ -898,9 +1004,7 @@ class OpenAIProvider(AIProvider):
 
 # Provider factory
 def get_provider(
-    provider: str = "ollama",
-    api_key: Optional[str] = None,
-    model: Optional[str] = None
+    provider: str = "ollama", api_key: Optional[str] = None, model: Optional[str] = None
 ) -> AIProvider:
     """
     Get an AI provider instance.
@@ -933,20 +1037,22 @@ def get_provider(
 @dataclass
 class ScriptSection:
     """Represents a section of the video script."""
-    timestamp: str          # e.g., "00:00-00:15"
-    section_type: str       # hook, intro, content, outro
-    title: str              # Section title
-    narration: str          # What to say
-    screen_action: str      # What to show on screen
-    keywords: List[str]     # Keywords for stock footage search
-    duration_seconds: int   # Duration of this section
+
+    timestamp: str  # e.g., "00:00-00:15"
+    section_type: str  # hook, intro, content, outro
+    title: str  # Section title
+    narration: str  # What to say
+    screen_action: str  # What to show on screen
+    keywords: List[str]  # Keywords for stock footage search
+    duration_seconds: int  # Duration of this section
 
 
 @dataclass
 class ChapterMarker:
     """Represents a chapter marker for YouTube chapters."""
+
     timestamp_seconds: int  # Timestamp in seconds
-    title: str              # Chapter title
+    title: str  # Chapter title
 
     def to_timestamp_string(self) -> str:
         """Convert to YouTube timestamp format (MM:SS or HH:MM:SS)."""
@@ -961,26 +1067,28 @@ class ChapterMarker:
 @dataclass
 class RetentionPoint:
     """Represents a predicted retention spike/dip in the video."""
-    timestamp_seconds: int      # When this occurs
-    retention_type: str         # "hook", "micro_payoff", "open_loop", "cliffhanger", "cta"
-    description: str            # What happens at this point
-    expected_impact: str        # "high", "medium", "low" - expected retention impact
+
+    timestamp_seconds: int  # When this occurs
+    retention_type: str  # "hook", "micro_payoff", "open_loop", "cliffhanger", "cta"
+    description: str  # What happens at this point
+    expected_impact: str  # "high", "medium", "low" - expected retention impact
 
 
 @dataclass
 class VideoScript:
     """Complete video script with all sections."""
+
     title: str
     description: str
     tags: List[str]
     sections: List[ScriptSection]
-    total_duration: int         # Total duration in seconds
-    thumbnail_idea: str         # Suggestion for thumbnail
+    total_duration: int  # Total duration in seconds
+    thumbnail_idea: str  # Suggestion for thumbnail
     # New YouTube best practices fields
-    hook_text: str = ""                     # First 5 seconds hook text
+    hook_text: str = ""  # First 5 seconds hook text
     chapter_markers: List[ChapterMarker] = None  # YouTube chapter markers
     estimated_retention_points: List[RetentionPoint] = None  # Retention predictions
-    is_short: bool = False                  # Whether this is a YouTube Short
+    is_short: bool = False  # Whether this is a YouTube Short
 
     def __post_init__(self):
         """Initialize default values for optional fields."""
@@ -1011,7 +1119,9 @@ class VideoScript:
         summary_lines = []
         for rp in self.estimated_retention_points:
             timestamp = f"{rp.timestamp_seconds // 60}:{rp.timestamp_seconds % 60:02d}"
-            summary_lines.append(f"[{timestamp}] {rp.retention_type.upper()}: {rp.description} ({rp.expected_impact} impact)")
+            summary_lines.append(
+                f"[{timestamp}] {rp.retention_type.upper()}: {rp.description} ({rp.expected_impact} impact)"
+            )
         return "\n".join(summary_lines)
 
 
@@ -1087,10 +1197,7 @@ STRUCTURE (HOOK→TENSION→RESOLUTION): Hook 15s → Context 30s → Points 1-5
 JSON: {{"title": "...", "description": "...", "tags": [...], "thumbnail_idea": "...", "sections": [{{"timestamp": "...", "section_type": "...", "title": "...", "narration": "...", "screen_action": "...", "keywords": [...], "duration_seconds": ...}}]}}"""
 
     def __init__(
-        self,
-        provider: str = None,
-        api_key: Optional[str] = None,
-        model: Optional[str] = None
+        self, provider: str = None, api_key: Optional[str] = None, model: Optional[str] = None
     ):
         """
         Initialize the script writer.
@@ -1147,17 +1254,14 @@ JSON: {{"title": "...", "description": "...", "tags": [...], "thumbnail_idea": "
 Hook: "Data Bomb" ($847B lost), "Money Math" ($500/mo → $2.4M), "Insider Secret" (Wall Street), "Loss Aversion" (losing $347/mo)
 Must include: Exact numbers ($4,273 not thousands), ROI metrics, compound growth examples, actionable steps ("Open account, transfer $200..."), loss aversion
 Tone: Expert sharing insider knowledge, urgent""",
-
         "psychology": """PSYCHOLOGY (CPM $3-6) - CURIOSITY-DRIVEN, "WHAT IF"
 Hook: "What If" (mind-bending), "Dark Pattern" (brain hacked), "Forbidden Knowledge" (FBI techniques), "Mind Hack" (influence ability), "Study Shock" (Stanford 92%)
 Must include: Specific studies (2019 Stanford, Milgram, Cialdini), cognitive biases (anchoring, confirmation), dark psychology intrigue, real examples (casinos, advertisers)
 Tone: Mysterious insider revealing forbidden knowledge, dark/intriguing""",
-
         "storytelling": """STORYTELLING (CPM $4-15) - DRAMATIC TENSION, CLIFFHANGERS
 Hook: "In Media Res" (action mid-scene), "Dramatic Tension" (cost everything), "Mystery Question" (nobody knows why), "Countdown" (4 minutes), "Cliffhanger Tease" (ending changes everything)
 Must include: Sensory details (visual, sound, physical, emotional), mini-cliffhangers every 45-60s, character specifics (Maria, 34yo nurse, 2 kids), time pressure, twist techniques
 Tone: Documentary narrator, dramatic/immersive, thriller unfolding""",
-
         "default": """
 DEFAULT NICHE - ENGAGEMENT REQUIREMENTS:
 
@@ -1182,7 +1286,7 @@ DEFAULT NICHE - ENGAGEMENT REQUIREMENTS:
 - Subscribe hook: "We post 3 videos like this every week..."
 - Engagement driver: "If this changed how you think, smash that like button"
 
-### Tone: Professional but conversational, like a knowledgeable friend sharing valuable insights"""
+### Tone: Professional but conversational, like a knowledgeable friend sharing valuable insights""",
     }
 
     # ============================================================
@@ -1276,7 +1380,6 @@ FINANCE SHORTS - HIGH CTR TACTICS:
 - Specific actionable tip they can do TODAY
 - End with "Save this for later" or controversial claim
 - Pattern interrupt: Calculator sound [SFX], money counter [BROLL]""",
-
         "psychology": """
 PSYCHOLOGY SHORTS - VIRAL HOOKS:
 - Start with "Your brain is lying to you..."
@@ -1284,7 +1387,6 @@ PSYCHOLOGY SHORTS - VIRAL HOOKS:
 - Use "Manipulation technique #X" format
 - Dark pattern reveal: "They don't want you to know..."
 - Pattern interrupt: Brain imagery [BROLL], dramatic pause""",
-
         "storytelling": """
 STORYTELLING SHORTS - TENSION MAXIMIZING:
 - Open mid-crisis: "He had 30 seconds to decide..."
@@ -1292,14 +1394,13 @@ STORYTELLING SHORTS - TENSION MAXIMIZING:
 - Leave on cliffhanger OR satisfying twist
 - Use countdown pressure: "In 5 seconds..."
 - Pattern interrupt: Sound effects, dramatic zooms""",
-
         "default": """
 GENERAL SHORTS - ENGAGEMENT TACTICS:
 - Bold claim in first sentence
 - List format works: "3 things you need to know..."
 - End with question to drive comments
 - Pattern interrupt: Visual changes, tone shifts
-- Make them want to watch again"""
+- Make them want to watch again""",
     }
 
     def generate_short_script(
@@ -1307,7 +1408,7 @@ GENERAL SHORTS - ENGAGEMENT TACTICS:
         topic: str,
         duration_seconds: int = 30,
         style: str = "educational",
-        niche: str = "default"
+        niche: str = "default",
     ) -> VideoScript:
         """
         Generate a YouTube Shorts script (vertical, 20-60 seconds).
@@ -1338,7 +1439,7 @@ GENERAL SHORTS - ENGAGEMENT TACTICS:
             niche=niche,
             niche_guide=niche_guide,
             word_count=word_count,
-            duration=duration_seconds
+            duration=duration_seconds,
         )
 
         try:
@@ -1349,13 +1450,24 @@ GENERAL SHORTS - ENGAGEMENT TACTICS:
             video_script = self._create_short_script(script_data, duration_seconds)
 
             if len(video_script.sections) == 0:
-                logger.warning("Short script generated with 0 sections, retrying with simple format")
+                logger.warning(
+                    "Short script generated with 0 sections, retrying with simple format"
+                )
                 return self._generate_simple_short_script(topic, duration_seconds, niche)
 
-            logger.success(f"Short script generated: {len(video_script.sections)} sections, {video_script.total_duration}s")
+            logger.success(
+                f"Short script generated: {len(video_script.sections)} sections, {video_script.total_duration}s"
+            )
             return video_script
 
-        except (requests.RequestException, ConnectionError, TimeoutError, json.JSONDecodeError, KeyError, ValueError) as e:
+        except (
+            requests.RequestException,
+            ConnectionError,
+            TimeoutError,
+            json.JSONDecodeError,
+            KeyError,
+            ValueError,
+        ) as e:
             logger.warning(f"Complex short script failed, trying simple format: {e}")
             return self._generate_simple_short_script(topic, duration_seconds, niche)
 
@@ -1379,14 +1491,45 @@ GENERAL SHORTS - ENGAGEMENT TACTICS:
             # Build screen_action from visual_cue
             visual_cue = section_data.get("visual_cue", "")
             pattern_note = section_data.get("pattern_interrupt_note", "")
-            screen_action = f"{visual_cue} | Pattern: {pattern_note}" if pattern_note else visual_cue
+            screen_action = (
+                f"{visual_cue} | Pattern: {pattern_note}" if pattern_note else visual_cue
+            )
 
             # Extract keywords for B-roll
             narration = section_data.get("narration", "")
             words = narration.lower().split()
-            stop_words = {'the', 'a', 'an', 'is', 'are', 'was', 'were', 'and', 'or', 'but',
-                         'in', 'on', 'at', 'to', 'for', 'of', 'with', 'you', 'your', 'this',
-                         'that', 'it', 'they', 'we', 'i', 'my', 'be', 'have', 'has', 'can'}
+            stop_words = {
+                "the",
+                "a",
+                "an",
+                "is",
+                "are",
+                "was",
+                "were",
+                "and",
+                "or",
+                "but",
+                "in",
+                "on",
+                "at",
+                "to",
+                "for",
+                "of",
+                "with",
+                "you",
+                "your",
+                "this",
+                "that",
+                "it",
+                "they",
+                "we",
+                "i",
+                "my",
+                "be",
+                "have",
+                "has",
+                "can",
+            }
             keywords = [w for w in words if len(w) > 4 and w not in stop_words][:3]
 
             section = ScriptSection(
@@ -1396,7 +1539,7 @@ GENERAL SHORTS - ENGAGEMENT TACTICS:
                 narration=narration,
                 screen_action=screen_action,
                 keywords=keywords,
-                duration_seconds=duration
+                duration_seconds=duration,
             )
             sections.append(section)
 
@@ -1412,22 +1555,26 @@ GENERAL SHORTS - ENGAGEMENT TACTICS:
         current_time = 0
         for i, section in enumerate(sections):
             if section.section_type == "hook":
-                retention_points.append(RetentionPoint(
-                    timestamp_seconds=current_time,
-                    retention_type="hook",
-                    description=f"Opening hook: {section.narration[:50]}...",
-                    expected_impact="high"
-                ))
+                retention_points.append(
+                    RetentionPoint(
+                        timestamp_seconds=current_time,
+                        retention_type="hook",
+                        description=f"Opening hook: {section.narration[:50]}...",
+                        expected_impact="high",
+                    )
+                )
             current_time += section.duration_seconds
 
         # Add loop ending as retention point
         if data.get("loop_ending_note"):
-            retention_points.append(RetentionPoint(
-                timestamp_seconds=total_duration - 2,
-                retention_type="open_loop",
-                description=f"Loop ending: {data['loop_ending_note']}",
-                expected_impact="high"
-            ))
+            retention_points.append(
+                RetentionPoint(
+                    timestamp_seconds=total_duration - 2,
+                    retention_type="open_loop",
+                    description=f"Loop ending: {data['loop_ending_note']}",
+                    expected_impact="high",
+                )
+            )
 
         return VideoScript(
             title=data.get("title", topic[:40]),
@@ -1439,14 +1586,11 @@ GENERAL SHORTS - ENGAGEMENT TACTICS:
             hook_text=hook_text,
             chapter_markers=[],  # Shorts don't have chapters
             estimated_retention_points=retention_points,
-            is_short=True
+            is_short=True,
         )
 
     def _generate_simple_short_script(
-        self,
-        topic: str,
-        duration_seconds: int,
-        niche: str
+        self, topic: str, duration_seconds: int, niche: str
     ) -> VideoScript:
         """Generate a simpler Shorts script for smaller LLMs."""
         logger.info(f"Using simple Short script generator for: {topic}")
@@ -1455,7 +1599,7 @@ GENERAL SHORTS - ENGAGEMENT TACTICS:
             "finance": "Include a specific dollar amount or percentage. End with 'Save this.'",
             "psychology": "Start with 'Your brain...' or 'They don't want you to know...'",
             "storytelling": "Open mid-action. End on tension or twist.",
-            "default": "Bold opening claim. Specific number. Question to end."
+            "default": "Bold opening claim. Specific number. Question to end.",
         }
         niche_hint = niche_hints.get(niche, niche_hints["default"])
 
@@ -1486,21 +1630,21 @@ Write the script now:"""
             content = self.ai.generate(prompt, max_tokens=max_tokens)
 
             # Parse the simple format
-            lines = [l.strip() for l in content.split('\n') if l.strip()]
+            lines = [l.strip() for l in content.split("\n") if l.strip()]
             sections = []
             current_time = 0
 
             for line in lines:
                 # Try to extract timestamp from line
-                if line.startswith('['):
+                if line.startswith("["):
                     try:
-                        bracket_end = line.index(']')
+                        bracket_end = line.index("]")
                         timestamp_part = line[1:bracket_end]
-                        text = line[bracket_end + 1:].strip()
+                        text = line[bracket_end + 1 :].strip()
 
                         # Parse timestamp
-                        if '-' in timestamp_part:
-                            times = timestamp_part.replace('s', '').split('-')
+                        if "-" in timestamp_part:
+                            times = timestamp_part.replace("s", "").split("-")
                             start = int(times[0])
                             end = int(times[1])
                             duration = end - start
@@ -1515,28 +1659,32 @@ Write the script now:"""
 
                 if text and len(text) > 5:
                     section_type = "hook" if current_time == 0 else "content"
-                    sections.append(ScriptSection(
-                        timestamp=f"00:{current_time:02d}-00:{current_time + duration:02d}",
-                        section_type=section_type,
-                        title=f"Segment {len(sections) + 1}",
-                        narration=text,
-                        screen_action="[Dynamic visual, text overlay]",
-                        keywords=[topic.lower().split()[0], niche] if topic else [niche],
-                        duration_seconds=duration
-                    ))
+                    sections.append(
+                        ScriptSection(
+                            timestamp=f"00:{current_time:02d}-00:{current_time + duration:02d}",
+                            section_type=section_type,
+                            title=f"Segment {len(sections) + 1}",
+                            narration=text,
+                            screen_action="[Dynamic visual, text overlay]",
+                            keywords=[topic.lower().split()[0], niche] if topic else [niche],
+                            duration_seconds=duration,
+                        )
+                    )
                     current_time += duration
 
             if not sections:
                 # Fallback: create single section
-                sections.append(ScriptSection(
-                    timestamp="00:00-00:30",
-                    section_type="content",
-                    title="Main",
-                    narration=content[:200],
-                    screen_action="[Engaging visuals]",
-                    keywords=[niche, "shorts"],
-                    duration_seconds=30
-                ))
+                sections.append(
+                    ScriptSection(
+                        timestamp="00:00-00:30",
+                        section_type="content",
+                        title="Main",
+                        narration=content[:200],
+                        screen_action="[Engaging visuals]",
+                        keywords=[niche, "shorts"],
+                        duration_seconds=30,
+                    )
+                )
 
             total_duration = sum(s.duration_seconds for s in sections)
 
@@ -1551,12 +1699,18 @@ Write the script now:"""
                 chapter_markers=[],
                 estimated_retention_points=[
                     RetentionPoint(0, "hook", "Opening hook", "high"),
-                    RetentionPoint(total_duration - 3, "open_loop", "Loop ending", "high")
+                    RetentionPoint(total_duration - 3, "open_loop", "Loop ending", "high"),
                 ],
-                is_short=True
+                is_short=True,
             )
 
-        except (requests.RequestException, ConnectionError, TimeoutError, KeyError, ValueError) as e:
+        except (
+            requests.RequestException,
+            ConnectionError,
+            TimeoutError,
+            KeyError,
+            ValueError,
+        ) as e:
             logger.error(f"Simple short script generation failed: {e}")
             raise
 
@@ -1566,7 +1720,7 @@ Write the script now:"""
         duration_minutes: int = 5,
         style: str = "educational",
         audience: str = "general",
-        niche: str = "default"
+        niche: str = "default",
     ) -> VideoScript:
         """
         Generate a complete YouTube video script.
@@ -1610,7 +1764,7 @@ Write the script now:"""
             niche_guide=niche_guide,
             cta_30_percent=cta_30_percent,
             cta_50_percent=cta_50_percent,
-            cta_95_percent=cta_95_percent
+            cta_95_percent=cta_95_percent,
         )
 
         try:
@@ -1637,18 +1791,20 @@ Write the script now:"""
             logger.success(f"Script generated: {len(video_script.sections)} sections")
             return video_script
 
-        except (requests.RequestException, ConnectionError, TimeoutError, json.JSONDecodeError, KeyError, ValueError) as e:
+        except (
+            requests.RequestException,
+            ConnectionError,
+            TimeoutError,
+            json.JSONDecodeError,
+            KeyError,
+            ValueError,
+        ) as e:
             logger.warning(f"Complex script failed, trying simple format: {e}")
 
             # Fallback to simpler prompt for smaller models
             return self._generate_simple_script(topic, duration_minutes, niche)
 
-    def _generate_simple_script(
-        self,
-        topic: str,
-        duration_minutes: int,
-        niche: str
-    ) -> VideoScript:
+    def _generate_simple_script(self, topic: str, duration_minutes: int, niche: str) -> VideoScript:
         """Generate a simpler script format for smaller LLMs."""
         logger.info(f"Using simple script generator for: {topic}")
 
@@ -1657,7 +1813,7 @@ Write the script now:"""
             "finance": "Include specific dollar amounts (like $2,847), exact percentages (like 23.7% ROI), and actionable steps the viewer can take TODAY.",
             "psychology": "Reference psychological studies, use terms like 'cognitive bias' and 'subconscious triggers', and make it feel like revealing forbidden knowledge.",
             "storytelling": "Use vivid sensory details, build suspense with mini-cliffhangers, and make the viewer feel like they're watching a thriller unfold.",
-            "default": "Use specific numbers instead of vague words, ask rhetorical questions, and address the viewer directly with 'you'."
+            "default": "Use specific numbers instead of vague words, ask rhetorical questions, and address the viewer directly with 'you'.",
         }
         niche_hint = niche_hints.get(niche, niche_hints["default"])
 
@@ -1693,7 +1849,9 @@ Write the narration text now. No JSON or formatting needed. Write naturally as i
             content = self.ai.generate(prompt, max_tokens=max_tokens)
 
             # Create sections from paragraphs
-            paragraphs = [p.strip() for p in content.split('\n\n') if p.strip() and len(p.strip()) > 50]
+            paragraphs = [
+                p.strip() for p in content.split("\n\n") if p.strip() and len(p.strip()) > 50
+            ]
 
             if not paragraphs:
                 paragraphs = [content]
@@ -1702,43 +1860,76 @@ Write the narration text now. No JSON or formatting needed. Write naturally as i
             time_offset = 0
 
             # Section types based on position
-            section_types = ['hook', 'intro'] + ['content'] * (len(paragraphs) - 3) + ['conclusion', 'outro']
+            section_types = (
+                ["hook", "intro"] + ["content"] * (len(paragraphs) - 3) + ["conclusion", "outro"]
+            )
 
             for i, para in enumerate(paragraphs[:10]):  # Max 10 sections
                 # Estimate duration (150 words per minute)
                 word_count = len(para.split())
                 duration = max(15, int(word_count / 2.5))  # ~150 wpm
 
-                section_type = section_types[i] if i < len(section_types) else 'content'
+                section_type = section_types[i] if i < len(section_types) else "content"
 
                 # Extract keywords from paragraph
                 words = para.lower().split()
-                stop_words = {'the', 'a', 'an', 'is', 'are', 'was', 'were', 'and', 'or', 'but',
-                             'in', 'on', 'at', 'to', 'for', 'of', 'with', 'you', 'your', 'this',
-                             'that', 'it', 'they', 'we', 'i', 'my', 'be', 'have', 'has', 'can'}
+                stop_words = {
+                    "the",
+                    "a",
+                    "an",
+                    "is",
+                    "are",
+                    "was",
+                    "were",
+                    "and",
+                    "or",
+                    "but",
+                    "in",
+                    "on",
+                    "at",
+                    "to",
+                    "for",
+                    "of",
+                    "with",
+                    "you",
+                    "your",
+                    "this",
+                    "that",
+                    "it",
+                    "they",
+                    "we",
+                    "i",
+                    "my",
+                    "be",
+                    "have",
+                    "has",
+                    "can",
+                }
                 keywords = list(set([w for w in words if len(w) > 4 and w not in stop_words]))[:5]
 
                 # Add niche-related keywords
                 niche_keywords = {
-                    'finance': ['money', 'wealth', 'invest', 'income', 'financial'],
-                    'psychology': ['mind', 'brain', 'behavior', 'psychology', 'mental'],
-                    'storytelling': ['mystery', 'story', 'crime', 'investigation', 'truth']
+                    "finance": ["money", "wealth", "invest", "income", "financial"],
+                    "psychology": ["mind", "brain", "behavior", "psychology", "mental"],
+                    "storytelling": ["mystery", "story", "crime", "investigation", "truth"],
                 }
-                keywords.extend(niche_keywords.get(niche, ['documentary', 'educational'])[:2])
+                keywords.extend(niche_keywords.get(niche, ["documentary", "educational"])[:2])
 
                 start_time = time_offset
                 end_time = time_offset + duration
                 time_offset = end_time
 
-                sections.append(ScriptSection(
-                    timestamp=f"{start_time//60:02d}:{start_time%60:02d}-{end_time//60:02d}:{end_time%60:02d}",
-                    section_type=section_type,
-                    title=f"Section {i+1}",
-                    narration=para,
-                    screen_action=f"B-roll footage related to: {', '.join(keywords[:3])}",
-                    keywords=keywords,
-                    duration_seconds=duration
-                ))
+                sections.append(
+                    ScriptSection(
+                        timestamp=f"{start_time//60:02d}:{start_time%60:02d}-{end_time//60:02d}:{end_time%60:02d}",
+                        section_type=section_type,
+                        title=f"Section {i+1}",
+                        narration=para,
+                        screen_action=f"B-roll footage related to: {', '.join(keywords[:3])}",
+                        keywords=keywords,
+                        duration_seconds=duration,
+                    )
+                )
 
             # BUG FIX #2: Validate that we have at least 1 section
             if len(sections) == 0:
@@ -1761,10 +1952,12 @@ Write the narration text now. No JSON or formatting needed. Write naturally as i
             current_time = 0
             for section in sections:
                 if section.section_type in ["hook", "intro", "content", "conclusion"]:
-                    chapter_markers.append(ChapterMarker(
-                        timestamp_seconds=current_time,
-                        title=section.title or section.section_type.capitalize()
-                    ))
+                    chapter_markers.append(
+                        ChapterMarker(
+                            timestamp_seconds=current_time,
+                            title=section.title or section.section_type.capitalize(),
+                        )
+                    )
                 current_time += section.duration_seconds
 
             # Generate retention points
@@ -1772,58 +1965,68 @@ Write the narration text now. No JSON or formatting needed. Write naturally as i
             current_time = 0
             for i, section in enumerate(sections):
                 if section.section_type == "hook":
-                    retention_points.append(RetentionPoint(
-                        timestamp_seconds=current_time,
-                        retention_type="hook",
-                        description=f"Opening hook",
-                        expected_impact="high"
-                    ))
+                    retention_points.append(
+                        RetentionPoint(
+                            timestamp_seconds=current_time,
+                            retention_type="hook",
+                            description=f"Opening hook",
+                            expected_impact="high",
+                        )
+                    )
                 elif i > 0 and current_time % 45 < section.duration_seconds:
-                    retention_points.append(RetentionPoint(
-                        timestamp_seconds=current_time,
-                        retention_type="micro_payoff",
-                        description=f"Value point: {section.title}",
-                        expected_impact="medium"
-                    ))
+                    retention_points.append(
+                        RetentionPoint(
+                            timestamp_seconds=current_time,
+                            retention_type="micro_payoff",
+                            description=f"Value point: {section.title}",
+                            expected_impact="medium",
+                        )
+                    )
                 current_time += section.duration_seconds
 
             return VideoScript(
                 title=title,
                 description=f"In this video, we explore {topic}. Subscribe for more content!",
-                tags=topic.lower().split()[:10] + [niche, 'educational', 'tutorial'],
+                tags=topic.lower().split()[:10] + [niche, "educational", "tutorial"],
                 sections=sections,
                 total_duration=total_duration,
                 thumbnail_idea=f"Bold text with '{topic[:20]}' overlay",
                 hook_text=hook_text,
                 chapter_markers=chapter_markers,
                 estimated_retention_points=retention_points,
-                is_short=False
+                is_short=False,
             )
 
-        except (requests.RequestException, ConnectionError, TimeoutError, KeyError, ValueError) as e:
+        except (
+            requests.RequestException,
+            ConnectionError,
+            TimeoutError,
+            KeyError,
+            ValueError,
+        ) as e:
             logger.error(f"Simple script generation also failed: {e}")
             raise
 
     def _fix_json(self, json_str: str) -> str:
         """Fix common JSON issues from LLM outputs."""
         # Remove trailing commas before ] or }
-        json_str = re.sub(r',\s*]', ']', json_str)
-        json_str = re.sub(r',\s*}', '}', json_str)
+        json_str = re.sub(r",\s*]", "]", json_str)
+        json_str = re.sub(r",\s*}", "}", json_str)
 
         # Fix single quotes used instead of double quotes for keys
-        json_str = re.sub(r'(?<=[{,\s])(\w+)(?=\s*:)', r'""', json_str)
+        json_str = re.sub(r"(?<=[{,\s])(\w+)(?=\s*:)", r'""', json_str)
 
         # Remove any duplicate double quotes that may have been introduced
         json_str = re.sub(r'""(\w+)""', r'""', json_str)
 
         # Try to fix common truncation - add missing closing brackets
-        open_braces = json_str.count('{') - json_str.count('}')
-        open_brackets = json_str.count('[') - json_str.count(']')
+        open_braces = json_str.count("{") - json_str.count("}")
+        open_brackets = json_str.count("[") - json_str.count("]")
 
         if open_braces > 0:
-            json_str = json_str.rstrip() + '}' * open_braces
+            json_str = json_str.rstrip() + "}" * open_braces
         if open_brackets > 0:
-            json_str = json_str.rstrip() + ']' * open_brackets
+            json_str = json_str.rstrip() + "]" * open_brackets
 
         return json_str
 
@@ -1879,9 +2082,36 @@ Write the narration text now. No JSON or formatting needed. Write naturally as i
                 narration = section_data.get("narration", "")
                 words = narration.lower().split()
                 # Filter common words and get unique keywords
-                stop_words = {'the', 'a', 'an', 'is', 'are', 'was', 'were', 'be', 'been',
-                             'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of', 'with',
-                             'you', 'your', 'this', 'that', 'it', 'they', 'we', 'i', 'my'}
+                stop_words = {
+                    "the",
+                    "a",
+                    "an",
+                    "is",
+                    "are",
+                    "was",
+                    "were",
+                    "be",
+                    "been",
+                    "and",
+                    "or",
+                    "but",
+                    "in",
+                    "on",
+                    "at",
+                    "to",
+                    "for",
+                    "of",
+                    "with",
+                    "you",
+                    "your",
+                    "this",
+                    "that",
+                    "it",
+                    "they",
+                    "we",
+                    "i",
+                    "my",
+                }
                 keywords = [w for w in words if len(w) > 4 and w not in stop_words][:5]
 
             section = ScriptSection(
@@ -1891,7 +2121,7 @@ Write the narration text now. No JSON or formatting needed. Write naturally as i
                 narration=section_data.get("narration", ""),
                 screen_action=section_data.get("screen_action", ""),
                 keywords=keywords,
-                duration_seconds=section_data.get("duration_seconds", 30)
+                duration_seconds=section_data.get("duration_seconds", 30),
             )
             sections.append(section)
 
@@ -1910,32 +2140,38 @@ Write the narration text now. No JSON or formatting needed. Write naturally as i
         chapter_markers = []
         for cm_data in data.get("chapter_markers", []):
             if isinstance(cm_data, dict):
-                chapter_markers.append(ChapterMarker(
-                    timestamp_seconds=cm_data.get("timestamp_seconds", 0),
-                    title=cm_data.get("title", "Chapter")
-                ))
+                chapter_markers.append(
+                    ChapterMarker(
+                        timestamp_seconds=cm_data.get("timestamp_seconds", 0),
+                        title=cm_data.get("title", "Chapter"),
+                    )
+                )
 
         # Auto-generate chapter markers from sections if not provided
         if not chapter_markers and sections:
             current_time = 0
             for section in sections:
                 if section.section_type in ["hook", "intro", "content", "conclusion", "cta"]:
-                    chapter_markers.append(ChapterMarker(
-                        timestamp_seconds=current_time,
-                        title=section.title or section.section_type.capitalize()
-                    ))
+                    chapter_markers.append(
+                        ChapterMarker(
+                            timestamp_seconds=current_time,
+                            title=section.title or section.section_type.capitalize(),
+                        )
+                    )
                 current_time += section.duration_seconds
 
         # Parse retention points from data
         retention_points = []
         for rp_data in data.get("retention_points", []):
             if isinstance(rp_data, dict):
-                retention_points.append(RetentionPoint(
-                    timestamp_seconds=rp_data.get("timestamp_seconds", 0),
-                    retention_type=rp_data.get("type", "micro_payoff"),
-                    description=rp_data.get("description", ""),
-                    expected_impact=rp_data.get("expected_impact", "medium")
-                ))
+                retention_points.append(
+                    RetentionPoint(
+                        timestamp_seconds=rp_data.get("timestamp_seconds", 0),
+                        retention_type=rp_data.get("type", "micro_payoff"),
+                        description=rp_data.get("description", ""),
+                        expected_impact=rp_data.get("expected_impact", "medium"),
+                    )
+                )
 
         # Auto-generate retention points if not provided
         if not retention_points and sections:
@@ -1943,28 +2179,34 @@ Write the narration text now. No JSON or formatting needed. Write naturally as i
             for i, section in enumerate(sections):
                 # Add hook point
                 if section.section_type == "hook":
-                    retention_points.append(RetentionPoint(
-                        timestamp_seconds=current_time,
-                        retention_type="hook",
-                        description=f"Opening hook: {section.narration[:50]}...",
-                        expected_impact="high"
-                    ))
+                    retention_points.append(
+                        RetentionPoint(
+                            timestamp_seconds=current_time,
+                            retention_type="hook",
+                            description=f"Opening hook: {section.narration[:50]}...",
+                            expected_impact="high",
+                        )
+                    )
                 # Add micro-payoff every 30-60 seconds
                 elif current_time > 0 and current_time % 45 < section.duration_seconds:
-                    retention_points.append(RetentionPoint(
-                        timestamp_seconds=current_time,
-                        retention_type="micro_payoff",
-                        description=f"Value delivery: {section.title}",
-                        expected_impact="medium"
-                    ))
+                    retention_points.append(
+                        RetentionPoint(
+                            timestamp_seconds=current_time,
+                            retention_type="micro_payoff",
+                            description=f"Value delivery: {section.title}",
+                            expected_impact="medium",
+                        )
+                    )
                 # Add CTA points
                 if section.section_type == "cta":
-                    retention_points.append(RetentionPoint(
-                        timestamp_seconds=current_time,
-                        retention_type="cta",
-                        description="Call to action",
-                        expected_impact="medium"
-                    ))
+                    retention_points.append(
+                        RetentionPoint(
+                            timestamp_seconds=current_time,
+                            retention_type="cta",
+                            description="Call to action",
+                            expected_impact="medium",
+                        )
+                    )
                 current_time += section.duration_seconds
 
         return VideoScript(
@@ -1977,7 +2219,7 @@ Write the narration text now. No JSON or formatting needed. Write naturally as i
             hook_text=hook_text,
             chapter_markers=chapter_markers,
             estimated_retention_points=retention_points,
-            is_short=False
+            is_short=False,
         )
 
     def generate_title_variations(self, topic: str, count: int = 5) -> List[str]:
@@ -2011,27 +2253,26 @@ Return as a JSON array of strings:
 
         return [f"Tutorial: {topic}"]  # Fallback
 
-    def improve_script(
-        self,
-        script: VideoScript,
-        feedback: str
-    ) -> VideoScript:
+    def improve_script(self, script: VideoScript, feedback: str) -> VideoScript:
         """Improve an existing script based on feedback."""
         logger.info("Improving script based on feedback...")
 
         # Convert script to JSON for the prompt
-        script_json = json.dumps({
-            "title": script.title,
-            "sections": [
-                {
-                    "timestamp": s.timestamp,
-                    "section_type": s.section_type,
-                    "narration": s.narration,
-                    "screen_action": s.screen_action
-                }
-                for s in script.sections
-            ]
-        }, indent=2)
+        script_json = json.dumps(
+            {
+                "title": script.title,
+                "sections": [
+                    {
+                        "timestamp": s.timestamp,
+                        "section_type": s.section_type,
+                        "narration": s.narration,
+                        "screen_action": s.screen_action,
+                    }
+                    for s in script.sections
+                ],
+            },
+            indent=2,
+        )
 
         prompt = f"""Here's an existing YouTube script that needs improvement:
 
@@ -2085,7 +2326,7 @@ Please provide an improved version of the script in the same JSON format, addres
         title_lower = optimized.lower()
         for word, digit in NUMBER_WORDS_TO_DIGITS.items():
             # Match whole words only
-            pattern = r'\b' + word + r'\b'
+            pattern = r"\b" + word + r"\b"
             if re.search(pattern, title_lower, re.IGNORECASE):
                 optimized = re.sub(pattern, digit, optimized, flags=re.IGNORECASE)
 
@@ -2103,9 +2344,9 @@ Please provide an improved version of the script in the same JSON format, addres
             if primary_keyword.lower() in optimized.lower():
                 # Remove it and prepend
                 pattern = re.compile(re.escape(primary_keyword), re.IGNORECASE)
-                optimized = pattern.sub('', optimized).strip()
-                optimized = re.sub(r'\s+', ' ', optimized)  # Clean up double spaces
-                optimized = re.sub(r'^[:\-–—]\s*', '', optimized)  # Clean up leading punctuation
+                optimized = pattern.sub("", optimized).strip()
+                optimized = re.sub(r"\s+", " ", optimized)  # Clean up double spaces
+                optimized = re.sub(r"^[:\-–—]\s*", "", optimized)  # Clean up leading punctuation
             optimized = f"{primary_keyword}: {optimized}"
 
         # Add a power word if title seems weak (no power words and no numbers)
@@ -2117,7 +2358,7 @@ Please provide an improved version of the script in the same JSON format, addres
 
         # Truncate intelligently to 60 characters (don't cut mid-word)
         if len(optimized) > 60:
-            optimized = optimized[:57].rsplit(' ', 1)[0] + "..."
+            optimized = optimized[:57].rsplit(" ", 1)[0] + "..."
 
         logger.debug(f"Title optimized: '{title}' -> '{optimized}'")
         return optimized
@@ -2157,7 +2398,7 @@ Please provide an improved version of the script in the same JSON format, addres
             "payoff": "Key Insight",
             "cta": "Final Thoughts",
             "outro": "Outro",
-            "conclusion": "Conclusion"
+            "conclusion": "Conclusion",
         }
 
         for i, section in enumerate(script.sections):
@@ -2178,10 +2419,7 @@ Please provide an improved version of the script in the same JSON format, addres
         return "\n".join(timestamps)
 
     def generate_optimized_description(
-        self,
-        script: VideoScript,
-        primary_keyword: str = "",
-        niche: str = "default"
+        self, script: VideoScript, primary_keyword: str = "", niche: str = "default"
     ) -> str:
         """
         Generate an SEO-optimized YouTube description.
@@ -2201,7 +2439,7 @@ Please provide an improved version of the script in the same JSON format, addres
             Optimized description string
         """
         # Start with a keyword-rich hook (first 200 chars are critical)
-        keyword = primary_keyword or script.title.split(':')[0].strip()
+        keyword = primary_keyword or script.title.split(":")[0].strip()
         hook = f"Discover {keyword} in this comprehensive guide. "
 
         # Add the original description if it exists
@@ -2233,7 +2471,7 @@ Please provide an improved version of the script in the same JSON format, addres
             "psychology": ["#Psychology", "#MindHacks", "#SelfImprovement"],
             "storytelling": ["#TrueStory", "#Documentary", "#Storytelling"],
             "programming": ["#Programming", "#Coding", "#Tech"],
-            "default": ["#Tutorial", "#HowTo", "#Education"]
+            "default": ["#Tutorial", "#HowTo", "#Education"],
         }
 
         hashtags = niche_hashtags.get(niche, niche_hashtags["default"])
@@ -2249,11 +2487,7 @@ Please provide an improved version of the script in the same JSON format, addres
         return description
 
     def get_full_narration(
-        self,
-        script: VideoScript,
-        clean: bool = True,
-        validate: bool = True,
-        niche: str = "default"
+        self, script: VideoScript, clean: bool = True, validate: bool = True, niche: str = "default"
     ) -> str:
         """
         Extract the narration text for TTS, with optional cleaning and validation.
@@ -2278,7 +2512,8 @@ Please provide an improved version of the script in the same JSON format, addres
         # Clean and validate if requested
         if clean or validate:
             try:
-                from src.content.script_validator import ScriptValidator, ValidationResult
+                from src.content.script_validator import ScriptValidator
+
                 validator = ScriptValidator()
 
                 if clean:
@@ -2286,22 +2521,24 @@ Please provide an improved version of the script in the same JSON format, addres
                     full_narration = validator.clean_script(full_narration)
                     cleaned_length = len(full_narration)
                     if original_length != cleaned_length:
-                        logger.info(f"Script cleaned: {original_length} -> {cleaned_length} chars "
-                                   f"({original_length - cleaned_length} chars removed)")
+                        logger.info(
+                            f"Script cleaned: {original_length} -> {cleaned_length} chars "
+                            f"({original_length - cleaned_length} chars removed)"
+                        )
 
                 if validate:
                     result = validator.validate_script(
-                        full_narration,
-                        niche=niche,
-                        is_short=script.is_short
+                        full_narration, niche=niche, is_short=script.is_short
                     )
                     if not result.is_valid:
                         logger.warning(f"Script validation failed (score: {result.score}/100)")
                         for issue in result.issues:
                             logger.warning(f"  - {issue}")
                     elif result.warnings:
-                        logger.info(f"Script validation passed (score: {result.score}/100) "
-                                   f"with {len(result.warnings)} warnings")
+                        logger.info(
+                            f"Script validation passed (score: {result.score}/100) "
+                            f"with {len(result.warnings)} warnings"
+                        )
                     else:
                         logger.success(f"Script validation passed (score: {result.score}/100)")
 
@@ -2312,11 +2549,7 @@ Please provide an improved version of the script in the same JSON format, addres
 
         return full_narration
 
-    def validate_script(
-        self,
-        script: VideoScript,
-        niche: str = "default"
-    ) -> "ValidationResult":
+    def validate_script(self, script: VideoScript, niche: str = "default") -> "ValidationResult":
         """
         Validate a script and return detailed results.
 
@@ -2337,17 +2570,10 @@ Please provide an improved version of the script in the same JSON format, addres
         full_narration = "\n\n".join(narration_parts)
 
         validator = ScriptValidator()
-        return validator.validate_script(
-            full_narration,
-            niche=niche,
-            is_short=script.is_short
-        )
+        return validator.validate_script(full_narration, niche=niche, is_short=script.is_short)
 
     def clean_script_narration(
-        self,
-        script: VideoScript,
-        improve: bool = False,
-        niche: str = "default"
+        self, script: VideoScript, improve: bool = False, niche: str = "default"
     ) -> VideoScript:
         """
         Clean all narration in a script, optionally improving it.
@@ -2360,8 +2586,9 @@ Please provide an improved version of the script in the same JSON format, addres
         Returns:
             New VideoScript with cleaned narration
         """
-        from src.content.script_validator import ScriptValidator
         from copy import deepcopy
+
+        from src.content.script_validator import ScriptValidator
 
         validator = ScriptValidator()
         cleaned_script = deepcopy(script)
@@ -2376,7 +2603,9 @@ Please provide an improved version of the script in the same JSON format, addres
         # Update hook text if it exists
         if cleaned_script.hook_text:
             if improve:
-                cleaned_script.hook_text = validator.improve_script(cleaned_script.hook_text, niche=niche)
+                cleaned_script.hook_text = validator.improve_script(
+                    cleaned_script.hook_text, niche=niche
+                )
             else:
                 cleaned_script.hook_text = validator.clean_script(cleaned_script.hook_text)
 
@@ -2474,10 +2703,11 @@ Please provide an improved version of the script in the same JSON format, addres
             "And that's when everything changed...",
             "But there's one thing missing from this story...",
             "This is where things get complicated...",
-            "Most people skip this part - don't make that mistake..."
+            "Most people skip this part - don't make that mistake...",
         ]
 
         import random
+
         return random.sample(interrupts, min(count, len(interrupts)))
 
     def generate_first_30_seconds(self, topic: str, niche: str = "default") -> Dict[str, str]:
@@ -2506,23 +2736,23 @@ Please provide an improved version of the script in the same JSON format, addres
             "finance": [
                 f"And what I'm about to show you about {topic} could change your financial future forever.",
                 f"Most people never learn this about {topic} - and it costs them thousands.",
-                f"The wealthy have known this secret about {topic} for decades."
+                f"The wealthy have known this secret about {topic} for decades.",
             ],
             "psychology": [
                 f"Your brain processes {topic} in ways you've never imagined.",
                 f"What science has discovered about {topic} will make you rethink everything.",
-                f"Psychologists have studied {topic} for years - here's what they found."
+                f"Psychologists have studied {topic} for years - here's what they found.",
             ],
             "storytelling": [
                 f"The true story of {topic} is more shocking than fiction.",
                 f"What really happened with {topic} has never been fully told - until now.",
-                f"The events surrounding {topic} changed everything."
+                f"The events surrounding {topic} changed everything.",
             ],
             "default": [
                 f"What I'm about to show you about {topic} took me years to discover.",
                 f"By the end of this video, {topic} will never look the same to you.",
-                f"The truth about {topic} is more surprising than you think."
-            ]
+                f"The truth about {topic} is more surprising than you think.",
+            ],
         }
         context = random.choice(context_templates.get(niche, context_templates["default"]))
 
@@ -2543,7 +2773,7 @@ Please provide an improved version of the script in the same JSON format, addres
             "default": [
                 f"In the next few minutes, you'll learn everything you need to know about {topic}. But the most important insight comes at the end...",
                 f"I'll break down {topic} step by step. And what I reveal near the end might just change everything...",
-            ]
+            ],
         }
         promise = random.choice(promise_templates.get(niche, promise_templates["default"]))
 
@@ -2551,7 +2781,7 @@ Please provide an improved version of the script in the same JSON format, addres
             "hook": hook,
             "context": context,
             "promise": promise,
-            "full_30_seconds": f"{hook}\n\n{context}\n\n{promise}"
+            "full_30_seconds": f"{hook}\n\n{context}\n\n{promise}",
         }
 
     def generate_chapter_suggestions(self, sections: List[ScriptSection]) -> List[ChapterMarker]:
@@ -2578,10 +2808,9 @@ Please provide an improved version of the script in the same JSON format, addres
 
         # Ensure first chapter is at 00:00
         first_section = sections[0]
-        chapters.append(ChapterMarker(
-            timestamp_seconds=0,
-            title=first_section.title or "Introduction"
-        ))
+        chapters.append(
+            ChapterMarker(timestamp_seconds=0, title=first_section.title or "Introduction")
+        )
         current_time += first_section.duration_seconds
 
         # Add chapters for significant sections
@@ -2593,19 +2822,19 @@ Please provide an improved version of the script in the same JSON format, addres
 
             # Create chapter for content sections
             if section.section_type in ["content", "point", "story", "example", "conclusion"]:
-                chapters.append(ChapterMarker(
-                    timestamp_seconds=current_time,
-                    title=section.title or section.section_type.capitalize()
-                ))
+                chapters.append(
+                    ChapterMarker(
+                        timestamp_seconds=current_time,
+                        title=section.title or section.section_type.capitalize(),
+                    )
+                )
 
             current_time += section.duration_seconds
 
         return chapters
 
     def generate_chapters_from_script(
-        self,
-        script: VideoScript,
-        duration_seconds: Optional[int] = None
+        self, script: VideoScript, duration_seconds: Optional[int] = None
     ) -> str:
         """
         Auto-generate YouTube chapters from script sections.
@@ -2692,10 +2921,7 @@ Please provide an improved version of the script in the same JSON format, addres
         return "\n\nCHAPTERS:\n" + "\n".join(chapters)
 
     def enhance_script_with_hooks(
-        self,
-        script: VideoScript,
-        niche: str = "default",
-        auto_enhance: bool = True
+        self, script: VideoScript, niche: str = "default", auto_enhance: bool = True
     ) -> VideoScript:
         """
         Enhance a script with viral hooks and retention features.
@@ -2727,7 +2953,9 @@ Please provide an improved version of the script in the same JSON format, addres
         hooks = hook_generator.get_all_hooks(topic, count=3)
         if hooks:
             best_hook, style, retention = hooks[0]
-            logger.info(f"[ScriptWriter] Generated {style} hook with {retention:.1f}% expected retention")
+            logger.info(
+                f"[ScriptWriter] Generated {style} hook with {retention:.1f}% expected retention"
+            )
 
             # Update hook_text if not already set
             if not script.hook_text or len(script.hook_text) < 20:
@@ -2738,9 +2966,7 @@ Please provide an improved version of the script in the same JSON format, addres
             full_narration = "\n\n".join([s.narration for s in script.sections if s.narration])
 
             enhanced_narration = hook_generator.enhance_script_retention(
-                script=full_narration,
-                video_duration=script.total_duration or 600,
-                min_open_loops=3
+                script=full_narration, video_duration=script.total_duration or 600, min_open_loops=3
             )
 
             # Split enhanced narration back to sections (approximately)
@@ -2762,8 +2988,7 @@ Please provide an improved version of the script in the same JSON format, addres
 
         # 3. Get pattern interrupts for the video
         interrupts = hook_generator.get_pattern_interrupts(
-            video_duration=script.total_duration or 600,
-            interrupt_interval=45
+            video_duration=script.total_duration or 600, interrupt_interval=45
         )
 
         # Add retention points from interrupts
@@ -2771,21 +2996,20 @@ Please provide an improved version of the script in the same JSON format, addres
             script.estimated_retention_points = []
 
         for interrupt in interrupts:
-            script.estimated_retention_points.append(RetentionPoint(
-                timestamp_seconds=int(interrupt.timestamp),
-                retention_type=interrupt.type,
-                description=interrupt.content,
-                expected_impact="medium"
-            ))
+            script.estimated_retention_points.append(
+                RetentionPoint(
+                    timestamp_seconds=int(interrupt.timestamp),
+                    retention_type=interrupt.type,
+                    description=interrupt.content,
+                    expected_impact="medium",
+                )
+            )
 
         logger.success(f"[ScriptWriter] Script enhanced with {len(interrupts)} pattern interrupts")
         return script
 
     def optimize_script_metadata(
-        self,
-        script: VideoScript,
-        niche: str = "default",
-        keywords: List[str] = None
+        self, script: VideoScript, niche: str = "default", keywords: List[str] = None
     ) -> VideoScript:
         """
         Optimize script metadata using MetadataOptimizer.
@@ -2817,9 +3041,7 @@ Please provide an improved version of the script in the same JSON format, addres
 
         # Optimize title
         title_variants = optimizer.generate_title_variants(
-            topic=script.title,
-            keywords=keywords,
-            count=3
+            topic=script.title, keywords=keywords, count=3
         )
         if title_variants:
             # Pick the highest scoring variant
@@ -2835,7 +3057,7 @@ Please provide an improved version of the script in the same JSON format, addres
             topic=script.title,
             keywords=keywords,
             script=narration_text,
-            video_duration=script.total_duration or 600
+            video_duration=script.total_duration or 600,
         )
 
         # Update script with optimized metadata
@@ -2847,21 +3069,18 @@ Please provide an improved version of the script in the same JSON format, addres
         if metadata.chapters and len(metadata.chapters) > len(script.chapter_markers):
             script.chapter_markers = [
                 ChapterMarker(
-                    timestamp_seconds=int(ch.get("start", 0)),
-                    title=ch.get("title", "Chapter")
+                    timestamp_seconds=int(ch.get("start", 0)), title=ch.get("title", "Chapter")
                 )
                 for ch in metadata.chapters
             ]
             logger.info(f"[ScriptWriter] Chapters updated: {len(script.chapter_markers)} chapters")
 
-        logger.success(f"[ScriptWriter] Metadata optimization complete (title_score: {metadata.title_score:.1f})")
+        logger.success(
+            f"[ScriptWriter] Metadata optimization complete (title_score: {metadata.title_score:.1f})"
+        )
         return script
 
-    def _validate_and_enhance_script(
-        self,
-        script: VideoScript,
-        niche: str
-    ) -> VideoScript:
+    def _validate_and_enhance_script(self, script: VideoScript, niche: str) -> VideoScript:
         """
         Validate script against best practices and log results.
 
@@ -2917,9 +3136,13 @@ Please provide an improved version of the script in the same JSON format, addres
         duration_minutes = script.total_duration / 60
         optimal_range = metrics.get("optimal_video_length", (8, 15))
         if optimal_range[0] <= duration_minutes <= optimal_range[1]:
-            logger.success(f"Video length: {duration_minutes:.1f} min (optimal: {optimal_range[0]}-{optimal_range[1]} min)")
+            logger.success(
+                f"Video length: {duration_minutes:.1f} min (optimal: {optimal_range[0]}-{optimal_range[1]} min)"
+            )
         else:
-            logger.warning(f"Video length: {duration_minutes:.1f} min (optimal: {optimal_range[0]}-{optimal_range[1]} min)")
+            logger.warning(
+                f"Video length: {duration_minutes:.1f} min (optimal: {optimal_range[0]}-{optimal_range[1]} min)"
+            )
 
         # Log overall content suggestions
         content_data = {
@@ -2937,11 +3160,7 @@ Please provide an improved version of the script in the same JSON format, addres
 
         return script
 
-    def run_pre_publish_checklist(
-        self,
-        script: VideoScript,
-        niche: str
-    ) -> 'PrePublishChecklist':
+    def run_pre_publish_checklist(self, script: VideoScript, niche: str) -> "PrePublishChecklist":
         """
         Run the pre-publish validation checklist on a script.
 
@@ -2995,7 +3214,7 @@ Please provide an improved version of the script in the same JSON format, addres
 
             return MockChecklist(
                 items=[MockChecklistItem("Module Check", False, "best_practices module not found")],
-                critical_issues=["best_practices module not found - install to enable validation"]
+                critical_issues=["best_practices module not found - install to enable validation"],
             )
 
         checklist = pre_publish_checklist(script, niche)
@@ -3049,9 +3268,7 @@ Please provide an improved version of the script in the same JSON format, addres
         return get_best_practices(niche)
 
     def optimize_script_retention(
-        self,
-        script: VideoScript,
-        add_pacing: bool = True
+        self, script: VideoScript, add_pacing: bool = True
     ) -> VideoScript:
         """
         Optimize a script for maximum viewer retention using rule-based techniques.
@@ -3084,15 +3301,13 @@ Please provide an improved version of the script in the same JSON format, addres
         pacing_injector = NaturalPacingInjector()
 
         # Get full narration for optimization
-        full_narration = '\n\n'.join(
-            section.narration for section in optimized_script.sections
-            if section.narration
+        full_narration = "\n\n".join(
+            section.narration for section in optimized_script.sections if section.narration
         )
 
         # Apply retention optimization to full narration
         optimized_narration = retention_optimizer.optimize_retention(
-            full_narration,
-            duration_seconds=optimized_script.total_duration
+            full_narration, duration_seconds=optimized_script.total_duration
         )
 
         # Apply natural pacing if requested
@@ -3100,7 +3315,7 @@ Please provide an improved version of the script in the same JSON format, addres
             optimized_narration = pacing_injector.add_natural_pacing(optimized_narration)
 
         # Split optimized narration back into paragraphs
-        paragraphs = [p.strip() for p in optimized_narration.split('\n\n') if p.strip()]
+        paragraphs = [p.strip() for p in optimized_narration.split("\n\n") if p.strip()]
 
         # Distribute optimized paragraphs back to sections
         # Match by proportion of original content
@@ -3116,8 +3331,10 @@ Please provide an improved version of the script in the same JSON format, addres
                     para_count = max(1, int(len(paragraphs) * proportion))
 
                     # Assign paragraphs to this section
-                    section_paras = paragraphs[para_idx:para_idx + para_count]
-                    section.narration = '\n\n'.join(section_paras) if section_paras else section.narration
+                    section_paras = paragraphs[para_idx : para_idx + para_count]
+                    section.narration = (
+                        "\n\n".join(section_paras) if section_paras else section.narration
+                    )
                     para_idx += para_count
 
             # Assign any remaining paragraphs to the last section with narration
@@ -3125,7 +3342,7 @@ Please provide an improved version of the script in the same JSON format, addres
                 for section in reversed(optimized_script.sections):
                     if section.narration:
                         remaining = paragraphs[para_idx:]
-                        section.narration += '\n\n' + '\n\n'.join(remaining)
+                        section.narration += "\n\n" + "\n\n".join(remaining)
                         break
 
         # Update hook text if it exists
@@ -3134,7 +3351,7 @@ Please provide an improved version of the script in the same JSON format, addres
             if first_section.narration:
                 # Get first ~15 seconds worth (~40 words)
                 words = first_section.narration.split()[:40]
-                optimized_script.hook_text = ' '.join(words)
+                optimized_script.hook_text = " ".join(words)
 
         # Add retention points for the new content
         new_retention_points = []
@@ -3142,39 +3359,53 @@ Please provide an improved version of the script in the same JSON format, addres
 
         for section in optimized_script.sections:
             # Check for open loops in this section
-            if any(phrase.lower() in section.narration.lower()
-                   for phrase in RetentionOptimizer.OPEN_LOOP_PHRASES):
-                new_retention_points.append(RetentionPoint(
-                    timestamp_seconds=current_time,
-                    retention_type="open_loop",
-                    description=f"Open loop in {section.section_type}",
-                    expected_impact="high"
-                ))
+            if any(
+                phrase.lower() in section.narration.lower()
+                for phrase in RetentionOptimizer.OPEN_LOOP_PHRASES
+            ):
+                new_retention_points.append(
+                    RetentionPoint(
+                        timestamp_seconds=current_time,
+                        retention_type="open_loop",
+                        description=f"Open loop in {section.section_type}",
+                        expected_impact="high",
+                    )
+                )
 
             # Check for micro-payoffs
-            if any(phrase.lower() in section.narration.lower()
-                   for phrase in RetentionOptimizer.MICRO_PAYOFF_PHRASES):
-                new_retention_points.append(RetentionPoint(
-                    timestamp_seconds=current_time + section.duration_seconds // 2,
-                    retention_type="micro_payoff",
-                    description=f"Micro-payoff in {section.section_type}",
-                    expected_impact="medium"
-                ))
+            if any(
+                phrase.lower() in section.narration.lower()
+                for phrase in RetentionOptimizer.MICRO_PAYOFF_PHRASES
+            ):
+                new_retention_points.append(
+                    RetentionPoint(
+                        timestamp_seconds=current_time + section.duration_seconds // 2,
+                        retention_type="micro_payoff",
+                        description=f"Micro-payoff in {section.section_type}",
+                        expected_impact="medium",
+                    )
+                )
 
             # Check for pattern interrupts
-            if any(phrase.lower() in section.narration.lower()
-                   for phrase in RetentionOptimizer.PATTERN_INTERRUPT_PHRASES):
-                new_retention_points.append(RetentionPoint(
-                    timestamp_seconds=current_time,
-                    retention_type="pattern_interrupt",
-                    description=f"Pattern interrupt in {section.section_type}",
-                    expected_impact="medium"
-                ))
+            if any(
+                phrase.lower() in section.narration.lower()
+                for phrase in RetentionOptimizer.PATTERN_INTERRUPT_PHRASES
+            ):
+                new_retention_points.append(
+                    RetentionPoint(
+                        timestamp_seconds=current_time,
+                        retention_type="pattern_interrupt",
+                        description=f"Pattern interrupt in {section.section_type}",
+                        expected_impact="medium",
+                    )
+                )
 
             current_time += section.duration_seconds
 
         # Merge with existing retention points
-        existing_timestamps = {rp.timestamp_seconds for rp in optimized_script.estimated_retention_points}
+        existing_timestamps = {
+            rp.timestamp_seconds for rp in optimized_script.estimated_retention_points
+        }
         for rp in new_retention_points:
             if rp.timestamp_seconds not in existing_timestamps:
                 optimized_script.estimated_retention_points.append(rp)
@@ -3192,6 +3423,7 @@ Please provide an improved version of the script in the same JSON format, addres
 # ============================================================
 # Retention Optimization Classes (Rule-Based, Zero Token Cost)
 # ============================================================
+
 
 class RetentionOptimizer:
     """
@@ -3251,9 +3483,21 @@ class RetentionOptimizer:
 
     # Transition words that signal good injection points
     TRANSITION_WORDS = [
-        'however', 'therefore', 'furthermore', 'moreover', 'additionally',
-        'consequently', 'nevertheless', 'meanwhile', 'subsequently', 'thus',
-        'hence', 'accordingly', 'similarly', 'likewise', 'indeed',
+        "however",
+        "therefore",
+        "furthermore",
+        "moreover",
+        "additionally",
+        "consequently",
+        "nevertheless",
+        "meanwhile",
+        "subsequently",
+        "thus",
+        "hence",
+        "accordingly",
+        "similarly",
+        "likewise",
+        "indeed",
     ]
 
     def __init__(self):
@@ -3276,17 +3520,21 @@ class RetentionOptimizer:
 
     def _get_next_interrupt(self) -> str:
         """Get the next pattern interrupt phrase."""
-        phrase = self.PATTERN_INTERRUPT_PHRASES[self._interrupt_index % len(self.PATTERN_INTERRUPT_PHRASES)]
+        phrase = self.PATTERN_INTERRUPT_PHRASES[
+            self._interrupt_index % len(self.PATTERN_INTERRUPT_PHRASES)
+        ]
         self._interrupt_index += 1
         return phrase
 
     def _split_into_sentences(self, text: str) -> List[str]:
         """Split text into sentences while preserving structure."""
         # Split on sentence-ending punctuation followed by space or newline
-        sentences = re.split(r'(?<=[.!?])\s+', text)
+        sentences = re.split(r"(?<=[.!?])\s+", text)
         return [s.strip() for s in sentences if s.strip()]
 
-    def _estimate_word_position_for_time(self, text: str, target_seconds: int, words_per_minute: int = 150) -> int:
+    def _estimate_word_position_for_time(
+        self, text: str, target_seconds: int, words_per_minute: int = 150
+    ) -> int:
         """Estimate the word position that corresponds to a target time in seconds."""
         words_per_second = words_per_minute / 60
         target_words = int(target_seconds * words_per_second)
@@ -3338,7 +3586,7 @@ class RetentionOptimizer:
                 open_loop = self._get_next_open_loop()
                 sentences.insert(point, open_loop)
 
-        return ' '.join(sentences)
+        return " ".join(sentences)
 
     def inject_micro_payoffs(self, narration: str, interval_seconds: int = 60) -> str:
         """
@@ -3378,14 +3626,14 @@ class RetentionOptimizer:
         for i, word in enumerate(words):
             word_count += 1
             # Sentence ends with . ! or ?
-            if word.rstrip(',').endswith(('.', '!', '?')):
+            if word.rstrip(",").endswith((".", "!", "?")):
                 sentence_ends.append(i)
 
         # Find sentence ends closest to target intervals
         while current_target < total_words - words_per_interval:
             # Find the closest sentence end to current target
             best_point = None
-            best_distance = float('inf')
+            best_distance = float("inf")
 
             for end_idx in sentence_ends:
                 distance = abs(end_idx - current_target)
@@ -3405,7 +3653,7 @@ class RetentionOptimizer:
                 # Insert after the sentence end
                 words.insert(point + 1, payoff)
 
-        return ' '.join(words)
+        return " ".join(words)
 
     def inject_pattern_interrupts(self, narration: str) -> str:
         """
@@ -3436,7 +3684,7 @@ class RetentionOptimizer:
                 break
 
             # Case-insensitive search for transition word at sentence start
-            pattern = rf'(?<=[.!?]\s)({trans_word})\b'
+            pattern = rf"(?<=[.!?]\s)({trans_word})\b"
             matches = list(re.finditer(pattern, result, re.IGNORECASE))
 
             # Only process first occurrence to avoid over-injection
@@ -3444,23 +3692,23 @@ class RetentionOptimizer:
                 match = matches[0]
                 interrupt = self._get_next_interrupt()
                 # Insert interrupt before the transition word
-                result = result[:match.start()] + interrupt + ' ' + result[match.start():]
+                result = result[: match.start()] + interrupt + " " + result[match.start() :]
                 interrupts_added += 1
 
         # If we haven't added many interrupts, add some at paragraph breaks
         if interrupts_added < 3:
-            paragraphs = result.split('\n\n')
+            paragraphs = result.split("\n\n")
             if len(paragraphs) > 2:
                 new_paragraphs = [paragraphs[0]]
                 for i, para in enumerate(paragraphs[1:-1], 1):
                     if interrupts_added < max_interrupts and len(para) > 100:
                         interrupt = self._get_next_interrupt()
-                        new_paragraphs.append(interrupt + '\n\n' + para)
+                        new_paragraphs.append(interrupt + "\n\n" + para)
                         interrupts_added += 1
                     else:
                         new_paragraphs.append(para)
                 new_paragraphs.append(paragraphs[-1])
-                result = '\n\n'.join(new_paragraphs)
+                result = "\n\n".join(new_paragraphs)
 
         return result
 
@@ -3535,7 +3783,7 @@ if __name__ == "__main__":
             topic="How to Build a REST API with Python and FastAPI",
             duration_minutes=10,
             style="educational",
-            audience="beginners"
+            audience="beginners",
         )
 
         print(f"\n{'='*60}")

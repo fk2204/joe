@@ -1,6 +1,8 @@
 """Query caching for repeated database lookups."""
+
 from functools import lru_cache
-from typing import Optional, Dict, Any
+from typing import Any, Dict
+
 from loguru import logger
 
 
@@ -8,6 +10,7 @@ from loguru import logger
 def get_cached_channel_config(channel_id: str) -> Dict[str, Any]:
     """Cached channel config lookup."""
     from src.config import load_channel_config
+
     logger.debug(f"Cache miss: loading channel config for {channel_id}")
     return load_channel_config(channel_id)
 

@@ -5,14 +5,15 @@ Downloads multiple stock clips simultaneously using ThreadPoolExecutor.
 Reduces download time from 30-60 seconds to 10-15 seconds.
 """
 
+import asyncio
 import os
 import time
-import asyncio
-import requests
-from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from typing import List, Optional
 from dataclasses import dataclass
+from pathlib import Path
+from typing import List, Optional
+
+import requests
 from loguru import logger
 
 
@@ -27,6 +28,7 @@ class DownloadTask:
 @dataclass
 class DownloadResult:
     """Result of a single download operation."""
+
     clip_id: str
     success: bool
     file_path: Optional[str] = None
@@ -37,6 +39,7 @@ class DownloadResult:
 @dataclass
 class BatchDownloadResult:
     """Result of a batch download operation."""
+
     total: int
     successful: int
     failed: int
@@ -61,7 +64,7 @@ class ParallelDownloader:
             output_path = Path(task.output_path)
             output_path.parent.mkdir(parents=True, exist_ok=True)
 
-            with open(output_path, 'wb') as f:
+            with open(output_path, "wb") as f:
                 for chunk in response.iter_content(chunk_size=8192):
                     f.write(chunk)
 
@@ -85,10 +88,7 @@ class ParallelDownloader:
         results = []
 
         with ThreadPoolExecutor(max_workers=self.max_workers) as executor:
-            future_to_task = {
-                executor.submit(self.download_single, task): task
-                for task in tasks
-            }
+            future_to_task = {executor.submit(self.download_single, task): task for task in tasks}
 
             for future in as_completed(future_to_task):
                 result = future.result()
@@ -106,7 +106,9 @@ class ParallelDownloader:
     async def download_batch_async(self, tasks: List[DownloadTask]) -> BatchDownloadResult:
         """Download multiple clips in parallel using asyncio."""
         if not tasks:
-            return BatchDownloadResult(total=0, successful=0, failed=0, file_paths=[], elapsed_time=0)
+            return BatchDownloadResult(
+                total=0, successful=0, failed=0, file_paths=[], elapsed_time=0
+            )
 
         logger.info(f"Starting async parallel download: {len(tasks)} clips")
         start_time = time.time()
@@ -120,14 +122,14 @@ class ParallelDownloader:
                     clip_id=task.clip_id,
                     success=result is not None,
                     file_path=result,
-                    download_time=time.time() - start
+                    download_time=time.time() - start,
                 )
             except Exception as e:
                 return DownloadResult(
                     clip_id=task.clip_id,
                     success=False,
                     error=str(e),
-                    download_time=time.time() - start
+                    download_time=time.time() - start,
                 )
 
         results = await asyncio.gather(*[download_one(t) for t in tasks])
@@ -142,7 +144,7 @@ class ParallelDownloader:
             successful=len(successful),
             failed=len(tasks) - len(successful),
             file_paths=[r.file_path for r in successful if r.file_path],
-            elapsed_time=elapsed
+            elapsed_time=elapsed,
         )
 
 

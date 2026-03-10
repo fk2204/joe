@@ -30,27 +30,28 @@ Performance:
     - Easy customization of text, colors, images
 """
 
-from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Any, Tuple, Union
-from pathlib import Path
-from enum import Enum
-from datetime import datetime
-import subprocess
 import json
-import shutil
 import os
+import shutil
+import subprocess
 import tempfile
-import hashlib
+from dataclasses import dataclass, field
+from datetime import datetime
+from enum import Enum
+from pathlib import Path
+from typing import Any, Dict, List, Optional, Tuple
+
 from loguru import logger
 
 try:
-    from PIL import Image, ImageDraw, ImageFont, ImageFilter
+    from PIL import Image, ImageDraw, ImageFont
 except ImportError:
     raise ImportError("Please install pillow: pip install pillow")
 
 
 class PlaceholderType(Enum):
     """Types of placeholders supported in templates."""
+
     TEXT = "text"
     IMAGE = "image"
     VIDEO = "video"
@@ -61,10 +62,11 @@ class PlaceholderType(Enum):
 @dataclass
 class Placeholder:
     """A placeholder in a video template."""
+
     id: str
     type: PlaceholderType
     position: Tuple[int, int]  # x, y
-    size: Tuple[int, int]      # width, height
+    size: Tuple[int, int]  # width, height
     default_value: Any = None
     font_size: int = 48
     font_color: str = "white"
@@ -92,11 +94,11 @@ class Placeholder:
             "duration": self.duration,
             "start_time": self.start_time,
             "animation": self.animation,
-            "layer": self.layer
+            "layer": self.layer,
         }
 
     @classmethod
-    def from_dict(cls, data: Dict) -> 'Placeholder':
+    def from_dict(cls, data: Dict) -> "Placeholder":
         """Create from dictionary."""
         return cls(
             id=data["id"],
@@ -112,13 +114,14 @@ class Placeholder:
             duration=data.get("duration"),
             start_time=data.get("start_time", 0.0),
             animation=data.get("animation"),
-            layer=data.get("layer", 0)
+            layer=data.get("layer", 0),
         )
 
 
 @dataclass
 class TemplateConfig:
     """Configuration for a video template."""
+
     id: str
     name: str
     description: str
@@ -148,11 +151,11 @@ class TemplateConfig:
             "background_color": self.background_color,
             "created_at": self.created_at,
             "niche": self.niche,
-            "tags": self.tags
+            "tags": self.tags,
         }
 
     @classmethod
-    def from_dict(cls, data: Dict) -> 'TemplateConfig':
+    def from_dict(cls, data: Dict) -> "TemplateConfig":
         """Create from dictionary."""
         return cls(
             id=data["id"],
@@ -167,7 +170,7 @@ class TemplateConfig:
             background_color=data.get("background_color", "#1a1a2e"),
             created_at=data.get("created_at", datetime.now().isoformat()),
             niche=data.get("niche"),
-            tags=data.get("tags", [])
+            tags=data.get("tags", []),
         )
 
 
@@ -183,25 +186,36 @@ class TemplateEngine:
 
     # Optimized FFmpeg parameters (codec-independent)
     FFMPEG_PARAMS_BASE = [
-        "-movflags", "+faststart",
-        "-threads", "0",
+        "-movflags",
+        "+faststart",
+        "-threads",
+        "0",
     ]
 
     # libx264-specific parameters
     FFMPEG_PARAMS_X264 = [
-        "-profile:v", "high",
-        "-level", "4.2",
-        "-bf", "3",
-        "-g", "60",
-        "-keyint_min", "30",
-        "-sc_threshold", "0",
+        "-profile:v",
+        "high",
+        "-level",
+        "4.2",
+        "-bf",
+        "3",
+        "-g",
+        "60",
+        "-keyint_min",
+        "30",
+        "-sc_threshold",
+        "0",
     ]
 
     # NVENC-specific parameters
     FFMPEG_PARAMS_NVENC = [
-        "-profile:v", "high",
-        "-level", "4.2",
-        "-g", "60",
+        "-profile:v",
+        "high",
+        "-level",
+        "4.2",
+        "-g",
+        "60",
     ]
 
     def __init__(self, template_dir: str = "assets/templates"):
@@ -265,7 +279,9 @@ class TemplateEngine:
             ffmpeg_path = self._ffmpeg_path or "ffmpeg"
             result = subprocess.run(
                 [ffmpeg_path, "-hide_banner", "-encoders"],
-                capture_output=True, text=True, timeout=5
+                capture_output=True,
+                text=True,
+                timeout=5,
             )
             self._nvenc_available = "h264_nvenc" in result.stdout
             if self._nvenc_available:
@@ -295,7 +311,7 @@ class TemplateEngine:
         config_file = self.template_dir / "templates.json"
         if config_file.exists():
             try:
-                with open(config_file, 'r', encoding='utf-8') as f:
+                with open(config_file, "r", encoding="utf-8") as f:
                     data = json.load(f)
 
                 for template_data in data.get("templates", []):
@@ -314,11 +330,8 @@ class TemplateEngine:
         """Save all template configurations to disk."""
         config_file = self.template_dir / "templates.json"
         try:
-            data = {
-                "version": "1.0",
-                "templates": [t.to_dict() for t in self.templates.values()]
-            }
-            with open(config_file, 'w', encoding='utf-8') as f:
+            data = {"version": "1.0", "templates": [t.to_dict() for t in self.templates.values()]}
+            with open(config_file, "w", encoding="utf-8") as f:
                 json.dump(data, f, indent=2)
             logger.debug(f"Saved {len(self.templates)} templates to {config_file}")
         except Exception as e:
@@ -337,7 +350,7 @@ class TemplateEngine:
         base_video: Optional[str] = None,
         base_image: Optional[str] = None,
         niche: Optional[str] = None,
-        tags: List[str] = None
+        tags: List[str] = None,
     ) -> TemplateConfig:
         """
         Create a new video template.
@@ -376,7 +389,7 @@ class TemplateEngine:
             base_video=base_video,
             base_image=base_image,
             niche=niche,
-            tags=tags
+            tags=tags,
         )
 
         self.templates[template_id] = template
@@ -411,7 +424,7 @@ class TemplateEngine:
         values: Dict[str, Any],
         audio_file: Optional[str] = None,
         duration_override: Optional[float] = None,
-        background_override: Optional[str] = None
+        background_override: Optional[str] = None,
     ) -> Optional[str]:
         """
         Render a video from template with provided values.
@@ -453,22 +466,14 @@ class TemplateEngine:
             temp_path = Path(temp_dir)
 
             # Step 1: Create base frame/video
-            base_frame = self._create_base_frame(
-                template,
-                temp_path,
-                background_override
-            )
+            base_frame = self._create_base_frame(template, temp_path, background_override)
 
             if not base_frame:
                 logger.error("Failed to create base frame")
                 return None
 
             # Step 2: Build FFmpeg filter chain
-            filter_complex = self._build_filter_complex(
-                template,
-                values,
-                duration
-            )
+            filter_complex = self._build_filter_complex(template, values, duration)
 
             # Step 3: Render video with FFmpeg
             result = self._render_video(
@@ -479,7 +484,7 @@ class TemplateEngine:
                 template=template,
                 filter_complex=filter_complex,
                 temp_dir=temp_path,
-                values=values
+                values=values,
             )
 
             if result:
@@ -489,22 +494,17 @@ class TemplateEngine:
             return None
 
     def _create_base_frame(
-        self,
-        template: TemplateConfig,
-        temp_dir: Path,
-        background_override: Optional[str] = None
+        self, template: TemplateConfig, temp_dir: Path, background_override: Optional[str] = None
     ) -> Optional[str]:
         """Create the base frame/background for the video."""
         width, height = template.resolution
 
         # Use override, base image, base video, or generate from color
         if background_override:
-            if background_override.startswith('#'):
+            if background_override.startswith("#"):
                 # It's a color
                 return self._create_color_background(
-                    background_override,
-                    template.resolution,
-                    temp_dir / "base.png"
+                    background_override, template.resolution, temp_dir / "base.png"
                 )
             elif os.path.exists(background_override):
                 return background_override
@@ -517,35 +517,27 @@ class TemplateEngine:
 
         # Generate from background color
         return self._create_color_background(
-            template.background_color,
-            template.resolution,
-            temp_dir / "base.png"
+            template.background_color, template.resolution, temp_dir / "base.png"
         )
 
     def _create_color_background(
-        self,
-        color: str,
-        resolution: Tuple[int, int],
-        output_path: Path
+        self, color: str, resolution: Tuple[int, int], output_path: Path
     ) -> Optional[str]:
         """Create a solid color background image with gradient."""
         try:
             # Parse hex color
-            color_clean = color.lstrip('#')
-            rgb = tuple(int(color_clean[i:i+2], 16) for i in (0, 2, 4))
+            color_clean = color.lstrip("#")
+            rgb = tuple(int(color_clean[i : i + 2], 16) for i in (0, 2, 4))
 
             width, height = resolution
-            img = Image.new('RGB', resolution, rgb)
+            img = Image.new("RGB", resolution, rgb)
             draw = ImageDraw.Draw(img)
 
             # Add subtle radial gradient for depth
             for i in range(min(50, min(width, height) // 20)):
                 alpha = int(255 * (1 - i / 50) * 0.3)
                 darker = tuple(max(0, c - alpha // 3) for c in rgb)
-                draw.rectangle(
-                    [i, i, width - i, height - i],
-                    outline=darker
-                )
+                draw.rectangle([i, i, width - i, height - i], outline=darker)
 
             img.save(str(output_path), quality=95)
             return str(output_path)
@@ -554,39 +546,24 @@ class TemplateEngine:
             return None
 
     def _build_filter_complex(
-        self,
-        template: TemplateConfig,
-        values: Dict[str, Any],
-        duration: float
+        self, template: TemplateConfig, values: Dict[str, Any], duration: float
     ) -> str:
         """Build FFmpeg filter_complex string for text overlays."""
         filters = []
 
         # Sort placeholders by layer
-        sorted_placeholders = sorted(
-            template.placeholders,
-            key=lambda p: p.layer
-        )
+        sorted_placeholders = sorted(template.placeholders, key=lambda p: p.layer)
 
         for placeholder in sorted_placeholders:
             if placeholder.type == PlaceholderType.TEXT:
                 value = values.get(placeholder.id, placeholder.default_value)
                 if value:
-                    text_filter = self._build_text_filter(
-                        placeholder,
-                        str(value),
-                        duration
-                    )
+                    text_filter = self._build_text_filter(placeholder, str(value), duration)
                     filters.append(text_filter)
 
         return ",".join(filters) if filters else ""
 
-    def _build_text_filter(
-        self,
-        placeholder: Placeholder,
-        text: str,
-        duration: float
-    ) -> str:
+    def _build_text_filter(self, placeholder: Placeholder, text: str, duration: float) -> str:
         """Build FFmpeg drawtext filter for a text placeholder."""
         escaped_text = self._escape_text(text)
 
@@ -608,18 +585,14 @@ class TemplateEngine:
         alpha_value = None
 
         if placeholder.animation:
-            anim_result = self._get_animation_values(
-                placeholder.animation,
-                placeholder,
-                start_time
-            )
+            anim_result = self._get_animation_values(placeholder.animation, placeholder, start_time)
             if anim_result:
-                if 'x' in anim_result:
-                    x_value = anim_result['x']
-                if 'y' in anim_result:
-                    y_value = anim_result['y']
-                if 'alpha' in anim_result:
-                    alpha_value = anim_result['alpha']
+                if "x" in anim_result:
+                    x_value = anim_result["x"]
+                if "y" in anim_result:
+                    y_value = anim_result["y"]
+                if "alpha" in anim_result:
+                    alpha_value = anim_result["alpha"]
 
         # Build base filter
         parts = [
@@ -628,7 +601,7 @@ class TemplateEngine:
             f"y={y_value}",
             f"fontsize={placeholder.font_size}",
             f"fontcolor={placeholder.font_color}",
-            f"enable='{enable_expr}'"
+            f"enable='{enable_expr}'",
         ]
 
         # Add alpha if set by animation
@@ -638,7 +611,7 @@ class TemplateEngine:
         # Add font file if found
         if font_file and os.path.exists(font_file):
             # Escape path for FFmpeg on Windows
-            escaped_font = font_file.replace('\\', '/').replace(':', '\\:')
+            escaped_font = font_file.replace("\\", "/").replace(":", "\\:")
             parts.append(f"fontfile='{escaped_font}'")
 
         # Add background box if specified
@@ -650,10 +623,7 @@ class TemplateEngine:
         return ":".join(parts)
 
     def _get_animation_values(
-        self,
-        animation: str,
-        placeholder: Placeholder,
-        start_time: float
+        self, animation: str, placeholder: Placeholder, start_time: float
     ) -> Optional[Dict[str, str]]:
         """
         Get animation values for FFmpeg drawtext filter.
@@ -666,32 +636,32 @@ class TemplateEngine:
 
         if animation == "fade_in":
             # Fade in alpha over 0.5 seconds
-            result['alpha'] = f"'if(lt(t-{start_time},0.5),(t-{start_time})/0.5,1)'"
+            result["alpha"] = f"'if(lt(t-{start_time},0.5),(t-{start_time})/0.5,1)'"
 
         elif animation == "slide_left":
             # Slide in from right
-            result['x'] = f"'if(lt(t-{start_time},0.5),w-(w-{x})*(t-{start_time})/0.5,{x})'"
+            result["x"] = f"'if(lt(t-{start_time},0.5),w-(w-{x})*(t-{start_time})/0.5,{x})'"
 
         elif animation == "slide_right":
             # Slide in from left
-            result['x'] = f"'if(lt(t-{start_time},0.5),-tw+({x}+tw)*(t-{start_time})/0.5,{x})'"
+            result["x"] = f"'if(lt(t-{start_time},0.5),-tw+({x}+tw)*(t-{start_time})/0.5,{x})'"
 
         elif animation == "slide_up":
             # Slide in from bottom
-            result['y'] = f"'if(lt(t-{start_time},0.5),h-(h-{y})*(t-{start_time})/0.5,{y})'"
+            result["y"] = f"'if(lt(t-{start_time},0.5),h-(h-{y})*(t-{start_time})/0.5,{y})'"
 
         elif animation == "slide_down":
             # Slide in from top
-            result['y'] = f"'if(lt(t-{start_time},0.5),-th+({y}+th)*(t-{start_time})/0.5,{y})'"
+            result["y"] = f"'if(lt(t-{start_time},0.5),-th+({y}+th)*(t-{start_time})/0.5,{y})'"
 
         elif animation == "fade_slide_up":
             # Combined fade and slide up
-            result['alpha'] = f"'if(lt(t-{start_time},0.5),(t-{start_time})/0.5,1)'"
-            result['y'] = f"'if(lt(t-{start_time},0.5),{y}+50-50*(t-{start_time})/0.5,{y})'"
+            result["alpha"] = f"'if(lt(t-{start_time},0.5),(t-{start_time})/0.5,1)'"
+            result["y"] = f"'if(lt(t-{start_time},0.5),{y}+50-50*(t-{start_time})/0.5,{y})'"
 
         elif animation == "pop_in":
             # Pop in with scale effect (approximated with alpha)
-            result['alpha'] = f"'if(lt(t-{start_time},0.3),(t-{start_time})/0.3,1)'"
+            result["alpha"] = f"'if(lt(t-{start_time},0.3),(t-{start_time})/0.3,1)'"
 
         return result if result else None
 
@@ -716,11 +686,13 @@ class TemplateEngine:
         ]
 
         # Linux/Mac paths
-        font_paths.extend([
-            "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
-            "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf",
-            "/System/Library/Fonts/Helvetica.ttc",
-        ])
+        font_paths.extend(
+            [
+                "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+                "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf",
+                "/System/Library/Fonts/Helvetica.ttc",
+            ]
+        )
 
         for path in font_paths:
             if os.path.exists(path):
@@ -737,7 +709,7 @@ class TemplateEngine:
         template: TemplateConfig,
         filter_complex: str,
         temp_dir: Path,
-        values: Dict[str, Any]
+        values: Dict[str, Any],
     ) -> bool:
         """Render the final video using FFmpeg."""
         try:
@@ -745,7 +717,7 @@ class TemplateEngine:
             video_codec = self._get_video_codec()
 
             # Determine if base is video or image
-            is_video = base_frame.lower().endswith(('.mp4', '.mov', '.avi', '.mkv'))
+            is_video = base_frame.lower().endswith((".mp4", ".mov", ".avi", ".mkv"))
 
             # Build command
             cmd = [ffmpeg, "-y"]
@@ -767,7 +739,9 @@ class TemplateEngine:
                     image_value = values.get(placeholder.id, placeholder.default_value)
                     if image_value and os.path.exists(str(image_value)):
                         cmd.extend(["-i", str(image_value)])
-                        image_inputs.append((placeholder, len(image_inputs) + (2 if audio_file else 1)))
+                        image_inputs.append(
+                            (placeholder, len(image_inputs) + (2 if audio_file else 1))
+                        )
 
             # Build filter complex with text and image overlays
             if image_inputs:
@@ -789,22 +763,35 @@ class TemplateEngine:
 
             if video_codec == "h264_nvenc":
                 # NVENC-specific encoding settings
-                cmd.extend([
-                    "-preset", "p4",  # NVENC preset (p1=fastest, p7=slowest)
-                    "-cq", "23",      # Constant quality (NVENC equivalent of CRF)
-                    "-rc", "vbr",     # Variable bitrate
-                ])
+                cmd.extend(
+                    [
+                        "-preset",
+                        "p4",  # NVENC preset (p1=fastest, p7=slowest)
+                        "-cq",
+                        "23",  # Constant quality (NVENC equivalent of CRF)
+                        "-rc",
+                        "vbr",  # Variable bitrate
+                    ]
+                )
             else:
                 # libx264 encoding settings
-                cmd.extend([
-                    "-preset", "faster",
-                    "-crf", "23",
-                ])
+                cmd.extend(
+                    [
+                        "-preset",
+                        "faster",
+                        "-crf",
+                        "23",
+                    ]
+                )
 
-            cmd.extend([
-                "-pix_fmt", "yuv420p",
-                "-r", str(template.fps),
-            ])
+            cmd.extend(
+                [
+                    "-pix_fmt",
+                    "yuv420p",
+                    "-r",
+                    str(template.fps),
+                ]
+            )
 
             # Duration and shortest flag
             if audio_file and os.path.exists(audio_file):
@@ -826,17 +813,16 @@ class TemplateEngine:
             logger.debug(f"FFmpeg command: {' '.join(cmd)}")
 
             # Run FFmpeg
-            result = subprocess.run(
-                cmd,
-                capture_output=True,
-                text=True,
-                timeout=600
-            )
+            result = subprocess.run(cmd, capture_output=True, text=True, timeout=600)
 
             if result.returncode != 0:
                 # Find the actual error in stderr (skip the config header)
-                stderr_lines = result.stderr.split('\n')
-                error_lines = [l for l in stderr_lines if 'error' in l.lower() or 'invalid' in l.lower() or 'option' in l.lower()]
+                stderr_lines = result.stderr.split("\n")
+                error_lines = [
+                    l
+                    for l in stderr_lines
+                    if "error" in l.lower() or "invalid" in l.lower() or "option" in l.lower()
+                ]
                 if error_lines:
                     logger.error(f"FFmpeg error: {' | '.join(error_lines[:5])}")
                 else:
@@ -868,7 +854,7 @@ class TemplateEngine:
         values: Dict[str, Any],
         duration: float,
         text_filter: str,
-        image_inputs: List[Tuple[Placeholder, int]]
+        image_inputs: List[Tuple[Placeholder, int]],
     ) -> str:
         """Build complete filter_complex including image overlays."""
         if not image_inputs and not text_filter:
@@ -906,7 +892,7 @@ class TemplateEngine:
             # Rename last output to [out]
             if filters:
                 last_filter = filters[-1]
-                filters[-1] = last_filter.rsplit('[', 1)[0] + "[out]"
+                filters[-1] = last_filter.rsplit("[", 1)[0] + "[out]"
             else:
                 return ""
 
@@ -918,10 +904,13 @@ class TemplateEngine:
             ffprobe = (self._ffmpeg_path or "ffmpeg").replace("ffmpeg", "ffprobe")
             cmd = [
                 ffprobe,
-                "-v", "error",
-                "-show_entries", "format=duration",
-                "-of", "default=noprint_wrappers=1:nokey=1",
-                audio_file
+                "-v",
+                "error",
+                "-show_entries",
+                "format=duration",
+                "-of",
+                "default=noprint_wrappers=1:nokey=1",
+                audio_file,
             ]
             result = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
             return float(result.stdout.strip())
@@ -959,8 +948,7 @@ class TemplateEngine:
         }
 
         templates_to_create = niche_templates.get(
-            niche,
-            [BuiltInTemplates.finance_template(), BuiltInTemplates.shorts_template()]
+            niche, [BuiltInTemplates.finance_template(), BuiltInTemplates.shorts_template()]
         )
 
         created = 0
@@ -976,7 +964,7 @@ class TemplateEngine:
                 placeholders=template.placeholders,
                 background_color=template.background_color,
                 niche=niche,
-                tags=[channel_id, niche]
+                tags=[channel_id, niche],
             )
 
             self.templates[channel_template.id] = channel_template
@@ -1022,10 +1010,7 @@ class TemplateEngine:
         return False
 
     def duplicate_template(
-        self,
-        template_id: str,
-        new_id: str,
-        new_name: Optional[str] = None
+        self, template_id: str, new_id: str, new_name: Optional[str] = None
     ) -> Optional[TemplateConfig]:
         """
         Duplicate an existing template with a new ID.
@@ -1056,7 +1041,7 @@ class TemplateEngine:
             base_video=source.base_video,
             base_image=source.base_image,
             niche=source.niche,
-            tags=source.tags.copy()
+            tags=source.tags.copy(),
         )
 
         self.templates[new_id] = new_template
@@ -1066,11 +1051,7 @@ class TemplateEngine:
         return new_template
 
     def render_thumbnail(
-        self,
-        template_id: str,
-        output_file: str,
-        values: Dict[str, Any],
-        time_offset: float = 0.0
+        self, template_id: str, output_file: str, values: Dict[str, Any], time_offset: float = 0.0
     ) -> Optional[str]:
         """
         Render a thumbnail from a template at a specific time.
@@ -1094,10 +1075,10 @@ class TemplateEngine:
             width, height = template.resolution
 
             # Parse background color
-            color = template.background_color.lstrip('#')
-            rgb = tuple(int(color[i:i+2], 16) for i in (0, 2, 4))
+            color = template.background_color.lstrip("#")
+            rgb = tuple(int(color[i : i + 2], 16) for i in (0, 2, 4))
 
-            img = Image.new('RGB', template.resolution, rgb)
+            img = Image.new("RGB", template.resolution, rgb)
             draw = ImageDraw.Draw(img)
 
             # Add gradient
@@ -1128,12 +1109,7 @@ class TemplateEngine:
             logger.error(f"Thumbnail creation failed: {e}")
             return None
 
-    def _draw_text_on_image(
-        self,
-        draw: ImageDraw.Draw,
-        placeholder: Placeholder,
-        text: str
-    ):
+    def _draw_text_on_image(self, draw: ImageDraw.Draw, placeholder: Placeholder, text: str):
         """Draw text on an image for thumbnail generation."""
         try:
             # Find font
@@ -1147,9 +1123,9 @@ class TemplateEngine:
 
             # Parse color
             color = placeholder.font_color
-            if color.startswith('#'):
-                color_clean = color.lstrip('#')
-                color = tuple(int(color_clean[i:i+2], 16) for i in (0, 2, 4))
+            if color.startswith("#"):
+                color_clean = color.lstrip("#")
+                color = tuple(int(color_clean[i : i + 2], 16) for i in (0, 2, 4))
 
             # Draw shadow
             shadow_offset = max(2, placeholder.font_size // 20)
@@ -1184,7 +1160,7 @@ class BuiltInTemplates:
                     font_size=72,
                     font_color="#FFD700",  # Gold
                     animation="fade_in",
-                    duration=5.0
+                    duration=5.0,
                 ),
                 Placeholder(
                     id="subtitle",
@@ -1195,7 +1171,7 @@ class BuiltInTemplates:
                     font_color="#ffffff",
                     animation="fade_in",
                     start_time=0.5,
-                    duration=4.5
+                    duration=4.5,
                 ),
                 Placeholder(
                     id="lower_third",
@@ -1206,7 +1182,7 @@ class BuiltInTemplates:
                     font_color="#00d4aa",  # Teal
                     background_color="#1a1a2e@0.8",
                     animation="slide_left",
-                    start_time=2.0
+                    start_time=2.0,
                 ),
                 Placeholder(
                     id="cta",
@@ -1216,12 +1192,12 @@ class BuiltInTemplates:
                     font_size=24,
                     font_color="#ffffff",
                     default_value="Subscribe for more!",
-                    layer=1
+                    layer=1,
                 ),
             ],
             background_color="#1a1a2e",
             niche="finance",
-            tags=["finance", "educational", "professional"]
+            tags=["finance", "educational", "professional"],
         )
 
     @staticmethod
@@ -1242,7 +1218,7 @@ class BuiltInTemplates:
                     size=(1720, 200),
                     font_size=68,
                     font_color="#E0E0FF",  # Light purple
-                    animation="fade_in"
+                    animation="fade_in",
                 ),
                 Placeholder(
                     id="hook_question",
@@ -1252,7 +1228,7 @@ class BuiltInTemplates:
                     font_size=48,
                     font_color="#9b59b6",  # Purple
                     animation="fade_in",
-                    start_time=1.0
+                    start_time=1.0,
                 ),
                 Placeholder(
                     id="key_point",
@@ -1263,7 +1239,7 @@ class BuiltInTemplates:
                     font_color="#ffffff",
                     background_color="#0f0f1a@0.7",
                     animation="slide_up",
-                    start_time=3.0
+                    start_time=3.0,
                 ),
                 Placeholder(
                     id="source_citation",
@@ -1273,12 +1249,12 @@ class BuiltInTemplates:
                     font_size=18,
                     font_color="#888888",
                     default_value="",
-                    layer=1
+                    layer=1,
                 ),
             ],
             background_color="#0f0f1a",
             niche="psychology",
-            tags=["psychology", "self-improvement", "educational"]
+            tags=["psychology", "self-improvement", "educational"],
         )
 
     @staticmethod
@@ -1300,7 +1276,7 @@ class BuiltInTemplates:
                     font_size=56,
                     font_color="#FFD700",  # Gold
                     animation="fade_in",
-                    duration=4.0
+                    duration=4.0,
                 ),
                 Placeholder(
                     id="story_text",
@@ -1310,7 +1286,7 @@ class BuiltInTemplates:
                     font_size=42,
                     font_color="#ffffff",
                     animation="fade_in",
-                    start_time=0.5
+                    start_time=0.5,
                 ),
                 Placeholder(
                     id="dramatic_quote",
@@ -1321,7 +1297,7 @@ class BuiltInTemplates:
                     font_color="#e74c3c",  # Red
                     animation="slide_right",
                     start_time=2.0,
-                    duration=5.0
+                    duration=5.0,
                 ),
                 Placeholder(
                     id="date_location",
@@ -1330,12 +1306,12 @@ class BuiltInTemplates:
                     size=(500, 40),
                     font_size=22,
                     font_color="#cccccc",
-                    layer=1
+                    layer=1,
                 ),
             ],
             background_color="#0d0d0d",
             niche="storytelling",
-            tags=["storytelling", "documentary", "dramatic"]
+            tags=["storytelling", "documentary", "dramatic"],
         )
 
     @staticmethod
@@ -1357,7 +1333,7 @@ class BuiltInTemplates:
                     font_size=64,
                     font_color="#ffffff",
                     animation="slide_down",
-                    duration=3.0
+                    duration=3.0,
                 ),
                 Placeholder(
                     id="main_text",
@@ -1367,7 +1343,7 @@ class BuiltInTemplates:
                     font_size=52,
                     font_color="#ffffff",
                     animation="fade_in",
-                    start_time=1.5
+                    start_time=1.5,
                 ),
                 Placeholder(
                     id="emphasis",
@@ -1377,7 +1353,7 @@ class BuiltInTemplates:
                     font_size=72,
                     font_color="#FFD700",
                     animation="fade_in",
-                    start_time=3.0
+                    start_time=3.0,
                 ),
                 Placeholder(
                     id="cta",
@@ -1388,12 +1364,12 @@ class BuiltInTemplates:
                     font_color="#00d4aa",
                     default_value="Follow for more!",
                     animation="slide_up",
-                    start_time=25.0
+                    start_time=25.0,
                 ),
             ],
             background_color="#1a1a2e",
             niche=None,  # Universal
-            tags=["shorts", "vertical", "quick"]
+            tags=["shorts", "vertical", "quick"],
         )
 
     @staticmethod
@@ -1414,7 +1390,7 @@ class BuiltInTemplates:
                     size=(1720, 100),
                     font_size=56,
                     font_color="#ffffff",
-                    animation="fade_in"
+                    animation="fade_in",
                 ),
                 Placeholder(
                     id="step_number",
@@ -1424,7 +1400,7 @@ class BuiltInTemplates:
                     font_size=72,
                     font_color="#3498db",
                     default_value="1",
-                    animation="slide_left"
+                    animation="slide_left",
                 ),
                 Placeholder(
                     id="step_text",
@@ -1434,7 +1410,7 @@ class BuiltInTemplates:
                     font_size=42,
                     font_color="#ffffff",
                     animation="fade_in",
-                    start_time=0.3
+                    start_time=0.3,
                 ),
                 Placeholder(
                     id="tip_box",
@@ -1445,7 +1421,7 @@ class BuiltInTemplates:
                     font_color="#ffffff",
                     background_color="#27ae60@0.9",
                     animation="slide_up",
-                    start_time=2.0
+                    start_time=2.0,
                 ),
                 Placeholder(
                     id="progress",
@@ -1455,12 +1431,12 @@ class BuiltInTemplates:
                     font_size=24,
                     font_color="#888888",
                     default_value="1/5",
-                    layer=2
+                    layer=2,
                 ),
             ],
             background_color="#1a1a2e",
             niche=None,
-            tags=["tutorial", "educational", "how-to"]
+            tags=["tutorial", "educational", "how-to"],
         )
 
     @staticmethod
@@ -1480,7 +1456,7 @@ class BuiltInTemplates:
                     position=(100, 50),
                     size=(1720, 100),
                     font_size=52,
-                    font_color="#ffffff"
+                    font_color="#ffffff",
                 ),
                 Placeholder(
                     id="item_number",
@@ -1489,7 +1465,7 @@ class BuiltInTemplates:
                     size=(300, 300),
                     font_size=200,
                     font_color="#e74c3c",
-                    animation="slide_left"
+                    animation="slide_left",
                 ),
                 Placeholder(
                     id="item_title",
@@ -1499,7 +1475,7 @@ class BuiltInTemplates:
                     font_size=56,
                     font_color="#FFD700",
                     animation="fade_in",
-                    start_time=0.3
+                    start_time=0.3,
                 ),
                 Placeholder(
                     id="item_description",
@@ -1509,7 +1485,7 @@ class BuiltInTemplates:
                     font_size=36,
                     font_color="#ffffff",
                     animation="fade_in",
-                    start_time=0.6
+                    start_time=0.6,
                 ),
                 Placeholder(
                     id="countdown",
@@ -1518,12 +1494,12 @@ class BuiltInTemplates:
                     size=(100, 50),
                     font_size=28,
                     font_color="#888888",
-                    layer=2
+                    layer=2,
                 ),
             ],
             background_color="#0d0d0d",
             niche=None,
-            tags=["listicle", "top-n", "countdown"]
+            tags=["listicle", "top-n", "countdown"],
         )
 
 
@@ -1570,10 +1546,7 @@ if __name__ == "__main__":
             result = engine.render_from_template(
                 template_id=template_id,
                 output_file=output_file,
-                values={
-                    "title": "Sample Title",
-                    "subtitle": "Sample Subtitle"
-                }
+                values={"title": "Sample Title", "subtitle": "Sample Subtitle"},
             )
 
             if result:

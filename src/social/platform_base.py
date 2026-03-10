@@ -8,7 +8,8 @@ Consolidates common poster logic:
 - Standard error handling
 """
 
-from typing import Dict, Any, Optional, Callable, Tuple
+from typing import Any, Callable, Dict, Optional
+
 from loguru import logger
 
 
@@ -48,11 +49,7 @@ class BasePoster:
         return None
 
     def _simulate_post(
-        self,
-        content: str,
-        url: Optional[str] = None,
-        image: Optional[str] = None,
-        **extra_fields
+        self, content: str, url: Optional[str] = None, image: Optional[str] = None, **extra_fields
     ) -> Dict[str, Any]:
         """
         Generate a simulated post response (for testing/demo mode).
@@ -67,6 +64,7 @@ class BasePoster:
             Simulated post response dict
         """
         import time
+
         post_id = f"sim_{self.platform_name.lower()}_{int(time.time())}"
 
         result = {
@@ -105,7 +103,9 @@ class BasePoster:
         try:
             return fn()
         except ImportError:
-            logger.warning(f"[{self.platform_name}] {lib_name} not installed - using simulation mode")
+            logger.warning(
+                f"[{self.platform_name}] {lib_name} not installed - using simulation mode"
+            )
             # Return a simulated response with basic content (caller should provide this context)
             return {
                 "success": False,

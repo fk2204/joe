@@ -9,17 +9,17 @@ Usage:
     trends = researcher.get_trending_topics("python programming")
 """
 
-from typing import List, Dict, Optional
+import time
 from dataclasses import dataclass
 from datetime import datetime
-from loguru import logger
-from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
+from typing import Dict, List
+
 import requests
-import time
+from loguru import logger
+from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_exponential
 
 try:
     from pytrends.request import TrendReq
-    from pytrends.exceptions import ResponseError
 except ImportError:
     raise ImportError("Please install pytrends: pip install pytrends")
 
@@ -49,7 +49,11 @@ FALLBACK_TOPICS: Dict[str, List[Dict[str, any]]] = {
         {"keyword": "javascript tutorial", "interest": 85, "direction": "stable"},
         {"keyword": "react js tutorial", "interest": 88, "direction": "rising"},
         {"keyword": "node js backend", "interest": 80, "direction": "stable"},
-        {"keyword": f"javascript frameworks {datetime.now().year}", "interest": 75, "direction": "rising"},
+        {
+            "keyword": f"javascript frameworks {datetime.now().year}",
+            "interest": 75,
+            "direction": "rising",
+        },
         {"keyword": "typescript tutorial", "interest": 82, "direction": "rising"},
         {"keyword": "next js tutorial", "interest": 85, "direction": "rising"},
     ],
@@ -101,15 +105,16 @@ FALLBACK_TOPICS: Dict[str, List[Dict[str, any]]] = {
 
 class RateLimitError(Exception):
     """Custom exception for rate limiting."""
-    pass
+
 
 
 @dataclass
 class TrendTopic:
     """Represents a trending topic."""
+
     keyword: str
-    interest_score: int      # 0-100 relative interest
-    trend_direction: str     # rising, stable, declining
+    interest_score: int  # 0-100 relative interest
+    trend_direction: str  # rising, stable, declining
     related_queries: List[str]
     related_topics: List[str]
 
@@ -139,7 +144,7 @@ class TrendResearcher:
             time.sleep(self._min_request_interval - elapsed)
         self._last_request_time = time.time()
 
-    def _get_fallback_topics(self, seed_keyword: str) -> List['TrendTopic']:
+    def _get_fallback_topics(self, seed_keyword: str) -> List["TrendTopic"]:
         """
         Get fallback topics when Google Trends API fails.
 
@@ -169,23 +174,27 @@ class TrendResearcher:
         trend_topics = []
 
         # Add seed keyword first
-        trend_topics.append(TrendTopic(
-            keyword=seed_keyword,
-            interest_score=70,
-            trend_direction="stable",
-            related_queries=[t["keyword"] for t in fallback_data[:5]],
-            related_topics=[]
-        ))
+        trend_topics.append(
+            TrendTopic(
+                keyword=seed_keyword,
+                interest_score=70,
+                trend_direction="stable",
+                related_queries=[t["keyword"] for t in fallback_data[:5]],
+                related_topics=[],
+            )
+        )
 
         # Add fallback topics
         for topic_data in fallback_data[:5]:
-            trend_topics.append(TrendTopic(
-                keyword=topic_data["keyword"],
-                interest_score=topic_data["interest"],
-                trend_direction=topic_data["direction"],
-                related_queries=[],
-                related_topics=[]
-            ))
+            trend_topics.append(
+                TrendTopic(
+                    keyword=topic_data["keyword"],
+                    interest_score=topic_data["interest"],
+                    trend_direction=topic_data["direction"],
+                    related_queries=[],
+                    related_topics=[],
+                )
+            )
 
         logger.info(f"Returning {len(trend_topics)} fallback topics for: {seed_keyword}")
         return trend_topics
@@ -193,15 +202,17 @@ class TrendResearcher:
     def _is_rate_limit_error(self, error: Exception) -> bool:
         """Check if an exception is a rate limit error."""
         error_str = str(error).lower()
-        if hasattr(error, 'response') and hasattr(error.response, 'status_code'):
+        if hasattr(error, "response") and hasattr(error.response, "status_code"):
             if error.response.status_code == 429:
                 return True
-        return '429' in error_str or 'rate' in error_str or 'too many' in error_str
+        return "429" in error_str or "rate" in error_str or "too many" in error_str
 
     @retry(
         stop=stop_after_attempt(3),
         wait=wait_exponential(multiplier=2, min=4, max=60),
-        retry=retry_if_exception_type((requests.RequestException, ConnectionError, TimeoutError, RateLimitError))
+        retry=retry_if_exception_type(
+            (requests.RequestException, ConnectionError, TimeoutError, RateLimitError)
+        ),
     )
     def _build_payload_with_retry(self, kw_list: List[str], cat: int, timeframe: str, geo: str):
         """Build pytrends payload with retry logic for rate limiting."""
@@ -217,7 +228,9 @@ class TrendResearcher:
     @retry(
         stop=stop_after_attempt(3),
         wait=wait_exponential(multiplier=2, min=4, max=60),
-        retry=retry_if_exception_type((requests.RequestException, ConnectionError, TimeoutError, RateLimitError))
+        retry=retry_if_exception_type(
+            (requests.RequestException, ConnectionError, TimeoutError, RateLimitError)
+        ),
     )
     def _get_related_queries_with_retry(self):
         """Get related queries with retry logic."""
@@ -233,7 +246,9 @@ class TrendResearcher:
     @retry(
         stop=stop_after_attempt(3),
         wait=wait_exponential(multiplier=2, min=4, max=60),
-        retry=retry_if_exception_type((requests.RequestException, ConnectionError, TimeoutError, RateLimitError))
+        retry=retry_if_exception_type(
+            (requests.RequestException, ConnectionError, TimeoutError, RateLimitError)
+        ),
     )
     def _get_related_topics_with_retry(self):
         """Get related topics with retry logic."""
@@ -249,7 +264,9 @@ class TrendResearcher:
     @retry(
         stop=stop_after_attempt(3),
         wait=wait_exponential(multiplier=2, min=4, max=60),
-        retry=retry_if_exception_type((requests.RequestException, ConnectionError, TimeoutError, RateLimitError))
+        retry=retry_if_exception_type(
+            (requests.RequestException, ConnectionError, TimeoutError, RateLimitError)
+        ),
     )
     def _get_interest_over_time_with_retry(self):
         """Get interest over time with retry logic."""
@@ -265,7 +282,9 @@ class TrendResearcher:
     @retry(
         stop=stop_after_attempt(3),
         wait=wait_exponential(multiplier=2, min=4, max=60),
-        retry=retry_if_exception_type((requests.RequestException, ConnectionError, TimeoutError, RateLimitError))
+        retry=retry_if_exception_type(
+            (requests.RequestException, ConnectionError, TimeoutError, RateLimitError)
+        ),
     )
     def _get_trending_searches_with_retry(self, pn: str):
         """Get trending searches with retry logic."""
@@ -279,10 +298,7 @@ class TrendResearcher:
             raise
 
     def get_trending_topics(
-        self,
-        seed_keyword: str,
-        category: int = 0,
-        timeframe: str = "today 3-m"
+        self, seed_keyword: str, category: int = 0, timeframe: str = "today 3-m"
     ) -> List[TrendTopic]:
         """
         Get trending topics related to a seed keyword.
@@ -309,10 +325,7 @@ class TrendResearcher:
         try:
             # Build payload with retry
             self._build_payload_with_retry(
-                kw_list=[seed_keyword],
-                cat=category,
-                timeframe=timeframe,
-                geo=self.geo
+                kw_list=[seed_keyword], cat=category, timeframe=timeframe, geo=self.geo
             )
 
             # Get related queries with safe access
@@ -330,14 +343,24 @@ class TrendResearcher:
                         top_data = keyword_data.get("top")
 
                         # Safe DataFrame access
-                        if rising_data is not None and hasattr(rising_data, 'empty') and not rising_data.empty:
+                        if (
+                            rising_data is not None
+                            and hasattr(rising_data, "empty")
+                            and not rising_data.empty
+                        ):
                             if "query" in rising_data.columns and len(rising_data) > 0:
                                 rising_queries = rising_data["query"].tolist()[:10]
-                        if top_data is not None and hasattr(top_data, 'empty') and not top_data.empty:
+                        if (
+                            top_data is not None
+                            and hasattr(top_data, "empty")
+                            and not top_data.empty
+                        ):
                             if "query" in top_data.columns and len(top_data) > 0:
                                 top_queries = top_data["query"].tolist()[:10]
             except (KeyError, AttributeError, TypeError, IndexError) as e:
-                logger.debug(f"Related queries unavailable: {e}")  # Continue without related queries
+                logger.debug(
+                    f"Related queries unavailable: {e}"
+                )  # Continue without related queries
 
             # Get related topics with safe access
             try:
@@ -348,8 +371,15 @@ class TrendResearcher:
                     if isinstance(keyword_topics, dict):
                         rising_topics_data = keyword_topics.get("rising")
                         # Safe DataFrame access
-                        if rising_topics_data is not None and hasattr(rising_topics_data, 'empty') and not rising_topics_data.empty:
-                            if "topic_title" in rising_topics_data.columns and len(rising_topics_data) > 0:
+                        if (
+                            rising_topics_data is not None
+                            and hasattr(rising_topics_data, "empty")
+                            and not rising_topics_data.empty
+                        ):
+                            if (
+                                "topic_title" in rising_topics_data.columns
+                                and len(rising_topics_data) > 0
+                            ):
                                 related_topics = rising_topics_data["topic_title"].tolist()[:10]
             except (KeyError, AttributeError, TypeError, IndexError) as e:
                 logger.debug(f"Related topics unavailable: {e}")  # Continue without related topics
@@ -361,7 +391,7 @@ class TrendResearcher:
             try:
                 interest = self._get_interest_over_time_with_retry()
                 # Defensive checks for DataFrame access
-                if interest is not None and hasattr(interest, 'empty') and not interest.empty:
+                if interest is not None and hasattr(interest, "empty") and not interest.empty:
                     if seed_keyword in interest.columns:
                         values = interest[seed_keyword].values
                         if values is not None and len(values) >= 2:
@@ -380,24 +410,28 @@ class TrendResearcher:
             trend_topics = []
 
             # Add the seed keyword
-            trend_topics.append(TrendTopic(
-                keyword=seed_keyword,
-                interest_score=interest_score,
-                trend_direction=trend_direction,
-                related_queries=rising_queries + top_queries,
-                related_topics=related_topics
-            ))
+            trend_topics.append(
+                TrendTopic(
+                    keyword=seed_keyword,
+                    interest_score=interest_score,
+                    trend_direction=trend_direction,
+                    related_queries=rising_queries + top_queries,
+                    related_topics=related_topics,
+                )
+            )
 
             # Add rising queries as separate topics (safe iteration)
             for query in rising_queries[:5] if rising_queries else []:
                 if query and isinstance(query, str):
-                    trend_topics.append(TrendTopic(
-                        keyword=query,
-                        interest_score=80,  # Rising = high interest
-                        trend_direction="rising",
-                        related_queries=[],
-                        related_topics=[]
-                    ))
+                    trend_topics.append(
+                        TrendTopic(
+                            keyword=query,
+                            interest_score=80,  # Rising = high interest
+                            trend_direction="rising",
+                            related_queries=[],
+                            related_topics=[],
+                        )
+                    )
 
             logger.success(f"Found {len(trend_topics)} trending topics")
             return trend_topics
@@ -432,7 +466,7 @@ class TrendResearcher:
             trends = self._get_trending_searches_with_retry(pn=self.geo.lower())
 
             # Defensive check for DataFrame structure
-            if trends is not None and hasattr(trends, 'empty') and not trends.empty:
+            if trends is not None and hasattr(trends, "empty") and not trends.empty:
                 # Check if column 0 exists before accessing
                 if len(trends.columns) > 0 and 0 in trends.columns:
                     result = trends[0].tolist()
@@ -458,11 +492,7 @@ class TrendResearcher:
             logger.error(f"Unexpected error in realtime trends: {e}")
             return []
 
-    def compare_keywords(
-        self,
-        keywords: List[str],
-        timeframe: str = "today 3-m"
-    ) -> Dict[str, int]:
+    def compare_keywords(self, keywords: List[str], timeframe: str = "today 3-m") -> Dict[str, int]:
         """
         Compare interest levels between multiple keywords.
 
@@ -492,16 +522,13 @@ class TrendResearcher:
 
         try:
             self._build_payload_with_retry(
-                kw_list=valid_keywords,
-                cat=0,
-                timeframe=timeframe,
-                geo=self.geo
+                kw_list=valid_keywords, cat=0, timeframe=timeframe, geo=self.geo
             )
 
             interest = self._get_interest_over_time_with_retry()
 
             # Defensive check for DataFrame
-            if interest is None or not hasattr(interest, 'empty') or interest.empty:
+            if interest is None or not hasattr(interest, "empty") or interest.empty:
                 return {k: 0 for k in valid_keywords}
 
             # Get average interest for each keyword with safe access
@@ -529,11 +556,7 @@ class TrendResearcher:
             logger.error(f"Unexpected error in keyword comparison: {e}")
             return {k: 0 for k in valid_keywords}
 
-    def get_seasonal_trends(
-        self,
-        keyword: str,
-        years: int = 5
-    ) -> Dict[str, float]:
+    def get_seasonal_trends(self, keyword: str, years: int = 5) -> Dict[str, float]:
         """
         Analyze seasonal patterns for a keyword.
 
@@ -554,16 +577,13 @@ class TrendResearcher:
 
         try:
             self._build_payload_with_retry(
-                kw_list=[keyword],
-                cat=0,
-                timeframe=f"today {years*12}-m",
-                geo=self.geo
+                kw_list=[keyword], cat=0, timeframe=f"today {years*12}-m", geo=self.geo
             )
 
             interest = self._get_interest_over_time_with_retry()
 
             # Defensive check for DataFrame
-            if interest is None or not hasattr(interest, 'empty') or interest.empty:
+            if interest is None or not hasattr(interest, "empty") or interest.empty:
                 return {}
 
             # Check if keyword column exists
@@ -572,7 +592,7 @@ class TrendResearcher:
                 return {}
 
             # Defensive check for index and groupby
-            if not hasattr(interest.index, 'month'):
+            if not hasattr(interest.index, "month"):
                 logger.warning("Interest data index does not have month attribute")
                 return {}
 
@@ -584,8 +604,18 @@ class TrendResearcher:
                 return {}
 
             month_names = [
-                "Jan", "Feb", "Mar", "Apr", "May", "Jun",
-                "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
+                "Jan",
+                "Feb",
+                "Mar",
+                "Apr",
+                "May",
+                "Jun",
+                "Jul",
+                "Aug",
+                "Sep",
+                "Oct",
+                "Nov",
+                "Dec",
             ]
 
             # Build result with safe access
@@ -593,9 +623,9 @@ class TrendResearcher:
             for i in range(1, 13):
                 try:
                     val = monthly.get(i, 0)
-                    result[month_names[i-1]] = round(float(val), 1) if val is not None else 0.0
+                    result[month_names[i - 1]] = round(float(val), 1) if val is not None else 0.0
                 except (TypeError, ValueError, IndexError):
-                    result[month_names[i-1]] = 0.0
+                    result[month_names[i - 1]] = 0.0
 
             return result
 
@@ -615,9 +645,9 @@ if __name__ == "__main__":
     researcher = TrendResearcher()
 
     # Get trending topics
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print("TRENDING TOPICS FOR 'Python Programming'")
-    print("="*60 + "\n")
+    print("=" * 60 + "\n")
 
     trends = researcher.get_trending_topics("python programming")
     for trend in trends:
@@ -628,15 +658,13 @@ if __name__ == "__main__":
         print()
 
     # Compare keywords
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print("KEYWORD COMPARISON")
-    print("="*60 + "\n")
+    print("=" * 60 + "\n")
 
-    comparison = researcher.compare_keywords([
-        "python tutorial",
-        "javascript tutorial",
-        "react tutorial"
-    ])
+    comparison = researcher.compare_keywords(
+        ["python tutorial", "javascript tutorial", "react tutorial"]
+    )
 
     for keyword, score in sorted(comparison.items(), key=lambda x: -x[1]):
         print(f"  {keyword}: {score}/100")

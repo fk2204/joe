@@ -30,18 +30,21 @@ Usage:
 
 import json
 import time
-from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Tuple
+from dataclasses import dataclass
+from typing import Dict, List
+
 from loguru import logger
 
 try:
     import requests
+
     REQUESTS_AVAILABLE = True
 except ImportError:
     REQUESTS_AVAILABLE = False
 
 try:
     from pytrends.request import TrendReq
+
     PYTRENDS_AVAILABLE = True
 except ImportError:
     PYTRENDS_AVAILABLE = False
@@ -50,6 +53,7 @@ except ImportError:
 @dataclass
 class KeywordResult:
     """Keyword research result."""
+
     keyword: str
     search_volume_estimate: str  # "very_high", "high", "medium", "low", "very_low"
     competition: str  # "very_high", "high", "medium", "low", "very_low"
@@ -66,7 +70,7 @@ class KeywordResult:
             "opportunity_score": self.opportunity_score,
             "trend_direction": self.trend_direction,
             "suggestions_count": self.suggestions_count,
-            "is_longtail": self.is_longtail
+            "is_longtail": self.is_longtail,
         }
 
 
@@ -90,15 +94,12 @@ class FreeKeywordResearch:
         """Initialize free keyword research system."""
         self.pytrends = None
         if PYTRENDS_AVAILABLE:
-            self.pytrends = TrendReq(hl='en-US', tz=360, timeout=(10, 25))
+            self.pytrends = TrendReq(hl="en-US", tz=360, timeout=(10, 25))
 
         logger.info("[FreeKeywordResearch] Initialized")
 
     def find_keywords(
-        self,
-        seed_keyword: str,
-        count: int = 50,
-        include_longtail: bool = True
+        self, seed_keyword: str, count: int = 50, include_longtail: bool = True
     ) -> List[KeywordResult]:
         """
         Find keyword opportunities from seed keyword.
@@ -140,7 +141,7 @@ class FreeKeywordResearch:
 
         # Analyze each keyword
         results = []
-        for kw in list(all_keywords)[:count * 2]:  # Analyze more than needed
+        for kw in list(all_keywords)[: count * 2]:  # Analyze more than needed
             try:
                 result = self._analyze_keyword(kw)
                 results.append(result)
@@ -161,11 +162,7 @@ class FreeKeywordResearch:
 
         try:
             url = "https://suggestqueries.google.com/complete/search"
-            params = {
-                "client": "youtube",
-                "q": query,
-                "ds": "yt"
-            }
+            params = {"client": "youtube", "q": query, "ds": "yt"}
 
             response = requests.get(url, params=params, timeout=5)
             if response.status_code != 200:
@@ -221,7 +218,7 @@ class FreeKeywordResearch:
         trend = "stable"
         if self.pytrends:
             try:
-                self.pytrends.build_payload([keyword], timeframe='today 3-m')
+                self.pytrends.build_payload([keyword], timeframe="today 3-m")
                 interest = self.pytrends.interest_over_time()
 
                 if not interest.empty and keyword in interest.columns:
@@ -234,7 +231,7 @@ class FreeKeywordResearch:
                             trend = "rising"
                         elif recent_avg < earlier_avg * 0.8:
                             trend = "declining"
-            except:
+            except Exception:
                 pass
 
         # Calculate opportunity score
@@ -250,15 +247,11 @@ class FreeKeywordResearch:
             opportunity_score=opportunity,
             trend_direction=trend,
             suggestions_count=suggestion_count,
-            is_longtail=is_longtail
+            is_longtail=is_longtail,
         )
 
     def _calculate_opportunity(
-        self,
-        volume: str,
-        competition: str,
-        trend: str,
-        word_count: int
+        self, volume: str, competition: str, trend: str, word_count: int
     ) -> float:
         """Calculate opportunity score (0-100)."""
         score = 0.0
@@ -302,12 +295,12 @@ class FreeKeywordResearch:
         trend_data = []
         if self.pytrends:
             try:
-                self.pytrends.build_payload([keyword], timeframe='today 12-m')
+                self.pytrends.build_payload([keyword], timeframe="today 12-m")
                 interest = self.pytrends.interest_over_time()
 
                 if not interest.empty and keyword in interest.columns:
                     trend_data = interest[keyword].tolist()
-            except:
+            except Exception:
                 pass
 
         return {
@@ -319,7 +312,7 @@ class FreeKeywordResearch:
             "suggestion_count": result.suggestions_count,
             "related_keywords": related[:10],
             "trend_data": trend_data,
-            "recommendation": self._get_recommendation(result)
+            "recommendation": self._get_recommendation(result),
         }
 
     def _get_recommendation(self, result: KeywordResult) -> str:
@@ -334,10 +327,7 @@ class FreeKeywordResearch:
             return "LOW OPPORTUNITY - High competition or low volume"
 
     def get_trending_topics(
-        self,
-        niche: str = "",
-        region: str = "US",
-        count: int = 10
+        self, niche: str = "", region: str = "US", count: int = 10
     ) -> List[Dict]:
         """
         Get trending topics from Google Trends.
@@ -359,11 +349,7 @@ class FreeKeywordResearch:
             topics = []
 
             for i, topic in enumerate(trending[0].tolist()[:count]):
-                topics.append({
-                    "rank": i + 1,
-                    "topic": topic,
-                    "region": region
-                })
+                topics.append({"rank": i + 1, "topic": topic, "region": region})
 
             logger.success(f"[FreeKeywordResearch] Found {len(topics)} trending topics")
             return topics
@@ -378,7 +364,8 @@ if __name__ == "__main__":
     import sys
 
     if len(sys.argv) < 2:
-        print("""
+        print(
+            """
 Free Keyword Research - No Paid Tools Required!
 
 Commands:
@@ -395,7 +382,8 @@ Examples:
     python -m src.seo.free_keyword_research find "passive income" --count 50
     python -m src.seo.free_keyword_research analyze "make money online"
     python -m src.seo.free_keyword_research trending --region US
-        """)
+        """
+        )
     else:
         researcher = FreeKeywordResearch()
         cmd = sys.argv[1]
@@ -431,7 +419,7 @@ Examples:
             print(f"Trend: {analysis['trend_direction'].upper()}")
             print(f"\n{analysis['recommendation']}\n")
             print(f"Related Keywords ({len(analysis['related_keywords'])}):")
-            for kw in analysis['related_keywords']:
+            for kw in analysis["related_keywords"]:
                 print(f"  - {kw}")
 
         elif cmd == "trending":

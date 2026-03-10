@@ -11,32 +11,47 @@ import os
 import shutil
 import subprocess
 import tempfile
-from pathlib import Path
 from typing import List, Optional
-from loguru import logger
 
+from loguru import logger
 
 # Shared FFmpeg parameters for different video types
 FFMPEG_PARAMS_REGULAR = [
-    "-movflags", "+faststart",    # Enable web streaming
-    "-profile:v", "high",          # H.264 High Profile
-    "-level", "4.2",               # Level 4.2 for 1080p30
-    "-bf", "3",                    # 3 B-frames
-    "-g", "60",                    # GOP size = 2x framerate
-    "-keyint_min", "30",           # Minimum GOP
-    "-sc_threshold", "0",          # Fixed GOP
-    "-threads", "0",               # Auto thread detection
+    "-movflags",
+    "+faststart",  # Enable web streaming
+    "-profile:v",
+    "high",  # H.264 High Profile
+    "-level",
+    "4.2",  # Level 4.2 for 1080p30
+    "-bf",
+    "3",  # 3 B-frames
+    "-g",
+    "60",  # GOP size = 2x framerate
+    "-keyint_min",
+    "30",  # Minimum GOP
+    "-sc_threshold",
+    "0",  # Fixed GOP
+    "-threads",
+    "0",  # Auto thread detection
 ]
 
 FFMPEG_PARAMS_SHORTS = [
-    "-movflags", "+faststart",    # Enable web streaming
-    "-profile:v", "high",          # H.264 High Profile
-    "-level", "4.2",               # Level 4.2 for 1080p
-    "-bf", "2",                    # 2 B-frames for faster encode
-    "-g", "60",                    # GOP size
-    "-keyint_min", "30",           # Minimum GOP
-    "-sc_threshold", "0",          # Fixed GOP
-    "-threads", "0",               # Auto thread detection
+    "-movflags",
+    "+faststart",  # Enable web streaming
+    "-profile:v",
+    "high",  # H.264 High Profile
+    "-level",
+    "4.2",  # Level 4.2 for 1080p
+    "-bf",
+    "2",  # 2 B-frames for faster encode
+    "-g",
+    "60",  # GOP size
+    "-keyint_min",
+    "30",  # Minimum GOP
+    "-sc_threshold",
+    "0",  # Fixed GOP
+    "-threads",
+    "0",  # Auto thread detection
 ]
 
 
@@ -117,37 +132,62 @@ def two_pass_encode(
     try:
         # Pass 1: Analyze video to build rate control model
         pass1_cmd = [
-            ffmpeg_path, "-y",
-            "-i", input_file,
-            "-c:v", "libx264",
-            "-preset", encoding_preset,
-            "-b:v", target_bitrate,
-            "-maxrate", max_bitrate,
-            "-bufsize", "16M",
-            "-pass", "1",
-            "-passlogfile", passlog,
+            ffmpeg_path,
+            "-y",
+            "-i",
+            input_file,
+            "-c:v",
+            "libx264",
+            "-preset",
+            encoding_preset,
+            "-b:v",
+            target_bitrate,
+            "-maxrate",
+            max_bitrate,
+            "-bufsize",
+            "16M",
+            "-pass",
+            "1",
+            "-passlogfile",
+            passlog,
             "-an",  # No audio in analysis pass
-            "-f", "null",
-            "NUL" if os.name == "nt" else "/dev/null"
+            "-f",
+            "null",
+            "NUL" if os.name == "nt" else "/dev/null",
         ]
 
         logger.info("Two-pass encoding: Pass 1 (analysis)...")
         subprocess.run(pass1_cmd, capture_output=True, timeout=600)
 
         # Pass 2: Encode with optimal parameters from pass 1
-        pass2_cmd = [
-            ffmpeg_path, "-y",
-            "-i", input_file,
-            "-c:v", "libx264",
-            "-preset", encoding_preset,
-            "-b:v", target_bitrate,
-            "-maxrate", max_bitrate,
-            "-bufsize", "16M",
-            "-pass", "2",
-            "-passlogfile", passlog,
-            "-c:a", "aac",
-            "-b:a", "256k",
-        ] + ffmpeg_params + [output_file]
+        pass2_cmd = (
+            [
+                ffmpeg_path,
+                "-y",
+                "-i",
+                input_file,
+                "-c:v",
+                "libx264",
+                "-preset",
+                encoding_preset,
+                "-b:v",
+                target_bitrate,
+                "-maxrate",
+                max_bitrate,
+                "-bufsize",
+                "16M",
+                "-pass",
+                "2",
+                "-passlogfile",
+                passlog,
+                "-c:a",
+                "aac",
+                "-b:a",
+                "256k",
+            ]
+            + ffmpeg_params
+            + [output_file]
+        )
 
         logger.info("Two-pass encoding: Pass 2 (encoding)...")
         result = subprocess.run(pass2_cmd, capture_output=True, timeout=600)

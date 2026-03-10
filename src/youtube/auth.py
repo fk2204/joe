@@ -19,11 +19,12 @@ import os
 import pickle
 from pathlib import Path
 from typing import Optional
+
 from loguru import logger
 
 try:
-    from google_auth_oauthlib.flow import InstalledAppFlow
     from google.auth.transport.requests import Request
+    from google_auth_oauthlib.flow import InstalledAppFlow
     from googleapiclient.discovery import build
 except ImportError:
     raise ImportError(
@@ -38,16 +39,14 @@ class YouTubeAuth:
     SCOPES = [
         "https://www.googleapis.com/auth/youtube.upload",
         "https://www.googleapis.com/auth/youtube",
-        "https://www.googleapis.com/auth/youtube.force-ssl"
+        "https://www.googleapis.com/auth/youtube.force-ssl",
     ]
 
     API_SERVICE_NAME = "youtube"
     API_VERSION = "v3"
 
     def __init__(
-        self,
-        client_secrets_file: Optional[str] = None,
-        credentials_file: Optional[str] = None
+        self, client_secrets_file: Optional[str] = None, credentials_file: Optional[str] = None
     ):
         """
         Initialize YouTube authentication.
@@ -57,8 +56,7 @@ class YouTubeAuth:
             credentials_file: Path to store/load OAuth credentials
         """
         self.client_secrets_file = client_secrets_file or os.getenv(
-            "YOUTUBE_CLIENT_SECRETS_FILE",
-            "config/client_secret.json"
+            "YOUTUBE_CLIENT_SECRETS_FILE", "config/client_secret.json"
         )
         self.credentials_file = credentials_file or "config/youtube_credentials.pickle"
 
@@ -116,16 +114,13 @@ class YouTubeAuth:
 
         logger.info("Creating new credentials (browser will open)...")
 
-        flow = InstalledAppFlow.from_client_secrets_file(
-            self.client_secrets_file,
-            self.SCOPES
-        )
+        flow = InstalledAppFlow.from_client_secrets_file(self.client_secrets_file, self.SCOPES)
 
         # Run local server for OAuth callback (port 0 = auto-pick available port)
         credentials = flow.run_local_server(
             port=0,
             prompt="consent",
-            authorization_prompt_message="Please authorize YouTube access in your browser."
+            authorization_prompt_message="Please authorize YouTube access in your browser.",
         )
 
         self._save_credentials(credentials)
@@ -148,11 +143,7 @@ class YouTubeAuth:
         """
         credentials = self.get_credentials()
 
-        service = build(
-            self.API_SERVICE_NAME,
-            self.API_VERSION,
-            credentials=credentials
-        )
+        service = build(self.API_SERVICE_NAME, self.API_VERSION, credentials=credentials)
 
         logger.info("YouTube API service created")
         return service
@@ -168,9 +159,9 @@ class YouTubeAuth:
 
 # Example usage
 if __name__ == "__main__":
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print("YOUTUBE AUTHENTICATION TEST")
-    print("="*60 + "\n")
+    print("=" * 60 + "\n")
 
     auth = YouTubeAuth()
 
@@ -179,10 +170,7 @@ if __name__ == "__main__":
         print("Successfully authenticated!")
 
         # Test by getting channel info
-        request = youtube.channels().list(
-            part="snippet",
-            mine=True
-        )
+        request = youtube.channels().list(part="snippet", mine=True)
         response = request.execute()
 
         if response.get("items"):

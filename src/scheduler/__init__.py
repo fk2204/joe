@@ -5,12 +5,12 @@ Handles automated daily posting to YouTube channels.
 """
 
 from .daily_scheduler import (
+    DEFAULT_PRIVACY,
+    POSTING_SCHEDULE,
     create_and_upload_video,
     run_scheduler,
     run_test,
     show_status,
-    POSTING_SCHEDULE,
-    DEFAULT_PRIVACY
 )
 
 __all__ = [
@@ -19,5 +19,5 @@ __all__ = [
     "run_test",
     "show_status",
     "POSTING_SCHEDULE",
-    "DEFAULT_PRIVACY"
+    "DEFAULT_PRIVACY",
 ]

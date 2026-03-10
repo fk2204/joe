@@ -3,16 +3,17 @@ Efficient Prompt Templates for Joe
 Minimized, cached prompts that reduce token usage by 50%+.
 """
 
-from dataclasses import dataclass
-from typing import Dict, List, Optional, Any
-from functools import lru_cache
 import hashlib
 import json
+from dataclasses import dataclass
+from functools import lru_cache
+from typing import Any, Dict, Optional
 
 
 @dataclass
 class PromptTemplate:
     """A reusable prompt template."""
+
     name: str
     system_prompt: str
     user_template: str
@@ -37,19 +38,12 @@ class PromptTemplate:
 
 SYSTEM_PROMPTS = {
     "script_writer": "Write engaging YouTube scripts. Output JSON only.",
-
     "hook_generator": "Create viral hooks. Output JSON array of hooks.",
-
     "title_optimizer": "Optimize titles for CTR. Output JSON with variants.",
-
     "seo_analyzer": "Analyze keywords. Output JSON with metrics.",
-
     "research": "Research topics. Output JSON with scored ideas.",
-
     "thumbnail": "Describe thumbnails. Output JSON with elements.",
-
     "retention": "Add retention elements. Output enhanced script JSON.",
-
     "quality_check": "Validate content. Output JSON checklist.",
 }
 
@@ -69,9 +63,8 @@ Voice: Authority
 
 Output JSON:
 {{"title":"","hook":"","sections":[{{"heading":"","content":"","duration_seconds":0}}],"cta":"","outro":""}}""",
-        max_tokens=2000
+        max_tokens=2000,
     ),
-
     "psychology": PromptTemplate(
         name="psychology_script",
         system_prompt=SYSTEM_PROMPTS["script_writer"],
@@ -82,9 +75,8 @@ Voice: Calm, intriguing
 
 Output JSON:
 {{"title":"","hook":"","sections":[{{"heading":"","content":"","duration_seconds":0}}],"cta":"","outro":""}}""",
-        max_tokens=2000
+        max_tokens=2000,
     ),
-
     "storytelling": PromptTemplate(
         name="storytelling_script",
         system_prompt=SYSTEM_PROMPTS["script_writer"],
@@ -95,9 +87,8 @@ Voice: Dramatic, engaging
 
 Output JSON:
 {{"title":"","hook":"","sections":[{{"heading":"","content":"","duration_seconds":0}}],"cta":"","outro":""}}""",
-        max_tokens=3000
+        max_tokens=3000,
     ),
-
     "short": PromptTemplate(
         name="short_script",
         system_prompt="Write 30-60 second YouTube Short scripts. Hook in 1 second. Output JSON.",
@@ -107,7 +98,7 @@ Max: 60 seconds
 
 Output JSON:
 {{"hook":"","main_points":["","",""],"punchline":"","cta":""}}""",
-        max_tokens=500
+        max_tokens=500,
     ),
 }
 
@@ -124,9 +115,8 @@ HOOK_TEMPLATES = {
 Style: Curiosity gap (create unanswered question)
 
 Output 5 hooks as JSON array: ["hook1","hook2"...]""",
-        max_tokens=300
+        max_tokens=300,
     ),
-
     "controversy": PromptTemplate(
         name="controversy_hook",
         system_prompt=SYSTEM_PROMPTS["hook_generator"],
@@ -134,9 +124,8 @@ Output 5 hooks as JSON array: ["hook1","hook2"...]""",
 Style: Controversial/polarizing (challenge beliefs)
 
 Output 5 hooks as JSON array: ["hook1","hook2"...]""",
-        max_tokens=300
+        max_tokens=300,
     ),
-
     "number_proof": PromptTemplate(
         name="number_hook",
         system_prompt=SYSTEM_PROMPTS["hook_generator"],
@@ -144,9 +133,8 @@ Output 5 hooks as JSON array: ["hook1","hook2"...]""",
 Style: Number/statistic proof (specific data)
 
 Output 5 hooks as JSON array: ["hook1","hook2"...]""",
-        max_tokens=300
+        max_tokens=300,
     ),
-
     "story_tease": PromptTemplate(
         name="story_hook",
         system_prompt=SYSTEM_PROMPTS["hook_generator"],
@@ -154,7 +142,7 @@ Output 5 hooks as JSON array: ["hook1","hook2"...]""",
 Style: Story tease (hint at dramatic story)
 
 Output 5 hooks as JSON array: ["hook1","hook2"...]""",
-        max_tokens=300
+        max_tokens=300,
     ),
 }
 
@@ -172,9 +160,8 @@ Niche: {niche}
 
 Generate 5 A/B test variants optimized for CTR.
 Output JSON: {{"variants":[{{"title":"","predicted_ctr":0.0}}]}}""",
-        max_tokens=400
+        max_tokens=400,
     ),
-
     "description": PromptTemplate(
         name="seo_description",
         system_prompt="Write SEO YouTube descriptions. Include timestamps, keywords, links. Output text only.",
@@ -188,9 +175,8 @@ Write 2000-char description with:
 - Keywords naturally integrated
 - Subscribe CTA
 - Social links placeholder""",
-        max_tokens=600
+        max_tokens=600,
     ),
-
     "tags": PromptTemplate(
         name="seo_tags",
         system_prompt="Generate YouTube tags. Mix broad and specific. Output JSON array.",
@@ -199,7 +185,7 @@ Niche: {niche}
 
 Output 30 tags as JSON: ["tag1","tag2"...]
 Include: primary topic, synonyms, related topics, trending variations""",
-        max_tokens=300
+        max_tokens=300,
     ),
 }
 
@@ -224,9 +210,8 @@ Check:
 5. Policy compliance (bool)
 
 Output JSON: {{"score":0,"issues":[],"suggestions":[]}}""",
-        max_tokens=400
+        max_tokens=400,
     ),
-
     "title_check": PromptTemplate(
         name="title_check",
         system_prompt=SYSTEM_PROMPTS["quality_check"],
@@ -236,7 +221,7 @@ Niche: {niche}
 Evaluate: curiosity, clarity, keyword presence, length, emotional trigger
 
 Output JSON: {{"score":0,"issues":[],"improved_title":""}}""",
-        max_tokens=200
+        max_tokens=200,
     ),
 }
 
@@ -254,9 +239,8 @@ Recent trends: {trends}
 
 Generate {count} video ideas.
 Output JSON: {{"ideas":[{{"title":"","score":0,"reasoning":""}}]}}""",
-        max_tokens=800
+        max_tokens=800,
     ),
-
     "competitor_analysis": PromptTemplate(
         name="competitor_analysis",
         system_prompt="Analyze competitor content. Output JSON insights.",
@@ -269,7 +253,7 @@ Identify patterns:
 3. Gaps to exploit
 
 Output JSON: {{"formulas":[],"top_topics":[],"gaps":[]}}""",
-        max_tokens=500
+        max_tokens=500,
     ),
 }
 
@@ -277,6 +261,7 @@ Output JSON: {{"formulas":[],"top_topics":[],"gaps":[]}}""",
 # ============================================================
 # PROMPT CACHE
 # ============================================================
+
 
 class PromptCache:
     """
@@ -325,6 +310,7 @@ def get_prompt_cache() -> PromptCache:
 # CONVENIENCE FUNCTIONS
 # ============================================================
 
+
 @lru_cache(maxsize=100)
 def get_script_template(niche: str) -> PromptTemplate:
     """Get script template for a niche."""
@@ -367,7 +353,6 @@ FEW_SHOT_EXAMPLES = {
         "The psychology trick that makes you spend more.",
         "This man predicted every crash. Here's his next prediction.",
     ],
-
     "good_title": [
         "How I Made $10,000/Month with ONE Strategy",
         "5 Money Mistakes That Cost Me $50,000",
@@ -375,7 +360,6 @@ FEW_SHOT_EXAMPLES = {
         "This Company Will 10x (Here's Why)",
         "The Untold Story of the $50 Billion Scam",
     ],
-
     "open_loops": [
         "But here's where it gets interesting...",
         "And the third reason? It might surprise you.",
@@ -443,12 +427,13 @@ def compress_prompt(prompt: str) -> str:
 
     # Remove extra whitespace
     import re
-    compressed = re.sub(r'\s+', ' ', compressed)
-    compressed = re.sub(r'\n\s*\n', '\n', compressed)
+
+    compressed = re.sub(r"\s+", " ", compressed)
+    compressed = re.sub(r"\n\s*\n", "\n", compressed)
 
     # Remove leading/trailing whitespace from lines
-    lines = [line.strip() for line in compressed.split('\n')]
-    compressed = '\n'.join(line for line in lines if line)
+    lines = [line.strip() for line in compressed.split("\n")]
+    compressed = "\n".join(line for line in lines if line)
 
     return compressed.strip()
 
@@ -492,12 +477,7 @@ def log_prompt_savings(original: str, compressed: str) -> Dict[str, Any]:
     }
 
 
-def get_prompt(
-    category: str,
-    template_name: str,
-    compressed: bool = True,
-    **kwargs
-) -> str:
+def get_prompt(category: str, template_name: str, compressed: bool = True, **kwargs) -> str:
     """
     Get a rendered prompt, optionally compressed.
 
@@ -539,16 +519,12 @@ def get_prompt(
 ULTRA_COMPRESSED = {
     "script": """Topic:{topic}|Niche:{niche}|Len:{duration}min
 Out:JSON{{"title":"","hook":"","sections":[{{"h":"","c":"","dur":0}}],"cta":"","outro":""}}""",
-
     "title": """Title:{title}|Niche:{niche}
 5 CTR variants. Out:JSON{{"v":[{{"t":"","ctr":0.0}}]}}""",
-
     "tags": """Title:{title}|Niche:{niche}
 30 tags. Out:JSON["t1","t2"...]""",
-
     "hook": """Topic:{topic}|Style:{style}
 5 hooks. Out:JSON["h1","h2"...]""",
-
     "desc": """Title:{title}|Sections:{sections}
 2000char desc w/timestamps,keywords,CTA""",
 }
@@ -577,5 +553,7 @@ if __name__ == "__main__":
     template = get_script_template("finance")
     rendered = template.render(topic="How to invest $1000", duration_minutes=10)
     print(f"Template: {template.name}")
-    print(f"Estimated tokens: {estimate_tokens(template, topic='How to invest $1000', duration_minutes=10)}")
+    print(
+        f"Estimated tokens: {estimate_tokens(template, topic='How to invest $1000', duration_minutes=10)}"
+    )
     print(f"\nRendered prompt:\n{rendered}")

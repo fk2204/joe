@@ -29,20 +29,22 @@ Usage:
     alerts = await analyzer.check_sentiment_alerts("CHANNEL_ID")
 """
 
+import asyncio
+import json
 import os
 import re
-import json
-import asyncio
-from dataclasses import dataclass, field, asdict
-from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Any, Tuple
 from collections import Counter
+from dataclasses import asdict, dataclass, field
+from datetime import datetime
 from pathlib import Path
+from typing import Any, Dict, List, Optional, Tuple
+
 from loguru import logger
 
 try:
     from googleapiclient.discovery import build
     from googleapiclient.errors import HttpError
+
     YOUTUBE_API_AVAILABLE = True
 except ImportError:
     logger.warning("Google API libraries not installed")
@@ -50,6 +52,7 @@ except ImportError:
 
 try:
     from textblob import TextBlob
+
     TEXTBLOB_AVAILABLE = True
 except ImportError:
     logger.warning("TextBlob not installed. Install with: pip install textblob")
@@ -59,6 +62,7 @@ except ImportError:
 @dataclass
 class Comment:
     """Represents a YouTube comment."""
+
     comment_id: str
     video_id: str
     author: str
@@ -80,6 +84,7 @@ class Comment:
 @dataclass
 class CommentThread:
     """A comment thread with replies."""
+
     top_comment: Comment
     replies: List[Comment] = field(default_factory=list)
     engagement_score: float = 0.0
@@ -107,6 +112,7 @@ class CommentThread:
 @dataclass
 class SentimentAnalysis:
     """Results of sentiment analysis."""
+
     video_id: str
     total_comments: int
     positive_count: int
@@ -130,6 +136,7 @@ class SentimentAnalysis:
 @dataclass
 class VideoCommentAnalysis:
     """Comprehensive comment analysis for a video."""
+
     video_id: str
     video_title: Optional[str]
     analysis_time: datetime
@@ -163,6 +170,7 @@ class VideoCommentAnalysis:
 @dataclass
 class SentimentAlert:
     """Alert for sentiment anomalies."""
+
     video_id: str
     video_title: str
     alert_type: str  # spike_negative, spike_positive, trending_topic
@@ -184,17 +192,57 @@ class SentimentAnalyzer:
 
     # Words that strongly indicate sentiment
     POSITIVE_WORDS = {
-        "amazing", "awesome", "excellent", "fantastic", "great", "incredible",
-        "love", "perfect", "wonderful", "best", "helpful", "informative",
-        "brilliant", "outstanding", "superb", "thank", "thanks", "appreciated",
-        "learned", "valuable", "insightful", "quality", "recommend", "subscribed"
+        "amazing",
+        "awesome",
+        "excellent",
+        "fantastic",
+        "great",
+        "incredible",
+        "love",
+        "perfect",
+        "wonderful",
+        "best",
+        "helpful",
+        "informative",
+        "brilliant",
+        "outstanding",
+        "superb",
+        "thank",
+        "thanks",
+        "appreciated",
+        "learned",
+        "valuable",
+        "insightful",
+        "quality",
+        "recommend",
+        "subscribed",
     }
 
     NEGATIVE_WORDS = {
-        "terrible", "awful", "horrible", "bad", "worst", "hate", "boring",
-        "waste", "useless", "disappointing", "clickbait", "misleading",
-        "wrong", "false", "stupid", "dumb", "annoying", "scam", "fake",
-        "unsubscribed", "dislike", "garbage", "trash", "pathetic"
+        "terrible",
+        "awful",
+        "horrible",
+        "bad",
+        "worst",
+        "hate",
+        "boring",
+        "waste",
+        "useless",
+        "disappointing",
+        "clickbait",
+        "misleading",
+        "wrong",
+        "false",
+        "stupid",
+        "dumb",
+        "annoying",
+        "scam",
+        "fake",
+        "unsubscribed",
+        "dislike",
+        "garbage",
+        "trash",
+        "pathetic",
     }
 
     # Question patterns
@@ -235,7 +283,7 @@ class SentimentAnalyzer:
                 textblob_score = blob.sentiment.polarity
 
                 # Combine scores (weighted average)
-                score = (word_score * 0.4 + textblob_score * 0.6)
+                score = word_score * 0.4 + textblob_score * 0.6
             except Exception:
                 score = word_score
         else:
@@ -267,28 +315,122 @@ class SentimentAnalyzer:
     def extract_topics(self, text: str, min_length: int = 4) -> List[str]:
         """Extract potential topics/keywords from text."""
         # Remove URLs
-        text = re.sub(r'https?://\S+', '', text)
+        text = re.sub(r"https?://\S+", "", text)
 
         # Remove special characters but keep important ones
-        text = re.sub(r'[^\w\s#@]', ' ', text)
+        text = re.sub(r"[^\w\s#@]", " ", text)
 
         # Extract words
         words = text.lower().split()
 
         # Common stop words to filter
         stop_words = {
-            "the", "a", "an", "is", "are", "was", "were", "be", "been", "being",
-            "have", "has", "had", "do", "does", "did", "will", "would", "could",
-            "should", "may", "might", "must", "shall", "can", "need", "to", "of",
-            "in", "for", "on", "with", "at", "by", "from", "as", "into", "through",
-            "during", "before", "after", "above", "below", "between", "under",
-            "again", "further", "then", "once", "here", "there", "when", "where",
-            "why", "how", "all", "each", "few", "more", "most", "other", "some",
-            "such", "no", "nor", "not", "only", "own", "same", "so", "than",
-            "too", "very", "just", "and", "but", "if", "or", "because", "until",
-            "while", "this", "that", "these", "those", "i", "me", "my", "you",
-            "your", "he", "she", "it", "we", "they", "them", "his", "her", "its",
-            "video", "watch", "like", "comment", "subscribe", "channel", "youtube"
+            "the",
+            "a",
+            "an",
+            "is",
+            "are",
+            "was",
+            "were",
+            "be",
+            "been",
+            "being",
+            "have",
+            "has",
+            "had",
+            "do",
+            "does",
+            "did",
+            "will",
+            "would",
+            "could",
+            "should",
+            "may",
+            "might",
+            "must",
+            "shall",
+            "can",
+            "need",
+            "to",
+            "of",
+            "in",
+            "for",
+            "on",
+            "with",
+            "at",
+            "by",
+            "from",
+            "as",
+            "into",
+            "through",
+            "during",
+            "before",
+            "after",
+            "above",
+            "below",
+            "between",
+            "under",
+            "again",
+            "further",
+            "then",
+            "once",
+            "here",
+            "there",
+            "when",
+            "where",
+            "why",
+            "how",
+            "all",
+            "each",
+            "few",
+            "more",
+            "most",
+            "other",
+            "some",
+            "such",
+            "no",
+            "nor",
+            "not",
+            "only",
+            "own",
+            "same",
+            "so",
+            "than",
+            "too",
+            "very",
+            "just",
+            "and",
+            "but",
+            "if",
+            "or",
+            "because",
+            "until",
+            "while",
+            "this",
+            "that",
+            "these",
+            "those",
+            "i",
+            "me",
+            "my",
+            "you",
+            "your",
+            "he",
+            "she",
+            "it",
+            "we",
+            "they",
+            "them",
+            "his",
+            "her",
+            "its",
+            "video",
+            "watch",
+            "like",
+            "comment",
+            "subscribe",
+            "channel",
+            "youtube",
         }
 
         topics = [w for w in words if len(w) >= min_length and w not in stop_words]
@@ -311,17 +453,16 @@ class CommentFetcher:
                 raise ValueError("YouTube API key required. Set YOUTUBE_API_KEY env var.")
 
             if not YOUTUBE_API_AVAILABLE:
-                raise ImportError("Google API libraries required. pip install google-api-python-client")
+                raise ImportError(
+                    "Google API libraries required. pip install google-api-python-client"
+                )
 
             self._youtube = build("youtube", "v3", developerKey=self.api_key)
 
         return self._youtube
 
     async def fetch_comments(
-        self,
-        video_id: str,
-        max_results: int = 100,
-        include_replies: bool = True
+        self, video_id: str, max_results: int = 100, include_replies: bool = True
     ) -> List[CommentThread]:
         """
         Fetch comments for a video.
@@ -345,13 +486,11 @@ class CommentFetcher:
                 videoId=video_id,
                 maxResults=min(max_results, 100),
                 order="relevance",
-                textFormat="plainText"
+                textFormat="plainText",
             )
 
             while request and len(threads) < max_results:
-                response = await asyncio.get_event_loop().run_in_executor(
-                    None, request.execute
-                )
+                response = await asyncio.get_event_loop().run_in_executor(None, request.execute)
 
                 for item in response.get("items", []):
                     thread = self._parse_comment_thread(item, video_id, include_replies)
@@ -366,7 +505,7 @@ class CommentFetcher:
                         maxResults=min(max_results - len(threads), 100),
                         order="relevance",
                         textFormat="plainText",
-                        pageToken=response["nextPageToken"]
+                        pageToken=response["nextPageToken"],
                     )
                 else:
                     break
@@ -383,10 +522,7 @@ class CommentFetcher:
         return threads
 
     def _parse_comment_thread(
-        self,
-        item: Dict,
-        video_id: str,
-        include_replies: bool
+        self, item: Dict, video_id: str, include_replies: bool
     ) -> Optional[CommentThread]:
         """Parse a comment thread from API response."""
         try:
@@ -399,9 +535,7 @@ class CommentFetcher:
                 text=snippet.get("textDisplay", ""),
                 like_count=snippet.get("likeCount", 0),
                 reply_count=item["snippet"].get("totalReplyCount", 0),
-                published_at=datetime.fromisoformat(
-                    snippet["publishedAt"].replace("Z", "+00:00")
-                )
+                published_at=datetime.fromisoformat(snippet["publishedAt"].replace("Z", "+00:00")),
             )
 
             replies = []
@@ -417,7 +551,7 @@ class CommentFetcher:
                         reply_count=0,
                         published_at=datetime.fromisoformat(
                             reply_snippet["publishedAt"].replace("Z", "+00:00")
-                        )
+                        ),
                     )
                     replies.append(reply)
 
@@ -431,11 +565,7 @@ class CommentFetcher:
         """Get video title."""
         try:
             response = await asyncio.get_event_loop().run_in_executor(
-                None,
-                lambda: self.youtube.videos().list(
-                    part="snippet",
-                    id=video_id
-                ).execute()
+                None, lambda: self.youtube.videos().list(part="snippet", id=video_id).execute()
             )
 
             if response.get("items"):
@@ -454,11 +584,7 @@ class CommentAnalyzer:
     question extraction, topic analysis, and content idea generation.
     """
 
-    def __init__(
-        self,
-        api_key: Optional[str] = None,
-        cache_dir: str = "data/comment_cache"
-    ):
+    def __init__(self, api_key: Optional[str] = None, cache_dir: str = "data/comment_cache"):
         self.fetcher = CommentFetcher(api_key)
         self.sentiment_analyzer = SentimentAnalyzer()
 
@@ -471,10 +597,7 @@ class CommentAnalyzer:
         logger.info("CommentAnalyzer initialized")
 
     async def analyze_video_comments(
-        self,
-        video_id: str,
-        max_comments: int = 100,
-        include_replies: bool = True
+        self, video_id: str, max_comments: int = 100, include_replies: bool = True
     ) -> VideoCommentAnalysis:
         """
         Perform comprehensive analysis of video comments.
@@ -558,7 +681,7 @@ class CommentAnalyzer:
             content_ideas=content_ideas,
             top_positive_comments=top_positive,
             top_negative_comments=top_negative,
-            engagement_insights=engagement_insights
+            engagement_insights=engagement_insights,
         )
 
         # Cache analysis
@@ -581,9 +704,7 @@ class CommentAnalyzer:
         comment.topics = self.sentiment_analyzer.extract_topics(comment.text)
 
     def _calculate_sentiment_analysis(
-        self,
-        video_id: str,
-        comments: List[Comment]
+        self, video_id: str, comments: List[Comment]
     ) -> SentimentAnalysis:
         """Calculate overall sentiment analysis."""
         if not comments:
@@ -594,7 +715,7 @@ class CommentAnalyzer:
                 negative_count=0,
                 neutral_count=0,
                 average_sentiment=0.0,
-                sentiment_distribution={"positive": 0, "negative": 0, "neutral": 0}
+                sentiment_distribution={"positive": 0, "negative": 0, "neutral": 0},
             )
 
         positive = sum(1 for c in comments if c.sentiment_label == "positive")
@@ -615,7 +736,7 @@ class CommentAnalyzer:
                 "positive": (positive / total) * 100,
                 "negative": (negative / total) * 100,
                 "neutral": (neutral / total) * 100,
-            }
+            },
         )
 
     def _calculate_engagement_score(self, thread: CommentThread) -> float:
@@ -637,9 +758,7 @@ class CommentAnalyzer:
         return score
 
     def _calculate_engagement_insights(
-        self,
-        threads: List[CommentThread],
-        comments: List[Comment]
+        self, threads: List[CommentThread], comments: List[Comment]
     ) -> Dict[str, Any]:
         """Calculate engagement insights from comments."""
         if not comments:
@@ -680,17 +799,19 @@ class CommentAnalyzer:
         self,
         questions: List[str],
         common_topics: List[Tuple[str, int]],
-        sentiment: SentimentAnalysis
+        sentiment: SentimentAnalysis,
     ) -> List[str]:
         """Generate content ideas from comment analysis."""
         ideas = []
 
         # Ideas from questions
         if questions:
-            ideas.append(f"FAQ Video: Answer the top {min(5, len(questions))} questions from comments")
+            ideas.append(
+                f"FAQ Video: Answer the top {min(5, len(questions))} questions from comments"
+            )
             for q in questions[:3]:
                 # Clean question for idea
-                clean_q = q[:100].replace('\n', ' ').strip()
+                clean_q = q[:100].replace("\n", " ").strip()
                 if clean_q:
                     ideas.append(f"Topic request: {clean_q}")
 
@@ -710,9 +831,11 @@ class CommentAnalyzer:
 
     def _cache_analysis(self, analysis: VideoCommentAnalysis) -> None:
         """Cache analysis results."""
-        cache_file = self.cache_dir / f"{analysis.video_id}_{datetime.now().strftime('%Y%m%d')}.json"
+        cache_file = (
+            self.cache_dir / f"{analysis.video_id}_{datetime.now().strftime('%Y%m%d')}.json"
+        )
         try:
-            with open(cache_file, 'w') as f:
+            with open(cache_file, "w") as f:
                 json.dump(analysis.to_dict(), f, indent=2)
         except Exception as e:
             logger.debug(f"Could not cache analysis: {e}")
@@ -721,7 +844,7 @@ class CommentAnalyzer:
         self,
         video_ids: List[str],
         threshold_negative: float = 0.3,  # 30% negative triggers alert
-        threshold_drop: float = 0.2  # 20% drop from baseline
+        threshold_drop: float = 0.2,  # 20% drop from baseline
     ) -> List[SentimentAlert]:
         """
         Check for sentiment anomalies across videos.
@@ -755,7 +878,7 @@ class CommentAnalyzer:
                         message=f"High negative sentiment detected: {neg_percentage:.1f}% negative comments",
                         current_sentiment=analysis.sentiment.average_sentiment,
                         baseline_sentiment=self._channel_baselines.get(video_id, 0.0),
-                        sample_comments=samples
+                        sample_comments=samples,
                     )
                     alerts.append(alert)
 
@@ -772,7 +895,7 @@ class CommentAnalyzer:
                             message=f"Sentiment dropped {drop:.2f} from baseline",
                             current_sentiment=analysis.sentiment.average_sentiment,
                             baseline_sentiment=baseline,
-                            sample_comments=[]
+                            sample_comments=[],
                         )
                         alerts.append(alert)
 
@@ -785,9 +908,7 @@ class CommentAnalyzer:
         return alerts
 
     async def generate_content_ideas(
-        self,
-        video_id: str,
-        max_ideas: int = 10
+        self, video_id: str, max_ideas: int = 10
     ) -> List[Dict[str, Any]]:
         """
         Generate content ideas from video comments.
@@ -805,44 +926,48 @@ class CommentAnalyzer:
 
         # From questions
         for question in analysis.questions[:5]:
-            ideas.append({
-                "title": f"Answering: {question[:50]}...",
-                "description": f"Based on audience question from comments",
-                "source": "question",
-                "original_text": question,
-                "confidence": 0.8,
-            })
+            ideas.append(
+                {
+                    "title": f"Answering: {question[:50]}...",
+                    "description": f"Based on audience question from comments",
+                    "source": "question",
+                    "original_text": question,
+                    "confidence": 0.8,
+                }
+            )
 
         # From viral threads
         for thread in analysis.viral_threads[:3]:
             if thread.top_comment.text:
-                ideas.append({
-                    "title": f"Deep dive: {thread.top_comment.text[:50]}...",
-                    "description": f"Highly engaged comment thread ({thread.total_likes} likes)",
-                    "source": "viral_thread",
-                    "original_text": thread.top_comment.text,
-                    "confidence": 0.7,
-                })
+                ideas.append(
+                    {
+                        "title": f"Deep dive: {thread.top_comment.text[:50]}...",
+                        "description": f"Highly engaged comment thread ({thread.total_likes} likes)",
+                        "source": "viral_thread",
+                        "original_text": thread.top_comment.text,
+                        "confidence": 0.7,
+                    }
+                )
 
         # From common topics
         for topic, count in analysis.common_topics[:5]:
             if count >= 3:  # Mentioned at least 3 times
-                ideas.append({
-                    "title": f"Everything about {topic.title()}",
-                    "description": f"Topic mentioned {count} times in comments",
-                    "source": "common_topic",
-                    "original_text": topic,
-                    "confidence": 0.6,
-                })
+                ideas.append(
+                    {
+                        "title": f"Everything about {topic.title()}",
+                        "description": f"Topic mentioned {count} times in comments",
+                        "source": "common_topic",
+                        "original_text": topic,
+                        "confidence": 0.6,
+                    }
+                )
 
         # Sort by confidence and limit
         ideas.sort(key=lambda x: x["confidence"], reverse=True)
         return ideas[:max_ideas]
 
     async def get_question_summary(
-        self,
-        video_id: str,
-        max_questions: int = 20
+        self, video_id: str, max_questions: int = 20
     ) -> List[Dict[str, Any]]:
         """
         Get a summary of questions from comments.
@@ -864,13 +989,15 @@ class CommentAnalyzer:
         questions = []
         for thread in threads:
             if thread.top_comment.is_question:
-                questions.append({
-                    "text": thread.top_comment.text,
-                    "likes": thread.top_comment.like_count,
-                    "replies": len(thread.replies),
-                    "author": thread.top_comment.author,
-                    "answer_priority": thread.top_comment.like_count + len(thread.replies) * 5,
-                })
+                questions.append(
+                    {
+                        "text": thread.top_comment.text,
+                        "likes": thread.top_comment.like_count,
+                        "replies": len(thread.replies),
+                        "author": thread.top_comment.author,
+                        "answer_priority": thread.top_comment.like_count + len(thread.replies) * 5,
+                    }
+                )
 
         # Sort by priority
         questions.sort(key=lambda q: q["answer_priority"], reverse=True)
@@ -878,10 +1005,7 @@ class CommentAnalyzer:
         return questions[:max_questions]
 
     def export_analysis(
-        self,
-        analysis: VideoCommentAnalysis,
-        output_path: str,
-        format: str = "json"
+        self, analysis: VideoCommentAnalysis, output_path: str, format: str = "json"
     ) -> str:
         """
         Export analysis to file.
@@ -897,22 +1021,33 @@ class CommentAnalyzer:
         Path(output_path).parent.mkdir(parents=True, exist_ok=True)
 
         if format == "json":
-            with open(output_path, 'w') as f:
+            with open(output_path, "w") as f:
                 json.dump(analysis.to_dict(), f, indent=2)
         elif format == "csv":
             import csv
-            with open(output_path, 'w', newline='', encoding='utf-8') as f:
+
+            with open(output_path, "w", newline="", encoding="utf-8") as f:
                 writer = csv.writer(f)
-                writer.writerow(["Video ID", "Total Comments", "Avg Sentiment",
-                               "Positive %", "Negative %", "Questions"])
-                writer.writerow([
-                    analysis.video_id,
-                    analysis.total_comments,
-                    f"{analysis.sentiment.average_sentiment:.3f}",
-                    f"{analysis.sentiment.sentiment_distribution['positive']:.1f}%",
-                    f"{analysis.sentiment.sentiment_distribution['negative']:.1f}%",
-                    len(analysis.questions)
-                ])
+                writer.writerow(
+                    [
+                        "Video ID",
+                        "Total Comments",
+                        "Avg Sentiment",
+                        "Positive %",
+                        "Negative %",
+                        "Questions",
+                    ]
+                )
+                writer.writerow(
+                    [
+                        analysis.video_id,
+                        analysis.total_comments,
+                        f"{analysis.sentiment.average_sentiment:.3f}",
+                        f"{analysis.sentiment.sentiment_distribution['positive']:.1f}%",
+                        f"{analysis.sentiment.sentiment_distribution['negative']:.1f}%",
+                        len(analysis.questions),
+                    ]
+                )
         else:
             raise ValueError(f"Unsupported format: {format}")
 

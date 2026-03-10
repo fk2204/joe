@@ -18,25 +18,27 @@ Usage:
     video = orchestrator.production_agent.create_video(script)
 """
 
-import os
 import asyncio
-from pathlib import Path
-from datetime import datetime
-from typing import List, Dict, Optional, Any
 from dataclasses import dataclass, field
+from datetime import datetime
+from pathlib import Path
+from typing import Any, Dict, List, Optional
+
 from loguru import logger
 
-# Import our modules
-from ..research.trends import TrendResearcher
-from ..research.idea_generator import IdeaGenerator, ScoredIdea
 from ..content.script_writer import ScriptWriter, VideoScript
 from ..content.tts import TextToSpeech
 from ..content.video_fast import FastVideoGenerator
+from ..research.idea_generator import IdeaGenerator, ScoredIdea
+
+# Import our modules
+from ..research.trends import TrendResearcher
 
 
 @dataclass
 class AgentResult:
     """Result from any agent operation."""
+
     success: bool
     agent: str
     task: str
@@ -48,6 +50,7 @@ class AgentResult:
 @dataclass
 class VideoProject:
     """Tracks a video through the entire pipeline."""
+
     project_id: str
     channel: str
     niche: str
@@ -116,7 +119,7 @@ class ResearchAgent:
             "topic": topic,
             "trend_count": len(trends),
             "trending": any(t.trend_direction == "rising" for t in trends),
-            "related_keywords": trends[0].related_queries if trends else []
+            "related_keywords": trends[0].related_queries if trends else [],
         }
 
 
@@ -143,20 +146,19 @@ class ScriptAgent:
         topic: ScoredIdea,
         duration_minutes: int = 5,
         style: str = "documentary",
-        niche: str = "default"
+        niche: str = "default",
     ) -> Optional[VideoScript]:
         """Write a complete video script."""
         logger.info(f"[{self.name}] Writing {duration_minutes}-min script for: {topic.title}")
 
         try:
             script = self.writer.generate_script(
-                topic=topic.title,
-                style=style,
-                duration_minutes=duration_minutes,
-                niche=niche
+                topic=topic.title, style=style, duration_minutes=duration_minutes, niche=niche
             )
 
-            logger.success(f"[{self.name}] Script complete: {len(script.sections)} sections, ~{script.total_duration}s")
+            logger.success(
+                f"[{self.name}] Script complete: {len(script.sections)} sections, ~{script.total_duration}s"
+            )
             return script
 
         except Exception as e:
@@ -214,21 +216,14 @@ class ProductionAgent:
             logger.error(f"[{self.name}] Audio failed: {e}")
             return None
 
-    def create_video(
-        self,
-        audio_file: str,
-        title: str,
-        filename: str
-    ) -> Optional[str]:
+    def create_video(self, audio_file: str, title: str, filename: str) -> Optional[str]:
         """Create video from audio."""
         logger.info(f"[{self.name}] Creating video: {filename}")
 
         try:
             output_path = self.output_dir / filename
             result = self.video_gen.create_video(
-                audio_file=audio_file,
-                output_file=str(output_path),
-                title=title
+                audio_file=audio_file, output_file=str(output_path), title=title
             )
 
             if result:
@@ -246,9 +241,7 @@ class ProductionAgent:
         try:
             output_path = self.output_dir / filename
             result = self.video_gen.create_thumbnail(
-                output_file=str(output_path),
-                title=title[:30],
-                subtitle=subtitle
+                output_file=str(output_path), title=title[:30], subtitle=subtitle
             )
 
             if result:
@@ -260,49 +253,35 @@ class ProductionAgent:
             return None
 
     async def produce_full_video(
-        self,
-        script: VideoScript,
-        narration: str,
-        project_id: str,
-        niche: str = "default"
+        self, script: VideoScript, narration: str, project_id: str, niche: str = "default"
     ) -> Dict[str, Optional[str]]:
         """Produce complete video package (audio, video, thumbnail)."""
         logger.info(f"[{self.name}] Starting full production for: {script.title}")
 
         # Generate safe filename
         import re
-        safe_name = re.sub(r'[^\w\s-]', '', script.title)[:40].replace(' ', '_')
+
+        safe_name = re.sub(r"[^\w\s-]", "", script.title)[:40].replace(" ", "_")
 
         # Create audio
-        audio_file = await self.create_audio(
-            narration,
-            f"{safe_name}_audio.mp3"
-        )
+        audio_file = await self.create_audio(narration, f"{safe_name}_audio.mp3")
 
         if not audio_file:
             return {"audio": None, "video": None, "thumbnail": None}
 
         # Create video using FastVideoGenerator
         video_path = str(self.output_dir / f"{safe_name}.mp4")
-        video_file = self.create_video(
-            audio_file,
-            script.title,
-            f"{safe_name}.mp4"
-        )
+        video_file = self.create_video(audio_file, script.title, f"{safe_name}.mp4")
 
         # Create thumbnail
         thumb_path = str(self.output_dir / f"{safe_name}_thumb.png")
         thumbnail_file = self.create_thumbnail(
             script.title,
             f"{safe_name}_thumb.png",
-            subtitle=script.description[:50] if script.description else None
+            subtitle=script.description[:50] if script.description else None,
         )
 
-        return {
-            "audio": audio_file,
-            "video": video_file,
-            "thumbnail": thumbnail_file
-        }
+        return {"audio": audio_file, "video": video_file, "thumbnail": thumbnail_file}
 
 
 # ============================================================
@@ -329,6 +308,7 @@ class UploadAgent:
         if self._uploader is None:
             try:
                 from ..youtube.uploader import YouTubeUploader
+
                 self._uploader = YouTubeUploader()
             except Exception as e:
                 logger.error(f"[{self.name}] Failed to initialize: {e}")
@@ -341,7 +321,7 @@ class UploadAgent:
         description: str,
         tags: List[str],
         thumbnail_file: Optional[str] = None,
-        privacy: str = "unlisted"
+        privacy: str = "unlisted",
     ) -> Dict[str, Any]:
         """Upload video to YouTube."""
         logger.info(f"[{self.name}] Uploading: {title}")
@@ -356,16 +336,12 @@ class UploadAgent:
                 description=description,
                 tags=tags,
                 privacy=privacy,
-                thumbnail_file=thumbnail_file
+                thumbnail_file=thumbnail_file,
             )
 
             if result.success:
                 logger.success(f"[{self.name}] Uploaded: {result.video_url}")
-                return {
-                    "success": True,
-                    "video_id": result.video_id,
-                    "video_url": result.video_url
-                }
+                return {"success": True, "video_id": result.video_id, "video_url": result.video_url}
             else:
                 logger.error(f"[{self.name}] Upload failed: {result.error}")
                 return {"success": False, "error": result.error}
@@ -387,11 +363,7 @@ class AgentOrchestrator:
         result = orchestrator.create_video("passive income", channel="money_blueprints")
     """
 
-    def __init__(
-        self,
-        ai_provider: str = "ollama",
-        api_key: Optional[str] = None
-    ):
+    def __init__(self, ai_provider: str = "ollama", api_key: Optional[str] = None):
         self.ai_provider = ai_provider
         self.api_key = api_key
 
@@ -411,7 +383,7 @@ class AgentOrchestrator:
         niche: str,
         channel: Optional[str] = None,
         upload: bool = False,
-        privacy: str = "unlisted"
+        privacy: str = "unlisted",
     ) -> VideoProject:
         """
         Create a complete video using all agents.
@@ -427,11 +399,7 @@ class AgentOrchestrator:
         """
         # Create project
         project_id = f"{niche.replace(' ', '_')}_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
-        project = VideoProject(
-            project_id=project_id,
-            channel=channel or "default",
-            niche=niche
-        )
+        project = VideoProject(project_id=project_id, channel=channel or "default", niche=niche)
         self.projects[project_id] = project
 
         logger.info(f"")
@@ -459,7 +427,7 @@ class AgentOrchestrator:
                 niche_map = {
                     "money_blueprints": "finance",
                     "mind_unlocked": "psychology",
-                    "untold_stories": "storytelling"
+                    "untold_stories": "storytelling",
                 }
                 niche = niche_map.get(channel, "default")
 
@@ -467,10 +435,7 @@ class AgentOrchestrator:
             logger.info(f"\n[STEP 2/4] Script Agent writing script...")
             project.status = "scripting"
             script = self.script_agent.write_script(
-                topic,
-                duration_minutes=5,
-                style="documentary",
-                niche=niche
+                topic, duration_minutes=5, style="documentary", niche=niche
             )
 
             if not script:
@@ -513,7 +478,7 @@ class AgentOrchestrator:
                     description=script.description,
                     tags=script.tags,
                     thumbnail_file=project.thumbnail_file,
-                    privacy=privacy
+                    privacy=privacy,
                 )
 
                 if not upload_result.get("success"):
@@ -540,11 +505,7 @@ class AgentOrchestrator:
             logger.error(f"Pipeline failed: {e}")
             return project
 
-    def create_batch(
-        self,
-        niches: List[str],
-        channel: Optional[str] = None
-    ) -> List[VideoProject]:
+    def create_batch(self, niches: List[str], channel: Optional[str] = None) -> List[VideoProject]:
         """Create multiple videos in batch."""
         results = []
 
@@ -577,9 +538,9 @@ def quick_batch(niches: List[str]) -> List[VideoProject]:
 
 # Example usage
 if __name__ == "__main__":
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print("  SUBAGENT SYSTEM TEST")
-    print("="*60 + "\n")
+    print("=" * 60 + "\n")
 
     # Test the orchestrator
     orchestrator = AgentOrchestrator()

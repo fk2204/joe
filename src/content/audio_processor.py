@@ -52,23 +52,25 @@ Usage:
     )
 """
 
-import os
 import math
+import os
 import shutil
 import subprocess
-from pathlib import Path
-from typing import Optional, Dict, Tuple
 from dataclasses import dataclass
+from pathlib import Path
+from typing import Dict, Optional
+
 from loguru import logger
 
 
 @dataclass
 class AudioLevels:
     """Audio level measurements."""
+
     integrated_loudness: float  # LUFS
-    true_peak: float           # dBTP
-    loudness_range: float      # LU
-    threshold: float           # LUFS
+    true_peak: float  # dBTP
+    loudness_range: float  # LU
+    threshold: float  # LUFS
 
 
 class AudioProcessor:
@@ -80,13 +82,13 @@ class AudioProcessor:
     """
 
     # YouTube recommended levels
-    TARGET_LUFS = -14.0        # YouTube's Stable Volume target
-    TARGET_PEAK = -1.0         # True peak limit (prevents clipping)
-    TARGET_LRA = 11.0          # Loudness range (dynamics)
+    TARGET_LUFS = -14.0  # YouTube's Stable Volume target
+    TARGET_PEAK = -1.0  # True peak limit (prevents clipping)
+    TARGET_LRA = 11.0  # Loudness range (dynamics)
 
     # Music mixing levels
     MUSIC_VOLUME_PERCENT = 15  # 15% volume for background music
-    MUSIC_DB_REDUCTION = -18   # ~18dB below voice (-30dB absolute)
+    MUSIC_DB_REDUCTION = -18  # ~18dB below voice (-30dB absolute)
 
     # Sample rates
     YOUTUBE_SAMPLE_RATE = 48000  # YouTube's preferred sample rate
@@ -168,18 +170,16 @@ class AudioProcessor:
             # Use loudnorm filter in measurement mode
             cmd = [
                 self.ffmpeg,
-                '-i', audio_file,
-                '-af', 'loudnorm=I=-14:TP=-1:LRA=11:print_format=json',
-                '-f', 'null',
-                '-'
+                "-i",
+                audio_file,
+                "-af",
+                "loudnorm=I=-14:TP=-1:LRA=11:print_format=json",
+                "-f",
+                "null",
+                "-",
             ]
 
-            result = subprocess.run(
-                cmd,
-                capture_output=True,
-                text=True,
-                timeout=120
-            )
+            result = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
 
             # Parse loudnorm output from stderr
             output = result.stderr
@@ -187,16 +187,16 @@ class AudioProcessor:
             # Extract values using simple parsing
             levels = {}
 
-            for line in output.split('\n'):
+            for line in output.split("\n"):
                 line = line.strip()
                 if '"input_i"' in line:
-                    levels['integrated_loudness'] = float(line.split(':')[1].strip().strip('",'))
+                    levels["integrated_loudness"] = float(line.split(":")[1].strip().strip('",'))
                 elif '"input_tp"' in line:
-                    levels['true_peak'] = float(line.split(':')[1].strip().strip('",'))
+                    levels["true_peak"] = float(line.split(":")[1].strip().strip('",'))
                 elif '"input_lra"' in line:
-                    levels['loudness_range'] = float(line.split(':')[1].strip().strip('",'))
+                    levels["loudness_range"] = float(line.split(":")[1].strip().strip('",'))
                 elif '"input_thresh"' in line:
-                    levels['threshold'] = float(line.split(':')[1].strip().strip('",'))
+                    levels["threshold"] = float(line.split(":")[1].strip().strip('",'))
 
             if levels:
                 logger.debug(
@@ -217,7 +217,7 @@ class AudioProcessor:
         output_file: str = None,
         target_lufs: float = None,
         target_peak: float = None,
-        two_pass: bool = True
+        two_pass: bool = True,
     ) -> Optional[str]:
         """
         Normalize audio to YouTube's recommended levels (-14 LUFS).
@@ -260,9 +260,7 @@ class AudioProcessor:
         try:
             if two_pass:
                 # Two-pass normalization for better accuracy
-                return self._normalize_two_pass(
-                    input_file, output_file, target_lufs, target_peak
-                )
+                return self._normalize_two_pass(input_file, output_file, target_lufs, target_peak)
             else:
                 # Single-pass (faster but less accurate)
                 return self._normalize_single_pass(
@@ -274,20 +272,21 @@ class AudioProcessor:
             return None
 
     def _normalize_single_pass(
-        self,
-        input_file: str,
-        output_file: str,
-        target_lufs: float,
-        target_peak: float
+        self, input_file: str, output_file: str, target_lufs: float, target_peak: float
     ) -> Optional[str]:
         """Single-pass loudness normalization."""
         cmd = [
-            self.ffmpeg, '-y',
-            '-i', input_file,
-            '-af', f'loudnorm=I={target_lufs}:TP={target_peak}:LRA={self.TARGET_LRA}',
-            '-ar', str(self.YOUTUBE_SAMPLE_RATE),
-            '-b:a', '256k',
-            output_file
+            self.ffmpeg,
+            "-y",
+            "-i",
+            input_file,
+            "-af",
+            f"loudnorm=I={target_lufs}:TP={target_peak}:LRA={self.TARGET_LRA}",
+            "-ar",
+            str(self.YOUTUBE_SAMPLE_RATE),
+            "-b:a",
+            "256k",
+            output_file,
         ]
 
         result = subprocess.run(cmd, capture_output=True, timeout=300)
@@ -300,11 +299,7 @@ class AudioProcessor:
         return None
 
     def _normalize_two_pass(
-        self,
-        input_file: str,
-        output_file: str,
-        target_lufs: float,
-        target_peak: float
+        self, input_file: str, output_file: str, target_lufs: float, target_peak: float
     ) -> Optional[str]:
         """
         Two-pass loudness normalization for better accuracy.
@@ -317,10 +312,13 @@ class AudioProcessor:
 
         measure_cmd = [
             self.ffmpeg,
-            '-i', input_file,
-            '-af', f'loudnorm=I={target_lufs}:TP={target_peak}:LRA={self.TARGET_LRA}:print_format=json',
-            '-f', 'null',
-            '-'
+            "-i",
+            input_file,
+            "-af",
+            f"loudnorm=I={target_lufs}:TP={target_peak}:LRA={self.TARGET_LRA}:print_format=json",
+            "-f",
+            "null",
+            "-",
         ]
 
         result = subprocess.run(measure_cmd, capture_output=True, text=True, timeout=300)
@@ -336,20 +334,25 @@ class AudioProcessor:
         logger.debug("Pass 2: Applying normalization...")
 
         normalize_cmd = [
-            self.ffmpeg, '-y',
-            '-i', input_file,
-            '-af', (
-                f'loudnorm=I={target_lufs}:TP={target_peak}:LRA={self.TARGET_LRA}:'
+            self.ffmpeg,
+            "-y",
+            "-i",
+            input_file,
+            "-af",
+            (
+                f"loudnorm=I={target_lufs}:TP={target_peak}:LRA={self.TARGET_LRA}:"
                 f'measured_I={measured["input_i"]}:'
                 f'measured_TP={measured["input_tp"]}:'
                 f'measured_LRA={measured["input_lra"]}:'
                 f'measured_thresh={measured["input_thresh"]}:'
                 f'offset={measured.get("target_offset", 0)}:'
-                'linear=true'
+                "linear=true"
             ),
-            '-ar', str(self.YOUTUBE_SAMPLE_RATE),
-            '-b:a', '256k',
-            output_file
+            "-ar",
+            str(self.YOUTUBE_SAMPLE_RATE),
+            "-b:a",
+            "256k",
+            output_file,
         ]
 
         result = subprocess.run(normalize_cmd, capture_output=True, timeout=300)
@@ -365,12 +368,12 @@ class AudioProcessor:
         """Parse loudnorm filter JSON output."""
         try:
             values = {}
-            keys = ['input_i', 'input_tp', 'input_lra', 'input_thresh', 'target_offset']
+            keys = ["input_i", "input_tp", "input_lra", "input_thresh", "target_offset"]
 
             for key in keys:
-                for line in output.split('\n'):
+                for line in output.split("\n"):
                     if f'"{key}"' in line:
-                        value_str = line.split(':')[1].strip().strip('",')
+                        value_str = line.split(":")[1].strip().strip('",')
                         values[key] = float(value_str)
                         break
 
@@ -391,7 +394,7 @@ class AudioProcessor:
         music_volume: float = 0.15,
         fade_in_duration: float = 1.0,
         fade_out_duration: float = 2.0,
-        normalize_before_mix: bool = True
+        normalize_before_mix: bool = True,
     ) -> Optional[str]:
         """
         Mix voice narration with background music at proper levels.
@@ -449,7 +452,9 @@ class AudioProcessor:
 
             voice_filter = ""
             if normalize_before_mix:
-                voice_filter = f"loudnorm=I={self.TARGET_LUFS}:TP={self.TARGET_PEAK}:LRA={self.TARGET_LRA}"
+                voice_filter = (
+                    f"loudnorm=I={self.TARGET_LUFS}:TP={self.TARGET_PEAK}:LRA={self.TARGET_LRA}"
+                )
 
             # Build the filter complex
             # [0:a] = voice, [1:a] = music
@@ -481,16 +486,25 @@ class AudioProcessor:
             filter_complex = ";".join(filters)
 
             cmd = [
-                self.ffmpeg, '-y',
-                '-i', voice_file,
-                '-stream_loop', '-1',  # Loop music to match voice duration
-                '-i', music_file,
-                '-filter_complex', filter_complex,
-                '-map', '[out]',
-                '-t', str(voice_duration),
-                '-ar', str(self.YOUTUBE_SAMPLE_RATE),
-                '-b:a', '256k',
-                output_file
+                self.ffmpeg,
+                "-y",
+                "-i",
+                voice_file,
+                "-stream_loop",
+                "-1",  # Loop music to match voice duration
+                "-i",
+                music_file,
+                "-filter_complex",
+                filter_complex,
+                "-map",
+                "[out]",
+                "-t",
+                str(voice_duration),
+                "-ar",
+                str(self.YOUTUBE_SAMPLE_RATE),
+                "-b:a",
+                "256k",
+                output_file,
             ]
 
             result = subprocess.run(cmd, capture_output=True, timeout=600)
@@ -514,10 +528,13 @@ class AudioProcessor:
         try:
             cmd = [
                 self.ffprobe,
-                '-v', 'error',
-                '-show_entries', 'format=duration',
-                '-of', 'default=noprint_wrappers=1:nokey=1',
-                audio_file
+                "-v",
+                "error",
+                "-show_entries",
+                "format=duration",
+                "-of",
+                "default=noprint_wrappers=1:nokey=1",
+                audio_file,
             ]
             result = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
             if result.returncode == 0 and result.stdout.strip():
@@ -527,11 +544,7 @@ class AudioProcessor:
 
         return None
 
-    def apply_multiband_eq(
-        self,
-        input_file: str,
-        output_file: str
-    ) -> Optional[str]:
+    def apply_multiband_eq(self, input_file: str, output_file: str) -> Optional[str]:
         """
         Apply professional 6-band EQ for broadcast-quality voice audio.
 
@@ -577,19 +590,15 @@ class AudioProcessor:
             eq_filters = [
                 # Band 1: High-pass at 80Hz - removes rumble
                 "highpass=f=80",
-
                 # Band 2: 150Hz -2dB cut - reduces muddiness
                 # width_type=o means octave width, width=1 gives a gentle Q
                 "equalizer=f=150:width_type=o:width=1:g=-2",
-
                 # Band 3: 3kHz +3dB boost - voice presence
                 # This is the primary intelligibility range for speech
                 "equalizer=f=3000:width_type=o:width=1:g=3",
-
                 # Band 4: 6.5kHz +2dB boost - clarity/air
                 # Adds brightness without harshness
                 "equalizer=f=6500:width_type=o:width=1:g=2",
-
                 # Band 5: 11kHz +1.5dB boost - brilliance
                 # Adds sparkle and definition to consonants
                 "equalizer=f=11000:width_type=o:width=1.5:g=1.5",
@@ -605,12 +614,17 @@ class AudioProcessor:
             logger.debug("  - 11kHz +1.5dB (brilliance)")
 
             cmd = [
-                self.ffmpeg, '-y',
-                '-i', input_file,
-                '-af', filter_chain,
-                '-ar', str(self.YOUTUBE_SAMPLE_RATE),
-                '-b:a', '256k',
-                output_file
+                self.ffmpeg,
+                "-y",
+                "-i",
+                input_file,
+                "-af",
+                filter_chain,
+                "-ar",
+                str(self.YOUTUBE_SAMPLE_RATE),
+                "-b:a",
+                "256k",
+                output_file,
             ]
 
             result = subprocess.run(cmd, capture_output=True, timeout=300)
@@ -631,10 +645,7 @@ class AudioProcessor:
             return None
 
     def apply_sidechain_ducking(
-        self,
-        voice_file: str,
-        music_file: str,
-        output_file: str
+        self, voice_file: str, music_file: str, output_file: str
     ) -> Optional[str]:
         """
         Apply automatic sidechain ducking - music volume drops when voice is present.
@@ -729,16 +740,25 @@ class AudioProcessor:
             logger.debug("  - Release time: 100ms")
 
             cmd = [
-                self.ffmpeg, '-y',
-                '-i', voice_file,
-                '-stream_loop', '-1',  # Loop music to match voice duration
-                '-i', music_file,
-                '-filter_complex', filter_complex,
-                '-map', '[out]',
-                '-t', str(voice_duration),
-                '-ar', str(self.YOUTUBE_SAMPLE_RATE),
-                '-b:a', '256k',
-                output_file
+                self.ffmpeg,
+                "-y",
+                "-i",
+                voice_file,
+                "-stream_loop",
+                "-1",  # Loop music to match voice duration
+                "-i",
+                music_file,
+                "-filter_complex",
+                filter_complex,
+                "-map",
+                "[out]",
+                "-t",
+                str(voice_duration),
+                "-ar",
+                str(self.YOUTUBE_SAMPLE_RATE),
+                "-b:a",
+                "256k",
+                output_file,
             ]
 
             result = subprocess.run(cmd, capture_output=True, timeout=600)
@@ -758,11 +778,7 @@ class AudioProcessor:
             logger.error(f"Sidechain ducking failed: {e}")
             return None
 
-    def apply_broadcast_compression(
-        self,
-        input_file: str,
-        output_file: str
-    ) -> Optional[str]:
+    def apply_broadcast_compression(self, input_file: str, output_file: str) -> Optional[str]:
         """
         Apply two-stage broadcast compression for professional loudness and consistency.
 
@@ -818,7 +834,6 @@ class AudioProcessor:
                 # release=100ms: smooth release for natural sound
                 # makeup=2: add 2dB makeup gain to compensate for compression
                 "acompressor=threshold=-24dB:ratio=4:attack=10:release=100:makeup=2",
-
                 # Stage 2: Brick-wall limiter
                 # This prevents any signal from exceeding -1dB
                 # Using alimiter filter with limit=-1dB
@@ -828,7 +843,7 @@ class AudioProcessor:
                 "alimiter=limit=0.891:"  # -1dB in linear scale (10^(-1/20) = 0.891)
                 "attack=5:"
                 "release=50:"
-                "level=false"
+                "level=false",
             ]
 
             filter_chain = ",".join(compression_filters)
@@ -843,12 +858,17 @@ class AudioProcessor:
             logger.debug("    - Threshold: -1dB (brick-wall)")
 
             cmd = [
-                self.ffmpeg, '-y',
-                '-i', input_file,
-                '-af', filter_chain,
-                '-ar', str(self.YOUTUBE_SAMPLE_RATE),
-                '-b:a', '256k',
-                output_file
+                self.ffmpeg,
+                "-y",
+                "-i",
+                input_file,
+                "-af",
+                filter_chain,
+                "-ar",
+                str(self.YOUTUBE_SAMPLE_RATE),
+                "-b:a",
+                "256k",
+                output_file,
             ]
 
             result = subprocess.run(cmd, capture_output=True, timeout=300)
@@ -873,7 +893,7 @@ class AudioProcessor:
         input_file: str,
         output_file: str,
         apply_eq: bool = True,
-        apply_compression: bool = True
+        apply_compression: bool = True,
     ) -> Optional[str]:
         """
         Apply complete broadcast-quality processing chain in a single pass.
@@ -976,18 +996,25 @@ class AudioProcessor:
                 logger.debug("Added broadcast compression to processing chain")
 
             # Stage 3: Final loudness normalization
-            filters.append(f"loudnorm=I={self.TARGET_LUFS}:TP={self.TARGET_PEAK}:LRA={self.TARGET_LRA}")
+            filters.append(
+                f"loudnorm=I={self.TARGET_LUFS}:TP={self.TARGET_PEAK}:LRA={self.TARGET_LRA}"
+            )
             logger.debug(f"Added loudness normalization ({self.TARGET_LUFS} LUFS)")
 
             filter_chain = ",".join(filters)
 
             cmd = [
-                self.ffmpeg, '-y',
-                '-i', input_file,
-                '-af', filter_chain,
-                '-ar', str(self.YOUTUBE_SAMPLE_RATE),
-                '-b:a', '256k',
-                output_file
+                self.ffmpeg,
+                "-y",
+                "-i",
+                input_file,
+                "-af",
+                filter_chain,
+                "-ar",
+                str(self.YOUTUBE_SAMPLE_RATE),
+                "-b:a",
+                "256k",
+                output_file,
             ]
 
             logger.debug(f"FFmpeg filter chain: {filter_chain}")
@@ -1014,7 +1041,7 @@ class AudioProcessor:
         output_file: str,
         apply_eq: bool = True,
         apply_compression: bool = True,
-        normalize_lufs: float = -14.0
+        normalize_lufs: float = -14.0,
     ) -> Optional[str]:
         """
         One-pass broadcast-quality audio processing.
@@ -1046,13 +1073,19 @@ class AudioProcessor:
         filter_chain = ",".join(filters)
 
         cmd = [
-            self.ffmpeg, "-y",
-            "-i", input_file,
-            "-af", filter_chain,
-            "-ar", "48000",
-            "-ac", "2",
-            "-b:a", "256k",
-            output_file
+            self.ffmpeg,
+            "-y",
+            "-i",
+            input_file,
+            "-af",
+            filter_chain,
+            "-ar",
+            "48000",
+            "-ac",
+            "2",
+            "-b:a",
+            "256k",
+            output_file,
         ]
 
         try:
@@ -1071,7 +1104,7 @@ class AudioProcessor:
         output_file: str,
         remove_noise: bool = True,
         add_compression: bool = True,
-        eq_boost: bool = True
+        eq_boost: bool = True,
     ) -> Optional[str]:
         """
         Enhance voice audio for better clarity and presence (legacy method).
@@ -1118,9 +1151,7 @@ class AudioProcessor:
             # Compression for even levels
             if add_compression:
                 # Gentle compression: threshold -20dB, ratio 3:1, attack 20ms, release 100ms
-                filters.append(
-                    "acompressor=threshold=-20dB:ratio=3:attack=20:release=100:makeup=2"
-                )
+                filters.append("acompressor=threshold=-20dB:ratio=3:attack=20:release=100:makeup=2")
 
             if not filters:
                 # No processing requested
@@ -1129,12 +1160,17 @@ class AudioProcessor:
             filter_str = ",".join(filters)
 
             cmd = [
-                self.ffmpeg, '-y',
-                '-i', input_file,
-                '-af', filter_str,
-                '-ar', str(self.YOUTUBE_SAMPLE_RATE),
-                '-b:a', '256k',
-                output_file
+                self.ffmpeg,
+                "-y",
+                "-i",
+                input_file,
+                "-af",
+                filter_str,
+                "-ar",
+                str(self.YOUTUBE_SAMPLE_RATE),
+                "-b:a",
+                "256k",
+                output_file,
             ]
 
             result = subprocess.run(cmd, capture_output=True, timeout=300)
@@ -1154,7 +1190,7 @@ class AudioProcessor:
         input_file: str,
         output_file: str,
         noise_reduction: bool = True,
-        normalize_lufs: float = -14.0
+        normalize_lufs: float = -14.0,
     ) -> Optional[str]:
         """
         Professional broadcast-quality voice enhancement for YouTube.
@@ -1244,12 +1280,17 @@ class AudioProcessor:
 
             # Run FFmpeg with the complete filter chain
             cmd = [
-                self.ffmpeg, '-y',
-                '-i', input_file,
-                '-af', filter_chain,
-                '-ar', str(self.YOUTUBE_SAMPLE_RATE),
-                '-b:a', '256k',
-                output_file
+                self.ffmpeg,
+                "-y",
+                "-i",
+                input_file,
+                "-af",
+                filter_chain,
+                "-ar",
+                str(self.YOUTUBE_SAMPLE_RATE),
+                "-b:a",
+                "256k",
+                output_file,
             ]
 
             logger.debug(f"FFmpeg command: {' '.join(cmd)}")
@@ -1279,7 +1320,7 @@ class AudioProcessor:
         enhance_voice: bool = False,
         professional_enhancement: bool = True,
         noise_reduction: bool = True,
-        normalize_lufs: float = -14.0
+        normalize_lufs: float = -14.0,
     ) -> Optional[str]:
         """
         Complete audio processing pipeline for YouTube.
@@ -1324,7 +1365,7 @@ class AudioProcessor:
                     current_file,
                     enhanced_file,
                     noise_reduction=noise_reduction,
-                    normalize_lufs=normalize_lufs
+                    normalize_lufs=normalize_lufs,
                 )
                 if result:
                     temp_files.append(enhanced_file)
@@ -1345,7 +1386,7 @@ class AudioProcessor:
                     current_file,
                     music_file,
                     mixed_file,
-                    normalize_before_mix=not (enhance_voice or professional_enhancement)
+                    normalize_before_mix=not (enhance_voice or professional_enhancement),
                 )
                 if result:
                     temp_files.append(mixed_file)
@@ -1395,9 +1436,9 @@ class AudioProcessor:
 
 # Example usage
 if __name__ == "__main__":
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print("AUDIO PROCESSOR TEST")
-    print("="*60 + "\n")
+    print("=" * 60 + "\n")
 
     processor = AudioProcessor()
 

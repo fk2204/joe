@@ -36,19 +36,20 @@ Usage:
 """
 
 import random
-import re
-from typing import Dict, List, Any, Optional, Tuple
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from enum import Enum
-from loguru import logger
+from typing import Any, Dict, List, Optional, Tuple
 
+from loguru import logger
 
 # ============================================================
 # Data Classes and Enums
 # ============================================================
 
+
 class EmotionType(Enum):
     """Emotional states for arc building."""
+
     INTRIGUE = "intrigue"
     TENSION = "tension"
     SHOCK = "shock"
@@ -63,6 +64,7 @@ class EmotionType(Enum):
 
 class HookType(Enum):
     """Types of viral hooks."""
+
     PATTERN_INTERRUPT = "pattern_interrupt"
     BOLD_CLAIM = "bold_claim"
     QUESTION_STACK = "question_stack"
@@ -78,6 +80,7 @@ class HookType(Enum):
 @dataclass
 class ViralHook:
     """Represents a generated viral hook."""
+
     text: str
     hook_type: HookType
     niche: str
@@ -93,6 +96,7 @@ class ViralHook:
 @dataclass
 class EmotionalBeat:
     """A single beat in the emotional arc."""
+
     timestamp_seconds: int
     emotion: EmotionType
     intensity: float  # 0.0 to 1.0
@@ -103,6 +107,7 @@ class EmotionalBeat:
 @dataclass
 class EmotionalArc:
     """Complete emotional arc for a video."""
+
     beats: List[EmotionalBeat]
     peak_moment_seconds: int
     resolution_seconds: int
@@ -112,6 +117,7 @@ class EmotionalArc:
 @dataclass
 class CuriosityGap:
     """An open loop / curiosity gap."""
+
     opening_text: str
     resolution_text: str
     opening_timestamp_seconds: int
@@ -123,6 +129,7 @@ class CuriosityGap:
 @dataclass
 class MicroPayoff:
     """A small value delivery moment."""
+
     text: str
     timestamp_seconds: int
     payoff_type: str  # "insight", "statistic", "tip", "reveal", "example"
@@ -132,6 +139,7 @@ class MicroPayoff:
 @dataclass
 class PatternInterrupt:
     """A pattern interrupt for re-engaging attention."""
+
     text: str
     interrupt_type: str  # "visual", "audio", "verbal", "structural"
     visual_cue: str
@@ -142,6 +150,7 @@ class PatternInterrupt:
 @dataclass
 class CTAPlacement:
     """Strategic call-to-action placement."""
+
     text: str
     cta_type: str  # "soft", "engagement", "subscribe", "comment", "final"
     timestamp_seconds: int
@@ -151,6 +160,7 @@ class CTAPlacement:
 # ============================================================
 # Viral Hook Generator - 10+ Proven Formulas Per Niche
 # ============================================================
+
 
 class ViralHookGenerator:
     """
@@ -304,7 +314,7 @@ class ViralHookGenerator:
         topic: str,
         niche: str = "default",
         hook_type: Optional[HookType] = None,
-        variables: Optional[Dict[str, str]] = None
+        variables: Optional[Dict[str, str]] = None,
     ) -> ViralHook:
         """
         Generate a viral hook for the given topic and niche.
@@ -354,14 +364,11 @@ class ViralHookGenerator:
             niche=niche,
             estimated_retention_boost=retention_boosts.get(hook_type, 0.15),
             word_count=0,  # Set in __post_init__
-            duration_seconds=0.0  # Set in __post_init__
+            duration_seconds=0.0,  # Set in __post_init__
         )
 
     def generate_multiple_hooks(
-        self,
-        topic: str,
-        niche: str = "default",
-        count: int = 5
+        self, topic: str, niche: str = "default", count: int = 5
     ) -> List[ViralHook]:
         """
         Generate multiple hook variations for A/B testing.
@@ -393,10 +400,7 @@ class ViralHookGenerator:
         return hooks
 
     def _fill_template(
-        self,
-        template: str,
-        topic: str,
-        variables: Optional[Dict[str, str]] = None
+        self, template: str, topic: str, variables: Optional[Dict[str, str]] = None
     ) -> str:
         """Fill template placeholders with values."""
         vars_dict = variables or {}
@@ -439,6 +443,7 @@ class ViralHookGenerator:
 # ============================================================
 # Emotional Arc Builder - Story Structure with Peaks/Valleys
 # ============================================================
+
 
 class EmotionalArcBuilder:
     """
@@ -502,7 +507,7 @@ class EmotionalArcBuilder:
         self,
         duration_seconds: int,
         arc_type: str = "hero_journey",
-        custom_beats: Optional[List[Tuple]] = None
+        custom_beats: Optional[List[Tuple]] = None,
     ) -> EmotionalArc:
         """
         Build an emotional arc for a video of given duration.
@@ -530,7 +535,7 @@ class EmotionalArcBuilder:
                 emotion=emotion,
                 intensity=intensity,
                 description=description,
-                narration_hint=self._get_narration_hint(emotion, intensity)
+                narration_hint=self._get_narration_hint(emotion, intensity),
             )
             beats.append(beat)
 
@@ -545,7 +550,7 @@ class EmotionalArcBuilder:
             beats=beats,
             peak_moment_seconds=peak_moment,
             resolution_seconds=resolution_seconds,
-            total_duration_seconds=duration_seconds
+            total_duration_seconds=duration_seconds,
         )
 
     def _get_narration_hint(self, emotion: EmotionType, intensity: float) -> str:
@@ -579,10 +584,7 @@ class EmotionalArcBuilder:
         return recommendations.get(niche, "hero_journey")
 
     def blend_arcs(
-        self,
-        primary_arc: str,
-        secondary_arc: str,
-        blend_ratio: float = 0.3
+        self, primary_arc: str, secondary_arc: str, blend_ratio: float = 0.3
     ) -> List[Tuple]:
         """
         Blend two arc types for hybrid emotional structure.
@@ -616,6 +618,7 @@ class EmotionalArcBuilder:
 # Curiosity Gap Creator - Open Loops That Drive Retention
 # ============================================================
 
+
 class CuriosityGapCreator:
     """
     Creates curiosity gaps (open loops) that keep viewers watching.
@@ -627,30 +630,66 @@ class CuriosityGapCreator:
     # Open loop templates by type
     LOOP_TEMPLATES = {
         "tease": [
-            ("But first, there's something critical you need to understand...", "And now you understand why {topic} matters."),
-            ("I'll reveal the most important insight at the end...", "And that's the key insight I promised you."),
-            ("The third point changes everything - but you need context first...", "Now you see why point three is a game-changer."),
-            ("What I'm about to show you will surprise you...", "And that's the surprise I mentioned earlier."),
+            (
+                "But first, there's something critical you need to understand...",
+                "And now you understand why {topic} matters.",
+            ),
+            (
+                "I'll reveal the most important insight at the end...",
+                "And that's the key insight I promised you.",
+            ),
+            (
+                "The third point changes everything - but you need context first...",
+                "Now you see why point three is a game-changer.",
+            ),
+            (
+                "What I'm about to show you will surprise you...",
+                "And that's the surprise I mentioned earlier.",
+            ),
             ("Stay with me - the best part is coming...", "And there it is - the best part."),
         ],
         "mystery": [
-            ("Nobody knows why this happens. But I've discovered the answer...", "And that's why it happens."),
-            ("There's a hidden pattern here that nobody talks about...", "Now you see the pattern."),
+            (
+                "Nobody knows why this happens. But I've discovered the answer...",
+                "And that's why it happens.",
+            ),
+            (
+                "There's a hidden pattern here that nobody talks about...",
+                "Now you see the pattern.",
+            ),
             ("Something doesn't add up. Here's what I found...", "And that's what was missing."),
-            ("The official story isn't true. Here's the real version...", "Now you know the real story."),
+            (
+                "The official story isn't true. Here's the real version...",
+                "Now you know the real story.",
+            ),
         ],
         "countdown": [
-            ("By the end of this video, you'll know exactly how to {promise}...", "And now you know exactly how to {promise}."),
-            ("In the next {duration}, everything will become clear...", "And now it all makes sense."),
-            ("I'm going to show you {number} things that will change your perspective...", "Those are the {number} things that change everything."),
+            (
+                "By the end of this video, you'll know exactly how to {promise}...",
+                "And now you know exactly how to {promise}.",
+            ),
+            (
+                "In the next {duration}, everything will become clear...",
+                "And now it all makes sense.",
+            ),
+            (
+                "I'm going to show you {number} things that will change your perspective...",
+                "Those are the {number} things that change everything.",
+            ),
         ],
         "promise": [
             ("What I share next could save you {amount}...", "And that's how you save {amount}."),
-            ("The technique I'm about to reveal took me {years} years to master...", "And that's the technique."),
+            (
+                "The technique I'm about to reveal took me {years} years to master...",
+                "And that's the technique.",
+            ),
             ("This is the exact strategy used by {authority}...", "Now you know their strategy."),
         ],
         "cliffhanger": [
-            ("But here's where it gets really interesting...", "And that's why it's so interesting."),
+            (
+                "But here's where it gets really interesting...",
+                "And that's why it's so interesting.",
+            ),
             ("What happened next shocked everyone...", "That's what shocked everyone."),
             ("And then everything changed...", "And that's how everything changed."),
         ],
@@ -666,7 +705,7 @@ class CuriosityGapCreator:
         gap_type: str = "tease",
         timestamp_open: int = 60,
         timestamp_close: int = 300,
-        variables: Optional[Dict[str, str]] = None
+        variables: Optional[Dict[str, str]] = None,
     ) -> CuriosityGap:
         """
         Create a single curiosity gap.
@@ -723,14 +762,11 @@ class CuriosityGapCreator:
             opening_timestamp_seconds=timestamp_open,
             resolution_timestamp_seconds=timestamp_close,
             gap_type=gap_type,
-            retention_impact=impact
+            retention_impact=impact,
         )
 
     def create_gap_sequence(
-        self,
-        duration_seconds: int,
-        count: int = 3,
-        variables: Optional[Dict[str, str]] = None
+        self, duration_seconds: int, count: int = 3, variables: Optional[Dict[str, str]] = None
     ) -> List[CuriosityGap]:
         """
         Create a sequence of curiosity gaps distributed throughout the video.
@@ -768,7 +804,7 @@ class CuriosityGapCreator:
                 gap_type=gap_type,
                 timestamp_open=int(duration_seconds * open_pct),
                 timestamp_close=int(duration_seconds * close_pct),
-                variables=variables
+                variables=variables,
             )
             gaps.append(gap)
 
@@ -778,6 +814,7 @@ class CuriosityGapCreator:
 # ============================================================
 # Micro Payoff Scheduler - Rewards Every 30-60 Seconds
 # ============================================================
+
 
 class MicroPayoffScheduler:
     """
@@ -831,9 +868,7 @@ class MicroPayoffScheduler:
         logger.debug(f"MicroPayoffScheduler initialized with {self.interval}s interval")
 
     def schedule_payoffs(
-        self,
-        duration_seconds: int,
-        variables: Optional[Dict[str, str]] = None
+        self, duration_seconds: int, variables: Optional[Dict[str, str]] = None
     ) -> List[MicroPayoff]:
         """
         Schedule micro-payoffs throughout the video.
@@ -885,7 +920,7 @@ class MicroPayoffScheduler:
                 text=template,
                 timestamp_seconds=current_time,
                 payoff_type=payoff_type,
-                value_score=value_scores.get(payoff_type, 0.75)
+                value_score=value_scores.get(payoff_type, 0.75),
             )
             payoffs.append(payoff)
 
@@ -900,6 +935,7 @@ class MicroPayoffScheduler:
 # ============================================================
 # Pattern Interrupt Library - 20+ Visual/Audio Interrupts
 # ============================================================
+
 
 class PatternInterruptLibrary:
     """
@@ -949,7 +985,12 @@ class PatternInterruptLibrary:
     # Structural pattern interrupts
     STRUCTURAL_INTERRUPTS = [
         ("Let me ask you something...", "structural", "[DIRECT TO CAMERA]", "[INTIMATE]"),
-        ("Here's a story that illustrates this perfectly...", "structural", "[STORY B-ROLL]", "[NARRATIVE]"),
+        (
+            "Here's a story that illustrates this perfectly...",
+            "structural",
+            "[STORY B-ROLL]",
+            "[NARRATIVE]",
+        ),
         ("Watch what happens when...", "structural", "[DEMONSTRATION]", "[ANTICIPATION]"),
         ("Before we continue, let's recap...", "structural", "[SUMMARY GRAPHICS]", "[RECAP MUSIC]"),
         ("Now let's flip this on its head...", "structural", "[PERSPECTIVE SHIFT]", "[TWIST]"),
@@ -958,18 +999,17 @@ class PatternInterruptLibrary:
     def __init__(self):
         """Initialize the pattern interrupt library."""
         self.all_interrupts = (
-            self.VERBAL_INTERRUPTS +
-            self.VISUAL_INTERRUPTS +
-            self.AUDIO_INTERRUPTS +
-            self.STRUCTURAL_INTERRUPTS
+            self.VERBAL_INTERRUPTS
+            + self.VISUAL_INTERRUPTS
+            + self.AUDIO_INTERRUPTS
+            + self.STRUCTURAL_INTERRUPTS
         )
         self._used_interrupts = set()
-        logger.debug(f"PatternInterruptLibrary initialized with {len(self.all_interrupts)} interrupts")
+        logger.debug(
+            f"PatternInterruptLibrary initialized with {len(self.all_interrupts)} interrupts"
+        )
 
-    def get_interrupt(
-        self,
-        interrupt_type: Optional[str] = None
-    ) -> PatternInterrupt:
+    def get_interrupt(self, interrupt_type: Optional[str] = None) -> PatternInterrupt:
         """
         Get a pattern interrupt.
 
@@ -1004,13 +1044,11 @@ class PatternInterruptLibrary:
             interrupt_type=itype,
             visual_cue=visual,
             audio_cue=audio,
-            recommended_duration_seconds=2.5
+            recommended_duration_seconds=2.5,
         )
 
     def schedule_interrupts(
-        self,
-        duration_seconds: int,
-        interval_seconds: int = 75
+        self, duration_seconds: int, interval_seconds: int = 75
     ) -> List[Tuple[int, PatternInterrupt]]:
         """
         Schedule pattern interrupts throughout the video.
@@ -1047,6 +1085,7 @@ class PatternInterruptLibrary:
 # ============================================================
 # Call To Action Optimizer - Strategic CTA Placement
 # ============================================================
+
 
 class CallToActionOptimizer:
     """
@@ -1105,10 +1144,7 @@ class CallToActionOptimizer:
         templates = self.CTA_TEMPLATES.get(cta_type, self.CTA_TEMPLATES["soft"])
         return random.choice(templates)
 
-    def create_cta_schedule(
-        self,
-        duration_seconds: int
-    ) -> List[CTAPlacement]:
+    def create_cta_schedule(self, duration_seconds: int) -> List[CTAPlacement]:
         """
         Create an optimized CTA schedule for a video.
 
@@ -1128,12 +1164,14 @@ class CallToActionOptimizer:
         # Never CTA in first 30 seconds
         if duration_seconds < 60:
             # For very short videos, only final CTA
-            placements.append(CTAPlacement(
-                text=self.generate_cta("final"),
-                cta_type="final",
-                timestamp_seconds=int(duration_seconds * 0.90),
-                percentage_through=0.90
-            ))
+            placements.append(
+                CTAPlacement(
+                    text=self.generate_cta("final"),
+                    cta_type="final",
+                    timestamp_seconds=int(duration_seconds * 0.90),
+                    percentage_through=0.90,
+                )
+            )
             return placements
 
         # Standard CTA schedule for longer videos
@@ -1150,12 +1188,14 @@ class CallToActionOptimizer:
             if timestamp < 30:
                 continue
 
-            placements.append(CTAPlacement(
-                text=self.generate_cta(cta_type),
-                cta_type=cta_type,
-                timestamp_seconds=timestamp,
-                percentage_through=position
-            ))
+            placements.append(
+                CTAPlacement(
+                    text=self.generate_cta(cta_type),
+                    cta_type=cta_type,
+                    timestamp_seconds=timestamp,
+                    percentage_through=position,
+                )
+            )
 
         return placements
 
@@ -1163,6 +1203,7 @@ class CallToActionOptimizer:
 # ============================================================
 # Unified Viral Content Engine
 # ============================================================
+
 
 class ViralContentEngine:
     """
@@ -1195,7 +1236,7 @@ class ViralContentEngine:
         duration_seconds: int,
         hook_count: int = 3,
         curiosity_gap_count: int = 3,
-        variables: Optional[Dict[str, str]] = None
+        variables: Optional[Dict[str, str]] = None,
     ) -> Dict[str, Any]:
         """
         Generate all viral content elements for a video.
@@ -1215,9 +1256,7 @@ class ViralContentEngine:
         vars_dict["topic"] = topic
 
         # Generate all elements
-        hooks = self.hook_generator.generate_multiple_hooks(
-            topic, self.niche, hook_count
-        )
+        hooks = self.hook_generator.generate_multiple_hooks(topic, self.niche, hook_count)
 
         arc_type = self.arc_builder.get_arc_for_niche(self.niche)
         emotional_arc = self.arc_builder.build_arc(duration_seconds, arc_type)
@@ -1226,13 +1265,9 @@ class ViralContentEngine:
             duration_seconds, curiosity_gap_count, vars_dict
         )
 
-        micro_payoffs = self.payoff_scheduler.schedule_payoffs(
-            duration_seconds, vars_dict
-        )
+        micro_payoffs = self.payoff_scheduler.schedule_payoffs(duration_seconds, vars_dict)
 
-        pattern_interrupts = self.interrupt_library.schedule_interrupts(
-            duration_seconds
-        )
+        pattern_interrupts = self.interrupt_library.schedule_interrupts(duration_seconds)
 
         cta_schedule = self.cta_optimizer.create_cta_schedule(duration_seconds)
 
@@ -1265,7 +1300,7 @@ class ViralContentEngine:
         hooks: List[ViralHook],
         gaps: List[CuriosityGap],
         payoffs: List[MicroPayoff],
-        interrupts: List[Tuple[int, PatternInterrupt]]
+        interrupts: List[Tuple[int, PatternInterrupt]],
     ) -> float:
         """Calculate estimated total retention boost."""
         boost = 0.0
@@ -1290,11 +1325,7 @@ class ViralContentEngine:
         # Cap total boost at 50%
         return min(0.50, boost)
 
-    def generate_viral_script_outline(
-        self,
-        topic: str,
-        duration_seconds: int
-    ) -> Dict[str, Any]:
+    def generate_viral_script_outline(self, topic: str, duration_seconds: int) -> Dict[str, Any]:
         """
         Generate a complete viral script outline with all elements positioned.
 
@@ -1312,64 +1343,78 @@ class ViralContentEngine:
 
         # Add hook
         best_hook = elements["best_hook"]
-        timeline.append({
-            "timestamp": 0,
-            "type": "hook",
-            "text": best_hook.text,
-            "duration": best_hook.duration_seconds,
-        })
+        timeline.append(
+            {
+                "timestamp": 0,
+                "type": "hook",
+                "text": best_hook.text,
+                "duration": best_hook.duration_seconds,
+            }
+        )
 
         # Add emotional arc beats
         for beat in elements["emotional_arc"].beats:
-            timeline.append({
-                "timestamp": beat.timestamp_seconds,
-                "type": "emotional_beat",
-                "emotion": beat.emotion.value,
-                "intensity": beat.intensity,
-                "hint": beat.narration_hint,
-            })
+            timeline.append(
+                {
+                    "timestamp": beat.timestamp_seconds,
+                    "type": "emotional_beat",
+                    "emotion": beat.emotion.value,
+                    "intensity": beat.intensity,
+                    "hint": beat.narration_hint,
+                }
+            )
 
         # Add curiosity gaps
         for gap in elements["curiosity_gaps"]:
-            timeline.append({
-                "timestamp": gap.opening_timestamp_seconds,
-                "type": "open_loop",
-                "text": gap.opening_text,
-                "closes_at": gap.resolution_timestamp_seconds,
-            })
-            timeline.append({
-                "timestamp": gap.resolution_timestamp_seconds,
-                "type": "close_loop",
-                "text": gap.resolution_text,
-            })
+            timeline.append(
+                {
+                    "timestamp": gap.opening_timestamp_seconds,
+                    "type": "open_loop",
+                    "text": gap.opening_text,
+                    "closes_at": gap.resolution_timestamp_seconds,
+                }
+            )
+            timeline.append(
+                {
+                    "timestamp": gap.resolution_timestamp_seconds,
+                    "type": "close_loop",
+                    "text": gap.resolution_text,
+                }
+            )
 
         # Add micro-payoffs
         for payoff in elements["micro_payoffs"]:
-            timeline.append({
-                "timestamp": payoff.timestamp_seconds,
-                "type": "micro_payoff",
-                "text": payoff.text,
-                "payoff_type": payoff.payoff_type,
-            })
+            timeline.append(
+                {
+                    "timestamp": payoff.timestamp_seconds,
+                    "type": "micro_payoff",
+                    "text": payoff.text,
+                    "payoff_type": payoff.payoff_type,
+                }
+            )
 
         # Add pattern interrupts
         for timestamp, interrupt in elements["pattern_interrupts"]:
-            timeline.append({
-                "timestamp": timestamp,
-                "type": "pattern_interrupt",
-                "text": interrupt.text,
-                "visual": interrupt.visual_cue,
-                "audio": interrupt.audio_cue,
-            })
+            timeline.append(
+                {
+                    "timestamp": timestamp,
+                    "type": "pattern_interrupt",
+                    "text": interrupt.text,
+                    "visual": interrupt.visual_cue,
+                    "audio": interrupt.audio_cue,
+                }
+            )
 
         # Add CTAs
         for cta in elements["cta_schedule"]:
-            timeline.append({
-                "timestamp": cta.timestamp_seconds,
-                "type": "cta",
-                "text": cta.text,
-                "cta_type": cta.cta_type,
-            })
+            timeline.append(
+                {
+                    "timestamp": cta.timestamp_seconds,
+                    "type": "cta",
+                    "text": cta.text,
+                    "cta_type": cta.cta_type,
+                }
+            )
 
         # Sort by timestamp
         timeline.sort(key=lambda x: x["timestamp"])
@@ -1385,7 +1430,7 @@ class ViralContentEngine:
                 "micro_payoffs": len(elements["micro_payoffs"]),
                 "pattern_interrupts": len(elements["pattern_interrupts"]),
                 "ctas": len(elements["cta_schedule"]),
-            }
+            },
         }
 
 
@@ -1419,7 +1464,9 @@ if __name__ == "__main__":
     gaps = gap_creator.create_gap_sequence(600, count=3)
     print(f"   Created {len(gaps)} curiosity gaps:")
     for gap in gaps:
-        print(f"     - Opens at {gap.opening_timestamp_seconds}s, closes at {gap.resolution_timestamp_seconds}s")
+        print(
+            f"     - Opens at {gap.opening_timestamp_seconds}s, closes at {gap.resolution_timestamp_seconds}s"
+        )
 
     print("\n4. Testing MicroPayoffScheduler:")
     payoff_scheduler = MicroPayoffScheduler()

@@ -3,22 +3,21 @@ Agent Orchestration System for Joe
 Manages agent communication, pipelines, and workflows.
 """
 
-from dataclasses import dataclass, field
-from typing import Dict, Any, List, Optional, Callable
-from datetime import datetime
-from loguru import logger
 import asyncio
 from concurrent.futures import ThreadPoolExecutor
-import time
+from dataclasses import dataclass, field
+from datetime import datetime
+from typing import Any, Callable, Dict, List, Optional
 
-from src.agents.base_agent import (
-    BaseAgent, AgentMessage, AgentResult, AgentError
-)
+from loguru import logger
+
+from src.agents.base_agent import AgentMessage, AgentResult, BaseAgent
 
 
 @dataclass
 class PipelineStep:
     """A step in the agent pipeline."""
+
     agent_name: str
     action: str
     params: Dict[str, Any] = field(default_factory=dict)
@@ -29,6 +28,7 @@ class PipelineStep:
 @dataclass
 class WorkflowState:
     """State tracking for workflows."""
+
     workflow_id: str
     status: str = "pending"  # pending, running, completed, failed
     current_step: int = 0
@@ -75,7 +75,7 @@ class AgentOrchestrator:
                 recipient=message.sender,
                 message_type="error",
                 payload={"error": f"Agent {message.recipient} not found"},
-                correlation_id=message.message_id
+                correlation_id=message.message_id,
             )
 
         return agent.handle_message(message)
@@ -92,12 +92,15 @@ class AgentOrchestrator:
             recipient=message.sender,
             message_type="response",
             payload={"responses": [r.to_dict() for r in responses]},
-            correlation_id=message.message_id
+            correlation_id=message.message_id,
         )
 
-    def run_pipeline(self, pipeline: List[PipelineStep], initial_data: Dict = None) -> WorkflowState:
+    def run_pipeline(
+        self, pipeline: List[PipelineStep], initial_data: Dict = None
+    ) -> WorkflowState:
         """Run a sequential pipeline of agent operations."""
         from uuid import uuid4
+
         workflow_id = str(uuid4())[:8]
         state = WorkflowState(workflow_id=workflow_id)
         state.status = "running"
@@ -151,16 +154,14 @@ class AgentOrchestrator:
 
     async def run_parallel(self, agents_tasks: List[tuple]) -> Dict[str, AgentResult]:
         """Run multiple agent tasks in parallel."""
+
         async def run_agent_task(agent_name: str, params: Dict) -> tuple:
             agent = self.agents.get(agent_name)
             if not agent:
                 return agent_name, AgentResult(success=False, error=f"Agent not found")
 
             loop = asyncio.get_event_loop()
-            result = await loop.run_in_executor(
-                self.executor,
-                lambda: agent.run(**params)
-            )
+            result = await loop.run_in_executor(self.executor, lambda: agent.run(**params))
             return agent_name, result
 
         tasks = [run_agent_task(name, params) for name, params in agents_tasks]
@@ -173,8 +174,10 @@ class AgentOrchestrator:
             "total_agents": len(self.agents),
             "agents": list(self.agents.keys()),
             "active_workflows": len([w for w in self.workflows.values() if w.status == "running"]),
-            "completed_workflows": len([w for w in self.workflows.values() if w.status == "completed"]),
-            "failed_workflows": len([w for w in self.workflows.values() if w.status == "failed"])
+            "completed_workflows": len(
+                [w for w in self.workflows.values() if w.status == "completed"]
+            ),
+            "failed_workflows": len([w for w in self.workflows.values() if w.status == "failed"]),
         }
 
 

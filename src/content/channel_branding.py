@@ -16,15 +16,15 @@ Usage:
     colors = generator.get_brand_colors("finance")
 """
 
-import os
 import math
-from pathlib import Path
-from typing import Dict, List, Tuple, Optional
 from dataclasses import dataclass
+from pathlib import Path
+from typing import Dict, List, Tuple
+
 from loguru import logger
 
 try:
-    from PIL import Image, ImageDraw, ImageFont, ImageFilter
+    from PIL import Image, ImageDraw, ImageFilter, ImageFont
 except ImportError:
     logger.warning("PIL/Pillow not installed. Install with: pip install pillow")
     Image = None
@@ -33,6 +33,7 @@ except ImportError:
 @dataclass
 class BrandColors:
     """Color scheme for a brand."""
+
     primary: str
     secondary: str
     accent: str
@@ -40,8 +41,8 @@ class BrandColors:
 
     def to_rgb(self, color: str) -> Tuple[int, int, int]:
         """Convert hex color to RGB tuple."""
-        color = color.lstrip('#')
-        return tuple(int(color[i:i+2], 16) for i in (0, 2, 4))
+        color = color.lstrip("#")
+        return tuple(int(color[i : i + 2], 16) for i in (0, 2, 4))
 
     @property
     def primary_rgb(self) -> Tuple[int, int, int]:
@@ -63,29 +64,26 @@ class BrandColors:
 # Brand color schemes for each niche
 BRAND_COLORS = {
     "finance": BrandColors(
-        primary="#1a1a2e",      # Dark blue
-        secondary="#FFD700",    # Gold
-        accent="#00d4aa",       # Green/teal
-        background="#0a0a14"    # Very dark blue
+        primary="#1a1a2e",  # Dark blue
+        secondary="#FFD700",  # Gold
+        accent="#00d4aa",  # Green/teal
+        background="#0a0a14",  # Very dark blue
     ),
     "psychology": BrandColors(
-        primary="#0f0f1a",      # Deep blue/black
-        secondary="#9b59b6",    # Purple
-        accent="#E0E0FF",       # Light purple/white
-        background="#050510"    # Almost black
+        primary="#0f0f1a",  # Deep blue/black
+        secondary="#9b59b6",  # Purple
+        accent="#E0E0FF",  # Light purple/white
+        background="#050510",  # Almost black
     ),
     "storytelling": BrandColors(
-        primary="#0d0d0d",      # Black
-        secondary="#e74c3c",    # Dark red
-        accent="#FFD700",       # Gold
-        background="#050505"    # Very dark
+        primary="#0d0d0d",  # Black
+        secondary="#e74c3c",  # Dark red
+        accent="#FFD700",  # Gold
+        background="#050505",  # Very dark
     ),
     "default": BrandColors(
-        primary="#1a1a2e",
-        secondary="#3498db",
-        accent="#ffffff",
-        background="#0a0a14"
-    )
+        primary="#1a1a2e", secondary="#3498db", accent="#ffffff", background="#0a0a14"
+    ),
 }
 
 # Recommended fonts for each niche
@@ -93,7 +91,7 @@ BRAND_FONTS = {
     "finance": ["Arial Bold", "Helvetica Bold", "Impact", "Bebas Neue"],
     "psychology": ["Georgia", "Playfair Display", "Lora", "Times New Roman"],
     "storytelling": ["Cinzel", "Trajan Pro", "Oswald", "Impact"],
-    "default": ["Arial Bold", "Helvetica", "Verdana"]
+    "default": ["Arial Bold", "Helvetica", "Verdana"],
 }
 
 
@@ -149,11 +147,11 @@ class ChannelBrandingGenerator:
         size: Tuple[int, int],
         center_color: Tuple[int, int, int],
         edge_color: Tuple[int, int, int],
-        center: Tuple[float, float] = (0.5, 0.5)
+        center: Tuple[float, float] = (0.5, 0.5),
     ) -> Image.Image:
         """Create a radial gradient image."""
         width, height = size
-        img = Image.new('RGB', size)
+        img = Image.new("RGB", size)
         pixels = img.load()
 
         cx = int(width * center[0])
@@ -162,7 +160,7 @@ class ChannelBrandingGenerator:
 
         for y in range(height):
             for x in range(width):
-                dist = math.sqrt((x - cx)**2 + (y - cy)**2)
+                dist = math.sqrt((x - cx) ** 2 + (y - cy) ** 2)
                 ratio = min(dist / max_dist, 1.0)
 
                 r = int(center_color[0] * (1 - ratio) + edge_color[0] * ratio)
@@ -180,7 +178,7 @@ class ChannelBrandingGenerator:
         radius: int,
         fill: Tuple[int, int, int] = None,
         outline: Tuple[int, int, int] = None,
-        width: int = 1
+        width: int = 1,
     ):
         """Draw a circle with optional fill and outline."""
         x, y = center
@@ -193,10 +191,14 @@ class ChannelBrandingGenerator:
     def _get_font(self, size: int, bold: bool = True) -> ImageFont.FreeTypeFont:
         """Get a font, falling back to default if needed."""
         font_names = [
-            "arial.ttf", "Arial.ttf",
-            "arialbd.ttf", "Arial Bold.ttf",
-            "impact.ttf", "Impact.ttf",
-            "DejaVuSans-Bold.ttf", "DejaVuSans.ttf"
+            "arial.ttf",
+            "Arial.ttf",
+            "arialbd.ttf",
+            "Arial Bold.ttf",
+            "impact.ttf",
+            "Impact.ttf",
+            "DejaVuSans-Bold.ttf",
+            "DejaVuSans.ttf",
         ]
 
         for font_name in font_names:
@@ -219,10 +221,7 @@ class ChannelBrandingGenerator:
 
         # Create radial gradient background
         img = self._create_radial_gradient(
-            (size, size),
-            colors.primary_rgb,
-            colors.background_rgb,
-            center=(0.5, 0.4)
+            (size, size), colors.primary_rgb, colors.background_rgb, center=(0.5, 0.4)
         )
 
         draw = ImageDraw.Draw(img)
@@ -234,21 +233,15 @@ class ChannelBrandingGenerator:
             glow_color = (
                 min(255, colors.secondary_rgb[0]),
                 min(255, colors.secondary_rgb[1]),
-                min(255, colors.secondary_rgb[2])
+                min(255, colors.secondary_rgb[2]),
             )
             self._draw_circle(
-                draw, (center, center),
-                int(size * 0.42) + i * 3,
-                outline=glow_color,
-                width=2
+                draw, (center, center), int(size * 0.42) + i * 3, outline=glow_color, width=2
             )
 
         # Draw main circle border
         self._draw_circle(
-            draw, (center, center),
-            int(size * 0.42),
-            outline=colors.secondary_rgb,
-            width=8
+            draw, (center, center), int(size * 0.42), outline=colors.secondary_rgb, width=8
         )
 
         # Draw dollar sign
@@ -277,11 +270,14 @@ class ChannelBrandingGenerator:
 
         # Draw arrow head
         arrow_tip = arrow_end
-        draw.polygon([
-            arrow_tip,
-            (arrow_tip[0] - 15, arrow_tip[1] + 15),
-            (arrow_tip[0] - 15, arrow_tip[1] - 15)
-        ], fill=colors.accent_rgb)
+        draw.polygon(
+            [
+                arrow_tip,
+                (arrow_tip[0] - 15, arrow_tip[1] + 15),
+                (arrow_tip[0] - 15, arrow_tip[1] - 15),
+            ],
+            fill=colors.accent_rgb,
+        )
 
         return img
 
@@ -296,10 +292,7 @@ class ChannelBrandingGenerator:
 
         # Create radial gradient background
         img = self._create_radial_gradient(
-            (size, size),
-            colors.secondary_rgb,
-            colors.background_rgb,
-            center=(0.5, 0.5)
+            (size, size), colors.secondary_rgb, colors.background_rgb, center=(0.5, 0.5)
         )
 
         # Apply slight blur for ethereal effect
@@ -314,21 +307,15 @@ class ChannelBrandingGenerator:
             glow_color = (
                 min(255, glow_intensity),
                 min(255, int(glow_intensity * 0.6)),
-                min(255, glow_intensity)
+                min(255, glow_intensity),
             )
             self._draw_circle(
-                draw, (center, center),
-                int(size * 0.38) + i * 5,
-                outline=glow_color,
-                width=1
+                draw, (center, center), int(size * 0.38) + i * 5, outline=glow_color, width=1
             )
 
         # Draw main circle
         self._draw_circle(
-            draw, (center, center),
-            int(size * 0.38),
-            outline=colors.accent_rgb,
-            width=4
+            draw, (center, center), int(size * 0.38), outline=colors.accent_rgb, width=4
         )
 
         # Draw stylized brain shape using curves
@@ -337,19 +324,31 @@ class ChannelBrandingGenerator:
         # Left hemisphere
         left_center = (center - int(size * 0.1), center - int(size * 0.05))
         draw.arc(
-            [left_center[0] - int(size * 0.18), left_center[1] - int(size * 0.2),
-             left_center[0] + int(size * 0.12), left_center[1] + int(size * 0.2)],
-            start=180, end=360,
-            fill=brain_color, width=4
+            [
+                left_center[0] - int(size * 0.18),
+                left_center[1] - int(size * 0.2),
+                left_center[0] + int(size * 0.12),
+                left_center[1] + int(size * 0.2),
+            ],
+            start=180,
+            end=360,
+            fill=brain_color,
+            width=4,
         )
 
         # Right hemisphere
         right_center = (center + int(size * 0.1), center - int(size * 0.05))
         draw.arc(
-            [right_center[0] - int(size * 0.12), right_center[1] - int(size * 0.2),
-             right_center[0] + int(size * 0.18), right_center[1] + int(size * 0.2)],
-            start=180, end=360,
-            fill=brain_color, width=4
+            [
+                right_center[0] - int(size * 0.12),
+                right_center[1] - int(size * 0.2),
+                right_center[0] + int(size * 0.18),
+                right_center[1] + int(size * 0.2),
+            ],
+            start=180,
+            end=360,
+            fill=brain_color,
+            width=4,
         )
 
         # Brain stem
@@ -363,12 +362,7 @@ class ChannelBrandingGenerator:
 
         # Key circle (lock part)
         key_radius = int(size * 0.08)
-        self._draw_circle(
-            draw, (key_x, key_y),
-            key_radius,
-            outline=colors.secondary_rgb,
-            width=4
-        )
+        self._draw_circle(draw, (key_x, key_y), key_radius, outline=colors.secondary_rgb, width=4)
 
         # Key shaft
         shaft_start = (key_x, key_y + key_radius)
@@ -377,8 +371,11 @@ class ChannelBrandingGenerator:
 
         # Key teeth
         teeth_y = key_y + key_radius + int(size * 0.06)
-        draw.line([(key_x, teeth_y), (key_x + int(size * 0.04), teeth_y)],
-                  fill=colors.secondary_rgb, width=4)
+        draw.line(
+            [(key_x, teeth_y), (key_x + int(size * 0.04), teeth_y)],
+            fill=colors.secondary_rgb,
+            width=4,
+        )
 
         return img
 
@@ -396,7 +393,7 @@ class ChannelBrandingGenerator:
             (size, size),
             (40, 10, 10),  # Subtle dark red center
             colors.background_rgb,
-            center=(0.5, 0.3)
+            center=(0.5, 0.3),
         )
 
         draw = ImageDraw.Draw(img)
@@ -407,13 +404,14 @@ class ChannelBrandingGenerator:
             glow_color = (
                 min(255, int(colors.secondary_rgb[0] * (i / 15))),
                 min(255, int(colors.secondary_rgb[1] * (i / 30))),
-                min(255, int(colors.secondary_rgb[2] * (i / 30)))
+                min(255, int(colors.secondary_rgb[2] * (i / 30))),
             )
             self._draw_circle(
-                draw, (center, int(center * 0.8)),
+                draw,
+                (center, int(center * 0.8)),
                 int(size * 0.3) + i * 8,
                 outline=glow_color,
-                width=2
+                width=2,
             )
 
         # Draw open book shape
@@ -464,28 +462,18 @@ class ChannelBrandingGenerator:
 
         # Left reel
         self._draw_circle(
-            draw, (int(size * 0.2), reel_y),
-            int(size * 0.08),
-            outline=colors.secondary_rgb,
-            width=3
+            draw, (int(size * 0.2), reel_y), int(size * 0.08), outline=colors.secondary_rgb, width=3
         )
         self._draw_circle(
-            draw, (int(size * 0.2), reel_y),
-            int(size * 0.03),
-            fill=colors.secondary_rgb
+            draw, (int(size * 0.2), reel_y), int(size * 0.03), fill=colors.secondary_rgb
         )
 
         # Right reel
         self._draw_circle(
-            draw, (int(size * 0.8), reel_y),
-            int(size * 0.08),
-            outline=colors.secondary_rgb,
-            width=3
+            draw, (int(size * 0.8), reel_y), int(size * 0.08), outline=colors.secondary_rgb, width=3
         )
         self._draw_circle(
-            draw, (int(size * 0.8), reel_y),
-            int(size * 0.03),
-            fill=colors.secondary_rgb
+            draw, (int(size * 0.8), reel_y), int(size * 0.03), fill=colors.secondary_rgb
         )
 
         # Film strip connecting reels
@@ -493,33 +481,25 @@ class ChannelBrandingGenerator:
         draw.line(
             [(int(size * 0.28), strip_y), (int(size * 0.72), strip_y)],
             fill=colors.secondary_rgb,
-            width=12
+            width=12,
         )
 
         # Film perforations
         for i in range(5):
             perf_x = int(size * 0.32) + i * int(size * 0.1)
             draw.rectangle(
-                [perf_x - 4, strip_y - 8, perf_x + 4, strip_y + 8],
-                fill=colors.background_rgb
+                [perf_x - 4, strip_y - 8, perf_x + 4, strip_y + 8], fill=colors.background_rgb
             )
 
         # Draw outer circle border
         self._draw_circle(
-            draw, (center, center),
-            int(size * 0.45),
-            outline=colors.secondary_rgb,
-            width=6
+            draw, (center, center), int(size * 0.45), outline=colors.secondary_rgb, width=6
         )
 
         return img
 
     def generate_profile_picture(
-        self,
-        channel_id: str,
-        niche: str,
-        style: str = "default",
-        size: int = 800
+        self, channel_id: str, niche: str, style: str = "default", size: int = 800
     ) -> str:
         """
         Generate a profile picture for a channel.
@@ -553,12 +533,7 @@ class ChannelBrandingGenerator:
         logger.success(f"Profile picture saved: {output_path}")
         return str(output_path)
 
-    def generate_banner(
-        self,
-        channel_id: str,
-        niche: str,
-        style: str = "default"
-    ) -> str:
+    def generate_banner(self, channel_id: str, niche: str, style: str = "default") -> str:
         """
         Generate a channel banner.
 
@@ -578,10 +553,7 @@ class ChannelBrandingGenerator:
 
         # Create gradient background
         img = self._create_radial_gradient(
-            (width, height),
-            colors.primary_rgb,
-            colors.background_rgb,
-            center=(0.5, 0.5)
+            (width, height), colors.primary_rgb, colors.background_rgb, center=(0.5, 0.5)
         )
 
         draw = ImageDraw.Draw(img)
@@ -589,11 +561,7 @@ class ChannelBrandingGenerator:
         # Add accent lines
         for i in range(5):
             y = 200 + i * 250
-            draw.line(
-                [(0, y), (width, y)],
-                fill=(*colors.secondary_rgb, 30),
-                width=2
-            )
+            draw.line([(0, y), (width, y)], fill=(*colors.secondary_rgb, 30), width=2)
 
         # Save
         output_path = self.output_dir / f"{channel_id}_banner.png"
@@ -617,7 +585,7 @@ class ChannelBrandingGenerator:
             "profile_picture": self.generate_profile_picture(channel_id, niche),
             "banner": self.generate_banner(channel_id, niche),
             "brand_colors": self.get_brand_colors(niche).__dict__,
-            "brand_fonts": self.get_brand_fonts(niche)
+            "brand_fonts": self.get_brand_fonts(niche),
         }
 
 
@@ -626,7 +594,8 @@ def main():
     import sys
 
     if len(sys.argv) < 2:
-        print("""
+        print(
+            """
 Channel Branding Generator
 ==========================
 
@@ -643,7 +612,8 @@ Examples:
     python -m src.content.channel_branding all
 
 Niches: finance, psychology, storytelling
-        """)
+        """
+        )
         return
 
     generator = ChannelBrandingGenerator()
@@ -653,7 +623,7 @@ Niches: finance, psychology, storytelling
         channels = [
             ("money_blueprints", "finance"),
             ("mind_unlocked", "psychology"),
-            ("untold_stories", "storytelling")
+            ("untold_stories", "storytelling"),
         ]
 
         for channel_id, niche in channels:

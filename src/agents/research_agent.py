@@ -19,26 +19,24 @@ Usage:
     result = agent.generate_viral_ideas(channel_id="money_blueprints")
 """
 
-import os
 import json
+import os
+from dataclasses import asdict, dataclass, field
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, Any, List, Optional
-from dataclasses import dataclass, field, asdict
+from typing import Any, Dict, List, Optional
+
 from loguru import logger
 
-from ..utils.token_manager import (
-    get_token_manager,
-    get_cost_optimizer,
-    get_prompt_cache
-)
 from ..research.idea_generator import IdeaGenerator, ScoredIdea
 from ..research.trends import TrendResearcher
+from ..utils.token_manager import get_cost_optimizer, get_prompt_cache, get_token_manager
 
 
 @dataclass
 class ResearchResult:
     """Result from research agent operations."""
+
     success: bool
     operation: str
     data: Dict[str, Any] = field(default_factory=dict)
@@ -65,7 +63,7 @@ class ResearchResult:
             try:
                 with open(output_path) as f:
                     existing = json.load(f)
-            except:
+            except Exception:
                 existing = []
 
         # Append new result
@@ -123,12 +121,7 @@ class ResearchAgent:
 
         logger.info(f"ResearchAgent initialized with provider: {provider}")
 
-    def find_topics(
-        self,
-        niche: str,
-        count: int = 5,
-        use_cache: bool = True
-    ) -> ResearchResult:
+    def find_topics(self, niche: str, count: int = 5, use_cache: bool = True) -> ResearchResult:
         """
         Find trending topics for a niche.
 
@@ -159,9 +152,9 @@ class ResearchAgent:
                         ideas=ideas,
                         tokens_used=0,
                         cost=0.0,
-                        provider="cache"
+                        provider="cache",
                     )
-                except:
+                except Exception:
                     pass  # Cache miss or invalid data
 
         try:
@@ -174,7 +167,7 @@ class ResearchAgent:
                 provider=self.provider,
                 input_tokens=tokens_used // 2,
                 output_tokens=tokens_used // 2,
-                operation="research_find_topics"
+                operation="research_find_topics",
             )
 
             # Cache the result
@@ -185,15 +178,11 @@ class ResearchAgent:
             result = ResearchResult(
                 success=True,
                 operation=operation,
-                data={
-                    "niche": niche,
-                    "count_requested": count,
-                    "count_generated": len(ideas)
-                },
+                data={"niche": niche, "count_requested": count, "count_generated": len(ideas)},
                 ideas=ideas,
                 tokens_used=tokens_used,
                 cost=cost,
-                provider=self.provider
+                provider=self.provider,
             )
 
             logger.success(f"[ResearchAgent] Found {len(ideas)} topics")
@@ -202,17 +191,11 @@ class ResearchAgent:
         except Exception as e:
             logger.error(f"[ResearchAgent] Error finding topics: {e}")
             return ResearchResult(
-                success=False,
-                operation=operation,
-                error=str(e),
-                provider=self.provider
+                success=False, operation=operation, error=str(e), provider=self.provider
             )
 
     def generate_viral_ideas(
-        self,
-        channel_id: str = None,
-        niche: str = None,
-        count: int = 5
+        self, channel_id: str = None, niche: str = None, count: int = 5
     ) -> ResearchResult:
         """
         Generate viral video ideas using proven templates.
@@ -238,9 +221,7 @@ class ResearchAgent:
         try:
             # Use template-based generation (very few tokens)
             ideas = self.idea_gen.generate_viral_ideas(
-                channel_id=channel_id,
-                niche=niche,
-                count=count
+                channel_id=channel_id, niche=niche, count=count
             )
 
             # Template-based = minimal tokens
@@ -250,15 +231,11 @@ class ResearchAgent:
             result = ResearchResult(
                 success=True,
                 operation=operation,
-                data={
-                    "niche": niche,
-                    "channel_id": channel_id,
-                    "method": "template_based"
-                },
+                data={"niche": niche, "channel_id": channel_id, "method": "template_based"},
                 ideas=ideas,
                 tokens_used=tokens_used,
                 cost=cost,
-                provider="template"
+                provider="template",
             )
 
             logger.success(f"[ResearchAgent] Generated {len(ideas)} viral ideas")
@@ -267,10 +244,7 @@ class ResearchAgent:
         except Exception as e:
             logger.error(f"[ResearchAgent] Error generating viral ideas: {e}")
             return ResearchResult(
-                success=False,
-                operation=operation,
-                error=str(e),
-                provider=self.provider
+                success=False, operation=operation, error=str(e), provider=self.provider
             )
 
     def analyze_trends(self, niche: str) -> ResearchResult:
@@ -293,24 +267,24 @@ class ResearchAgent:
 
             trend_data = []
             for trend in trends:
-                trend_data.append({
-                    "keyword": trend.keyword,
-                    "interest_score": trend.interest_score,
-                    "direction": trend.trend_direction,
-                    "related_queries": trend.related_queries[:5] if trend.related_queries else []
-                })
+                trend_data.append(
+                    {
+                        "keyword": trend.keyword,
+                        "interest_score": trend.interest_score,
+                        "direction": trend.trend_direction,
+                        "related_queries": (
+                            trend.related_queries[:5] if trend.related_queries else []
+                        ),
+                    }
+                )
 
             result = ResearchResult(
                 success=True,
                 operation=operation,
-                data={
-                    "niche": niche,
-                    "trends": trend_data,
-                    "trend_count": len(trend_data)
-                },
+                data={"niche": niche, "trends": trend_data, "trend_count": len(trend_data)},
                 tokens_used=0,  # No AI tokens for trend research
                 cost=0.0,
-                provider="google_trends"
+                provider="google_trends",
             )
 
             logger.success(f"[ResearchAgent] Found {len(trend_data)} trends")
@@ -319,10 +293,7 @@ class ResearchAgent:
         except Exception as e:
             logger.error(f"[ResearchAgent] Error analyzing trends: {e}")
             return ResearchResult(
-                success=False,
-                operation=operation,
-                error=str(e),
-                provider="google_trends"
+                success=False, operation=operation, error=str(e), provider="google_trends"
             )
 
     def analyze_competitors(self, niche: str) -> ResearchResult:
@@ -354,11 +325,11 @@ class ResearchAgent:
                     "metrics": metrics,
                     "viral_patterns": practices.get("viral_title_patterns", [])[:5],
                     "hook_formulas": practices.get("hook_formulas", [])[:3],
-                    "best_practices": practices.get("retention_best_practices", {})
+                    "best_practices": practices.get("retention_best_practices", {}),
                 },
                 tokens_used=0,  # Pre-compiled data
                 cost=0.0,
-                provider="local"
+                provider="local",
             )
 
             logger.success(f"[ResearchAgent] Competitor analysis complete for {niche}")
@@ -367,10 +338,7 @@ class ResearchAgent:
         except Exception as e:
             logger.error(f"[ResearchAgent] Error analyzing competitors: {e}")
             return ResearchResult(
-                success=False,
-                operation=operation,
-                error=str(e),
-                provider="local"
+                success=False, operation=operation, error=str(e), provider="local"
             )
 
     def get_best_idea_for_channel(self, channel_id: str) -> Optional[ScoredIdea]:
@@ -457,7 +425,8 @@ def main():
     import sys
 
     if len(sys.argv) < 2:
-        print("""
+        print(
+            """
 Research Agent - Topic Discovery and Trend Analysis
 
 Usage:
@@ -471,7 +440,8 @@ Options:
     --count <n>         Number of ideas to generate (default: 5)
     --channel <id>      Channel ID for automatic niche detection
     --save              Save results to data/research_results.json
-        """)
+        """
+        )
         return
 
     # Parse arguments
@@ -514,7 +484,9 @@ Options:
         print(f"\nIdeas ({len(result.ideas)}):")
         for i, idea in enumerate(result.ideas[:5], 1):
             print(f"  {i}. {idea.title}")
-            print(f"     Score: {idea.score} | Trend: {idea.trend_score} | Engagement: {idea.engagement_score}")
+            print(
+                f"     Score: {idea.score} | Trend: {idea.trend_score} | Engagement: {idea.engagement_score}"
+            )
 
     if result.data:
         print(f"\nData: {json.dumps(result.data, indent=2)[:500]}...")

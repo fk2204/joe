@@ -33,17 +33,17 @@ Usage:
     cache.cleanup_old_files()
 """
 
-import os
-import json
-import shutil
 import hashlib
+import json
+import os
+import shutil
 import threading
-from pathlib import Path
+from dataclasses import asdict, dataclass
 from datetime import datetime, timedelta
-from typing import Optional, Dict, List, Tuple, Any
-from dataclasses import dataclass, asdict
-from loguru import logger
+from pathlib import Path
+from typing import Any, Dict, List, Optional, Tuple
 
+from loguru import logger
 
 # Default cache configuration
 CACHE_DIR = Path("data/stock_cache")
@@ -55,6 +55,7 @@ MIN_VALID_FILE_SIZE = 10000  # 10KB minimum for valid video
 @dataclass
 class CacheEntry:
     """Represents a cached stock footage entry."""
+
     query: str
     clip_id: str
     cache_key: str
@@ -77,6 +78,7 @@ class CacheEntry:
 @dataclass
 class CacheStats:
     """Cache statistics."""
+
     total_files: int
     total_size_bytes: int
     total_size_mb: float
@@ -102,12 +104,14 @@ class CacheStats:
         for source, count in self.clips_by_source.items():
             lines.append(f"    - {source}: {count}")
 
-        lines.extend([
-            "",
-            f"  Oldest file: {self.oldest_file_days} days",
-            f"  Newest file: {self.newest_file_days} days",
-            "=" * 60,
-        ])
+        lines.extend(
+            [
+                "",
+                f"  Oldest file: {self.oldest_file_days} days",
+                f"  Newest file: {self.newest_file_days} days",
+                "=" * 60,
+            ]
+        )
         return "\n".join(lines)
 
 
@@ -120,9 +124,7 @@ class StockCache:
     """
 
     def __init__(
-        self,
-        cache_dir: Optional[Path] = None,
-        cache_duration_days: int = CACHE_DURATION_DAYS
+        self, cache_dir: Optional[Path] = None, cache_duration_days: int = CACHE_DURATION_DAYS
     ):
         """
         Initialize the stock cache.
@@ -148,12 +150,9 @@ class StockCache:
         """Load cache metadata from file."""
         if self.metadata_file.exists():
             try:
-                with open(self.metadata_file, 'r', encoding='utf-8') as f:
+                with open(self.metadata_file, "r", encoding="utf-8") as f:
                     data = json.load(f)
-                return {
-                    key: CacheEntry.from_dict(entry)
-                    for key, entry in data.items()
-                }
+                return {key: CacheEntry.from_dict(entry) for key, entry in data.items()}
             except (json.JSONDecodeError, KeyError, TypeError) as e:
                 logger.warning(f"Failed to load cache metadata: {e}")
         return {}
@@ -161,7 +160,7 @@ class StockCache:
     def _save_metadata(self) -> None:
         """Save cache metadata to file."""
         try:
-            with open(self.metadata_file, 'w', encoding='utf-8') as f:
+            with open(self.metadata_file, "w", encoding="utf-8") as f:
                 data = {key: entry.to_dict() for key, entry in self.metadata.items()}
                 json.dump(data, f, indent=2)
         except (OSError, IOError) as e:
@@ -183,10 +182,7 @@ class StockCache:
         return hashlib.md5(combined.encode()).hexdigest()
 
     def get_cached_clip(
-        self,
-        query: str,
-        clip_id: str,
-        check_expiry: bool = True
+        self, query: str, clip_id: str, check_expiry: bool = True
     ) -> Optional[Path]:
         """
         Get a cached clip if it exists and is valid.
@@ -216,7 +212,9 @@ class StockCache:
 
             # Check expiry
             if check_expiry:
-                age_days = (datetime.now() - datetime.fromtimestamp(cache_file.stat().st_mtime)).days
+                age_days = (
+                    datetime.now() - datetime.fromtimestamp(cache_file.stat().st_mtime)
+                ).days
                 if age_days > self.cache_duration_days:
                     logger.debug(f"Cache expired ({age_days} days old): {cache_key}")
                     self._remove_cache_entry(cache_key)
@@ -233,12 +231,7 @@ class StockCache:
             return cache_file
 
     def save_to_cache(
-        self,
-        query: str,
-        clip_id: str,
-        video_path: str,
-        source: str = "unknown",
-        duration: int = 0
+        self, query: str, clip_id: str, video_path: str, source: str = "unknown", duration: int = 0
     ) -> Optional[Path]:
         """
         Save a downloaded clip to the cache.
@@ -282,7 +275,7 @@ class StockCache:
                     file_size=file_size,
                     created_at=now,
                     last_accessed=now,
-                    access_count=0
+                    access_count=0,
                 )
 
                 self.metadata[cache_key] = entry
@@ -375,7 +368,9 @@ class StockCache:
             if expired_keys:
                 self._save_metadata()
 
-        logger.info(f"Cache cleanup: removed {files_removed} files, freed {bytes_freed / 1024 / 1024:.1f} MB")
+        logger.info(
+            f"Cache cleanup: removed {files_removed} files, freed {bytes_freed / 1024 / 1024:.1f} MB"
+        )
         return files_removed, bytes_freed
 
     def get_stats(self) -> CacheStats:
@@ -384,7 +379,7 @@ class StockCache:
         total_size = 0
         total_hits = 0
         oldest_days = 0
-        newest_days = float('inf')
+        newest_days = float("inf")
         unique_queries = set()
         clips_by_source: Dict[str, int] = {}
 
@@ -410,7 +405,7 @@ class StockCache:
                 except (ValueError, TypeError):
                     pass
 
-        if newest_days == float('inf'):
+        if newest_days == float("inf"):
             newest_days = 0
 
         return CacheStats(
@@ -421,7 +416,7 @@ class StockCache:
             newest_file_days=newest_days,
             total_hits=total_hits,
             unique_queries=len(unique_queries),
-            clips_by_source=clips_by_source
+            clips_by_source=clips_by_source,
         )
 
     def clear_cache(self) -> Tuple[int, int]:
@@ -446,7 +441,9 @@ class StockCache:
             self.metadata.clear()
             self._save_metadata()
 
-        logger.info(f"Cache cleared: removed {files_removed} files, freed {bytes_freed / 1024 / 1024:.1f} MB")
+        logger.info(
+            f"Cache cleared: removed {files_removed} files, freed {bytes_freed / 1024 / 1024:.1f} MB"
+        )
         return files_removed, bytes_freed
 
     def get_cached_clips_for_query(self, query: str) -> List[CacheEntry]:
@@ -497,7 +494,7 @@ class StockCache:
             "avg_clip_size_mb": avg_clip_size_mb,
             "estimated_time_saved_seconds": total_time_saved_sec,
             "estimated_time_saved_minutes": total_time_saved_min,
-            "estimated_bandwidth_saved_mb": stats.total_hits * avg_clip_size_mb
+            "estimated_bandwidth_saved_mb": stats.total_hits * avg_clip_size_mb,
         }
 
     def _calculate_file_hash(self, file_path: Path, chunk_size: int = 8192) -> str:
@@ -514,19 +511,15 @@ class StockCache:
         md5_hash = hashlib.md5()
 
         try:
-            with open(file_path, 'rb') as f:
-                for chunk in iter(lambda: f.read(chunk_size), b''):
+            with open(file_path, "rb") as f:
+                for chunk in iter(lambda: f.read(chunk_size), b""):
                     md5_hash.update(chunk)
             return md5_hash.hexdigest()
         except (IOError, OSError) as e:
             logger.error(f"Error hashing file {file_path}: {e}")
             return ""
 
-    def deduplicate_cache(
-        self,
-        dry_run: bool = False,
-        verbose: bool = True
-    ) -> Dict[str, Any]:
+    def deduplicate_cache(self, dry_run: bool = False, verbose: bool = True) -> Dict[str, Any]:
         """
         Remove duplicate files in cache using MD5 hash.
 
@@ -554,7 +547,7 @@ class StockCache:
             "files_removed": 0,
             "bytes_freed": 0,
             "duplicate_groups": [],
-            "errors": []
+            "errors": [],
         }
 
         # Dictionary to track seen hashes: hash -> (file_path, cache_key, file_size)
@@ -589,8 +582,7 @@ class StockCache:
                     if verbose:
                         original_path, _, _ = seen_hashes[file_hash]
                         logger.info(
-                            f"Duplicate found: {cache_file.name} "
-                            f"(same as {original_path.name})"
+                            f"Duplicate found: {cache_file.name} " f"(same as {original_path.name})"
                         )
                 else:
                     # First time seeing this hash
@@ -633,8 +625,7 @@ class StockCache:
                 hash_groups[file_hash].append(str(cache_file))
 
             stats["duplicate_groups"] = [
-                {"hash": h, "files": files}
-                for h, files in hash_groups.items()
+                {"hash": h, "files": files} for h, files in hash_groups.items()
             ]
 
             if not duplicates:
@@ -716,15 +707,17 @@ class StockCache:
                 # Keep one file, rest are savings
                 potential_savings = total_size - files[0][1]
 
-                duplicate_groups.append({
-                    "hash": file_hash,
-                    "files": [str(path) for path, _ in files],
-                    "file_count": len(files),
-                    "total_size_bytes": total_size,
-                    "total_size_mb": total_size / 1024 / 1024,
-                    "potential_savings_bytes": potential_savings,
-                    "potential_savings_mb": potential_savings / 1024 / 1024
-                })
+                duplicate_groups.append(
+                    {
+                        "hash": file_hash,
+                        "files": [str(path) for path, _ in files],
+                        "file_count": len(files),
+                        "total_size_bytes": total_size,
+                        "total_size_mb": total_size / 1024 / 1024,
+                        "potential_savings_bytes": potential_savings,
+                        "potential_savings_mb": potential_savings / 1024 / 1024,
+                    }
+                )
 
         # Sort by potential savings descending
         duplicate_groups.sort(key=lambda x: x["potential_savings_bytes"], reverse=True)
@@ -750,7 +743,9 @@ def cleanup_cache(max_age_days: int = CACHE_DURATION_DAYS):
     """Run cache cleanup."""
     cache = StockCache()
     files_removed, bytes_freed = cache.cleanup_old_files(max_age_days)
-    print(f"Cleanup complete: removed {files_removed} files, freed {bytes_freed / 1024 / 1024:.1f} MB")
+    print(
+        f"Cleanup complete: removed {files_removed} files, freed {bytes_freed / 1024 / 1024:.1f} MB"
+    )
 
 
 class SmartPrefetcher:
@@ -770,32 +765,74 @@ class SmartPrefetcher:
     # Niche-specific keyword extractors
     NICHE_KEYWORDS = {
         "finance": [
-            "money", "investment", "stock", "market", "wealth", "budget",
-            "savings", "income", "profit", "business", "trading", "crypto"
+            "money",
+            "investment",
+            "stock",
+            "market",
+            "wealth",
+            "budget",
+            "savings",
+            "income",
+            "profit",
+            "business",
+            "trading",
+            "crypto",
         ],
         "psychology": [
-            "brain", "mind", "emotion", "therapy", "anxiety", "depression",
-            "relationship", "mental health", "behavior", "thinking"
+            "brain",
+            "mind",
+            "emotion",
+            "therapy",
+            "anxiety",
+            "depression",
+            "relationship",
+            "mental health",
+            "behavior",
+            "thinking",
         ],
         "storytelling": [
-            "mystery", "crime", "investigation", "documentary", "history",
-            "story", "case", "evidence", "scene", "footage"
+            "mystery",
+            "crime",
+            "investigation",
+            "documentary",
+            "history",
+            "story",
+            "case",
+            "evidence",
+            "scene",
+            "footage",
         ],
         "technology": [
-            "computer", "software", "coding", "programming", "ai",
-            "data", "digital", "tech", "innovation", "future"
+            "computer",
+            "software",
+            "coding",
+            "programming",
+            "ai",
+            "data",
+            "digital",
+            "tech",
+            "innovation",
+            "future",
         ],
         "motivation": [
-            "success", "goal", "achievement", "motivation", "inspiration",
-            "workout", "fitness", "discipline", "mindset", "growth"
-        ]
+            "success",
+            "goal",
+            "achievement",
+            "motivation",
+            "inspiration",
+            "workout",
+            "fitness",
+            "discipline",
+            "mindset",
+            "growth",
+        ],
     }
 
     def __init__(
         self,
         cache: Optional[StockCache] = None,
         max_prefetch_keywords: int = 20,
-        clips_per_keyword: int = 3
+        clips_per_keyword: int = 3,
     ):
         """
         Initialize the smart prefetcher.
@@ -812,9 +849,7 @@ class SmartPrefetcher:
         logger.info("SmartPrefetcher initialized")
 
     def _extract_keywords(
-        self,
-        scheduled_topics: List[Dict[str, str]],
-        niche: Optional[str] = None
+        self, scheduled_topics: List[Dict[str, str]], niche: Optional[str] = None
     ) -> List[str]:
         """
         Extract relevant keywords from scheduled topics.
@@ -836,7 +871,15 @@ class SmartPrefetcher:
             words = topic.lower().replace("-", " ").replace("_", " ").split()
             for word in words:
                 # Filter out common words
-                if len(word) > 3 and word not in ["with", "from", "this", "that", "your", "have", "will"]:
+                if len(word) > 3 and word not in [
+                    "with",
+                    "from",
+                    "this",
+                    "that",
+                    "your",
+                    "have",
+                    "will",
+                ]:
                     keywords.add(word)
 
             # Add niche-specific keywords
@@ -848,7 +891,7 @@ class SmartPrefetcher:
                         keywords.add(kw)
 
         # Return as list, limited by max_prefetch_keywords
-        return list(keywords)[:self.max_prefetch_keywords]
+        return list(keywords)[: self.max_prefetch_keywords]
 
     def _has_cached_clips(self, keyword: str, min_clips: int = 1) -> bool:
         """
@@ -864,11 +907,7 @@ class SmartPrefetcher:
         cached = self.cache.get_cached_clips_for_query(keyword)
         return len(cached) >= min_clips
 
-    async def _prefetch_keyword(
-        self,
-        keyword: str,
-        downloader: Optional[Any] = None
-    ) -> int:
+    async def _prefetch_keyword(self, keyword: str, downloader: Optional[Any] = None) -> int:
         """
         Prefetch clips for a single keyword.
 
@@ -915,14 +954,14 @@ class SmartPrefetcher:
                         clip_id=clip_id,
                         video_path=str(temp_path),
                         source=video.source,
-                        duration=video.duration
+                        duration=video.duration,
                     )
                     prefetched += 1
 
                     # Remove temp file
                     try:
                         temp_path.unlink()
-                    except:
+                    except Exception:
                         pass
 
             logger.info(f"Prefetched {prefetched} clips for: {keyword}")
@@ -939,7 +978,7 @@ class SmartPrefetcher:
         self,
         scheduled_topics: List[Dict[str, str]],
         niche: Optional[str] = None,
-        background: bool = True
+        background: bool = True,
     ) -> Dict[str, Any]:
         """
         Pre-download stock footage for scheduled videos.
@@ -977,12 +1016,12 @@ class SmartPrefetcher:
                 "message": "All keywords already cached",
                 "total_keywords": len(keywords),
                 "keywords_cached": len(keywords),
-                "keywords_to_fetch": 0
+                "keywords_to_fetch": 0,
             }
 
         if background:
             # Run prefetch in background
-            for keyword in keywords_to_fetch[:self.max_prefetch_keywords]:
+            for keyword in keywords_to_fetch[: self.max_prefetch_keywords]:
                 asyncio.create_task(self._prefetch_keyword(keyword))
 
             return {
@@ -990,13 +1029,13 @@ class SmartPrefetcher:
                 "message": f"Background prefetch started for {len(keywords_to_fetch)} keywords",
                 "total_keywords": len(keywords),
                 "keywords_cached": len(keywords) - len(keywords_to_fetch),
-                "keywords_to_fetch": len(keywords_to_fetch)
+                "keywords_to_fetch": len(keywords_to_fetch),
             }
         else:
             # Run synchronously
             async def run_all():
                 total = 0
-                for keyword in keywords_to_fetch[:self.max_prefetch_keywords]:
+                for keyword in keywords_to_fetch[: self.max_prefetch_keywords]:
                     result = await self._prefetch_keyword(keyword)
                     total += result
                 return total
@@ -1008,8 +1047,10 @@ class SmartPrefetcher:
                 "status": "completed",
                 "message": f"Prefetched {total_prefetched} clips",
                 "total_keywords": len(keywords),
-                "keywords_cached": len(keywords) - len(keywords_to_fetch) + len([k for k in keywords_to_fetch if self._has_cached_clips(k)]),
-                "clips_prefetched": total_prefetched
+                "keywords_cached": len(keywords)
+                - len(keywords_to_fetch)
+                + len([k for k in keywords_to_fetch if self._has_cached_clips(k)]),
+                "clips_prefetched": total_prefetched,
             }
 
     def get_prefetch_status(self) -> Dict[str, Any]:
@@ -1017,7 +1058,11 @@ class SmartPrefetcher:
         return {
             "active_tasks": len(self._active_prefetch_tasks),
             "active_keywords": list(self._active_prefetch_tasks.keys()),
-            "cache_stats": self.cache.get_stats().__dict__ if hasattr(self.cache.get_stats(), '__dict__') else {}
+            "cache_stats": (
+                self.cache.get_stats().__dict__
+                if hasattr(self.cache.get_stats(), "__dict__")
+                else {}
+            ),
         }
 
 
@@ -1041,7 +1086,7 @@ if __name__ == "__main__":
             prefetcher = SmartPrefetcher()
             topics = [
                 {"topic": "passive income strategies", "niche": "finance"},
-                {"topic": "narcissist manipulation tactics", "niche": "psychology"}
+                {"topic": "narcissist manipulation tactics", "niche": "psychology"},
             ]
             result = prefetcher.prefetch_for_schedule(topics, background=False)
             print(f"Prefetch result: {result}")

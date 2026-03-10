@@ -38,21 +38,21 @@ Usage:
 """
 
 import asyncio
+import hashlib
 import json
 import sqlite3
-import os
 import time
-import psutil
-import hashlib
-from datetime import datetime, timedelta, timezone
-from pathlib import Path
-from typing import Dict, Any, List, Optional, Callable, Set, Tuple, Union
-from dataclasses import dataclass, field, asdict
-from enum import Enum
 from collections import defaultdict
-from loguru import logger
+from dataclasses import asdict, dataclass, field
+from datetime import datetime, timedelta, timezone
+from enum import Enum
+from pathlib import Path
+from typing import Any, Callable, Dict, List, Optional, Set, Tuple
+
 import aiohttp
+import psutil
 import yaml
+from loguru import logger
 
 # ============================================================
 # INTEGRATED MODULE IMPORTS
@@ -61,6 +61,7 @@ import yaml
 # Whisper Captioning
 try:
     from src.captions.whisper_generator import WhisperCaptionGenerator
+
     WHISPER_AVAILABLE = True
 except ImportError:
     WHISPER_AVAILABLE = False
@@ -68,7 +69,8 @@ except ImportError:
 
 # AI Disclosure Tracking
 try:
-    from src.compliance.ai_disclosure import AIDisclosureTracker, AIContentType
+    from src.compliance.ai_disclosure import AIDisclosureTracker
+
     AI_DISCLOSURE_AVAILABLE = True
 except ImportError:
     AI_DISCLOSURE_AVAILABLE = False
@@ -77,6 +79,7 @@ except ImportError:
 # Analytics Feedback Loop
 try:
     from src.analytics.feedback_loop import AnalyticsFeedbackLoop
+
     FEEDBACK_LOOP_AVAILABLE = True
 except ImportError:
     FEEDBACK_LOOP_AVAILABLE = False
@@ -85,6 +88,7 @@ except ImportError:
 # Viral Hooks
 try:
     from src.content.viral_hooks import ViralHookGenerator
+
     VIRAL_HOOKS_AVAILABLE = True
 except ImportError:
     VIRAL_HOOKS_AVAILABLE = False
@@ -93,6 +97,7 @@ except ImportError:
 # Metadata Optimizer
 try:
     from src.seo.metadata_optimizer import MetadataOptimizer
+
     METADATA_OPTIMIZER_AVAILABLE = True
 except ImportError:
     METADATA_OPTIMIZER_AVAILABLE = False
@@ -101,6 +106,7 @@ except ImportError:
 
 class PipelineStatus(Enum):
     """Pipeline execution status."""
+
     PENDING = "pending"
     QUEUED = "queued"
     RUNNING = "running"
@@ -113,6 +119,7 @@ class PipelineStatus(Enum):
 
 class TaskStatus(Enum):
     """Individual task status."""
+
     PENDING = "pending"
     WAITING = "waiting"  # Waiting for dependencies
     RUNNING = "running"
@@ -123,6 +130,7 @@ class TaskStatus(Enum):
 
 class NotificationType(Enum):
     """Types of notifications."""
+
     SUCCESS = "success"
     FAILURE = "failure"
     WARNING = "warning"
@@ -133,6 +141,7 @@ class NotificationType(Enum):
 @dataclass
 class Task:
     """Represents a single task in a pipeline."""
+
     task_id: str
     name: str
     handler: Optional[str] = None  # Handler function name
@@ -154,6 +163,7 @@ class Task:
 @dataclass
 class Pipeline:
     """Represents a complete pipeline."""
+
     pipeline_id: str
     name: str
     channel_id: str
@@ -176,6 +186,7 @@ class Pipeline:
 @dataclass
 class ResourceLimits:
     """Resource limits for pipeline execution."""
+
     max_concurrent_pipelines: int = 3
     max_cpu_percent: float = 80.0
     max_memory_percent: float = 75.0
@@ -186,6 +197,7 @@ class ResourceLimits:
 @dataclass
 class NotificationConfig:
     """Notification configuration."""
+
     email: Optional[str] = None
     webhook_url: Optional[str] = None
     slack_channel: Optional[str] = None
@@ -252,11 +264,7 @@ class DependencyResolver:
 
         return levels
 
-    def get_ready_tasks(
-        self,
-        tasks: List[Task],
-        completed_tasks: Set[str]
-    ) -> List[Task]:
+    def get_ready_tasks(self, tasks: List[Task], completed_tasks: Set[str]) -> List[Task]:
         """
         Get tasks that are ready to execute (all dependencies satisfied).
 
@@ -273,9 +281,7 @@ class DependencyResolver:
                 continue
 
             # Check all dependencies are completed
-            deps_satisfied = all(
-                dep in completed_tasks for dep in task.dependencies
-            )
+            deps_satisfied = all(dep in completed_tasks for dep in task.dependencies)
             if deps_satisfied:
                 ready.append(task)
 
@@ -294,9 +300,7 @@ class DependencyResolver:
         for task in tasks:
             for dep in task.dependencies:
                 if dep not in task_ids:
-                    errors.append(
-                        f"Task '{task.task_id}' depends on unknown task '{dep}'"
-                    )
+                    errors.append(f"Task '{task.task_id}' depends on unknown task '{dep}'")
 
         # Check for self-dependencies
         for task in tasks:
@@ -339,7 +343,8 @@ class FailureRecovery:
         """Initialize failure tracking database."""
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
         with sqlite3.connect(self.db_path) as conn:
-            conn.execute("""
+            conn.execute(
+                """
                 CREATE TABLE IF NOT EXISTS task_failures (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     task_id TEXT NOT NULL,
@@ -349,24 +354,33 @@ class FailureRecovery:
                     recovered BOOLEAN DEFAULT 0,
                     created_at TEXT DEFAULT CURRENT_TIMESTAMP
                 )
-            """)
+            """
+            )
             # Create indexes for task_failures
-            conn.execute("""
+            conn.execute(
+                """
                 CREATE INDEX IF NOT EXISTS idx_failures_task
                 ON task_failures(task_id)
-            """)
-            conn.execute("""
+            """
+            )
+            conn.execute(
+                """
                 CREATE INDEX IF NOT EXISTS idx_failures_pipeline
                 ON task_failures(pipeline_id)
-            """)
-            conn.execute("""
+            """
+            )
+            conn.execute(
+                """
                 CREATE INDEX IF NOT EXISTS idx_failures_created
                 ON task_failures(created_at)
-            """)
-            conn.execute("""
+            """
+            )
+            conn.execute(
+                """
                 CREATE INDEX IF NOT EXISTS idx_failures_recovered
                 ON task_failures(recovered, created_at)
-            """)
+            """
+            )
 
     def is_retryable(self, error: str) -> bool:
         """Check if an error is retryable."""
@@ -383,22 +397,16 @@ class FailureRecovery:
         Returns:
             Delay in seconds
         """
-        delay = min(
-            self.BASE_DELAY * (self.MULTIPLIER ** retry_count),
-            self.MAX_DELAY
-        )
+        delay = min(self.BASE_DELAY * (self.MULTIPLIER**retry_count), self.MAX_DELAY)
 
         # Add jitter
         import random
+
         jitter = delay * self.JITTER * (random.random() * 2 - 1)
         return max(0, delay + jitter)
 
     async def handle_failure(
-        self,
-        task: Task,
-        pipeline_id: str,
-        error: str,
-        handler: Optional[Callable] = None
+        self, task: Task, pipeline_id: str, error: str, handler: Optional[Callable] = None
     ) -> Tuple[bool, Optional[Dict[str, Any]]]:
         """
         Handle a task failure with retry logic.
@@ -447,59 +455,65 @@ class FailureRecovery:
 
         return False, None
 
-    def _record_failure(
-        self,
-        task_id: str,
-        pipeline_id: str,
-        error: str,
-        retry_count: int
-    ):
+    def _record_failure(self, task_id: str, pipeline_id: str, error: str, retry_count: int):
         """Record a failure to the database."""
         with sqlite3.connect(self.db_path) as conn:
-            conn.execute("""
+            conn.execute(
+                """
                 INSERT INTO task_failures
                 (task_id, pipeline_id, error_message, retry_count)
                 VALUES (?, ?, ?, ?)
-            """, (task_id, pipeline_id, error[:500], retry_count))
+            """,
+                (task_id, pipeline_id, error[:500], retry_count),
+            )
 
     def _mark_recovered(self, task_id: str, pipeline_id: str):
         """Mark a task as recovered."""
         with sqlite3.connect(self.db_path) as conn:
-            conn.execute("""
+            conn.execute(
+                """
                 UPDATE task_failures SET recovered = 1
                 WHERE task_id = ? AND pipeline_id = ?
                 AND id = (SELECT MAX(id) FROM task_failures
                           WHERE task_id = ? AND pipeline_id = ?)
-            """, (task_id, pipeline_id, task_id, pipeline_id))
+            """,
+                (task_id, pipeline_id, task_id, pipeline_id),
+            )
 
-    async def get_failure_stats(
-        self,
-        hours: int = 24
-    ) -> Dict[str, Any]:
+    async def get_failure_stats(self, hours: int = 24) -> Dict[str, Any]:
         """Get failure statistics."""
         cutoff = (datetime.now() - timedelta(hours=hours)).isoformat()
 
         with sqlite3.connect(self.db_path) as conn:
-            total = conn.execute("""
+            total = conn.execute(
+                """
                 SELECT COUNT(*) FROM task_failures WHERE created_at > ?
-            """, (cutoff,)).fetchone()[0]
+            """,
+                (cutoff,),
+            ).fetchone()[0]
 
-            recovered = conn.execute("""
+            recovered = conn.execute(
+                """
                 SELECT COUNT(*) FROM task_failures
                 WHERE created_at > ? AND recovered = 1
-            """, (cutoff,)).fetchone()[0]
+            """,
+                (cutoff,),
+            ).fetchone()[0]
 
-            by_task = conn.execute("""
+            by_task = conn.execute(
+                """
                 SELECT task_id, COUNT(*) as count
                 FROM task_failures WHERE created_at > ?
                 GROUP BY task_id ORDER BY count DESC LIMIT 10
-            """, (cutoff,)).fetchall()
+            """,
+                (cutoff,),
+            ).fetchall()
 
         return {
             "total_failures": total,
             "recovered": recovered,
             "recovery_rate": f"{(recovered/total*100):.1f}%" if total > 0 else "N/A",
-            "top_failing_tasks": [{"task": t[0], "count": t[1]} for t in by_task]
+            "top_failing_tasks": [{"task": t[0], "count": t[1]} for t in by_task],
         }
 
 
@@ -518,7 +532,8 @@ class ProgressTracker:
         """Initialize progress tracking database."""
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
         with sqlite3.connect(self.db_path) as conn:
-            conn.execute("""
+            conn.execute(
+                """
                 CREATE TABLE IF NOT EXISTS pipeline_progress (
                     pipeline_id TEXT PRIMARY KEY,
                     status TEXT,
@@ -530,30 +545,33 @@ class ProgressTracker:
                     updated_at TEXT,
                     metadata TEXT
                 )
-            """)
+            """
+            )
             # Create indexes for pipeline_progress
-            conn.execute("""
+            conn.execute(
+                """
                 CREATE INDEX IF NOT EXISTS idx_progress_status
                 ON pipeline_progress(status)
-            """)
-            conn.execute("""
+            """
+            )
+            conn.execute(
+                """
                 CREATE INDEX IF NOT EXISTS idx_progress_updated
                 ON pipeline_progress(updated_at)
-            """)
-            conn.execute("""
+            """
+            )
+            conn.execute(
+                """
                 CREATE INDEX IF NOT EXISTS idx_progress_status_updated
                 ON pipeline_progress(status, updated_at)
-            """)
+            """
+            )
 
     def register_callback(self, callback: Callable):
         """Register a progress callback."""
         self._callbacks.append(callback)
 
-    async def update_progress(
-        self,
-        pipeline: Pipeline,
-        current_task: Optional[str] = None
-    ):
+    async def update_progress(self, pipeline: Pipeline, current_task: Optional[str] = None):
         """
         Update pipeline progress.
 
@@ -561,10 +579,7 @@ class ProgressTracker:
             pipeline: Pipeline to update
             current_task: Current task name
         """
-        completed = sum(
-            1 for t in pipeline.tasks
-            if t.status == TaskStatus.COMPLETED.value
-        )
+        completed = sum(1 for t in pipeline.tasks if t.status == TaskStatus.COMPLETED.value)
         total = len(pipeline.tasks)
         progress = (completed / total * 100) if total > 0 else 0
 
@@ -579,7 +594,7 @@ class ProgressTracker:
             "current_task": current_task,
             "tasks_completed": completed,
             "tasks_total": total,
-            "updated_at": datetime.now(timezone.utc).isoformat()
+            "updated_at": datetime.now(timezone.utc).isoformat(),
         }
 
         # Persist
@@ -595,25 +610,28 @@ class ProgressTracker:
             except Exception as e:
                 logger.warning(f"Progress callback error: {e}")
 
-    async def _persist_progress(
-        self,
-        pipeline: Pipeline,
-        completed: int,
-        total: int
-    ):
+    async def _persist_progress(self, pipeline: Pipeline, completed: int, total: int):
         """Persist progress to database."""
         with sqlite3.connect(self.db_path) as conn:
-            conn.execute("""
+            conn.execute(
+                """
                 INSERT OR REPLACE INTO pipeline_progress
                 (pipeline_id, status, progress_percent, current_task,
                  tasks_completed, tasks_total, started_at, updated_at, metadata)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """, (
-                pipeline.pipeline_id, pipeline.status, pipeline.progress_percent,
-                pipeline.current_task, completed, total, pipeline.started_at,
-                datetime.now(timezone.utc).isoformat(),
-                json.dumps(pipeline.metadata)
-            ))
+            """,
+                (
+                    pipeline.pipeline_id,
+                    pipeline.status,
+                    pipeline.progress_percent,
+                    pipeline.current_task,
+                    completed,
+                    total,
+                    pipeline.started_at,
+                    datetime.now(timezone.utc).isoformat(),
+                    json.dumps(pipeline.metadata),
+                ),
+            )
 
     async def get_progress(self, pipeline_id: str) -> Optional[Dict[str, Any]]:
         """Get current progress for a pipeline."""
@@ -624,9 +642,12 @@ class ProgressTracker:
         # Load from database
         with sqlite3.connect(self.db_path) as conn:
             conn.row_factory = sqlite3.Row
-            row = conn.execute("""
+            row = conn.execute(
+                """
                 SELECT * FROM pipeline_progress WHERE pipeline_id = ?
-            """, (pipeline_id,)).fetchone()
+            """,
+                (pipeline_id,),
+            ).fetchone()
 
         if row:
             return dict(row)
@@ -636,11 +657,13 @@ class ProgressTracker:
         """Get all active (running) pipelines."""
         with sqlite3.connect(self.db_path) as conn:
             conn.row_factory = sqlite3.Row
-            rows = conn.execute("""
+            rows = conn.execute(
+                """
                 SELECT * FROM pipeline_progress
                 WHERE status IN ('running', 'queued', 'retrying')
                 ORDER BY updated_at DESC
-            """).fetchall()
+            """
+            ).fetchall()
 
         return [dict(row) for row in rows]
 
@@ -734,9 +757,7 @@ class ResourceManager:
         minute_ago = now - 60
 
         # Clean old calls
-        self._api_calls[api_name] = [
-            t for t in self._api_calls[api_name] if t > minute_ago
-        ]
+        self._api_calls[api_name] = [t for t in self._api_calls[api_name] if t > minute_ago]
 
         # Check limit
         if len(self._api_calls[api_name]) >= self.limits.max_api_calls_per_minute:
@@ -748,11 +769,7 @@ class ResourceManager:
         """Record an API call for rate limiting."""
         self._api_calls[api_name].append(time.time())
 
-    async def wait_for_api_slot(
-        self,
-        api_name: str = "default",
-        timeout: float = 60.0
-    ) -> bool:
+    async def wait_for_api_slot(self, api_name: str = "default", timeout: float = 60.0) -> bool:
         """
         Wait for an API rate limit slot to become available.
 
@@ -790,7 +807,7 @@ class ResourceManager:
                 "max_pipelines": self.limits.max_concurrent_pipelines,
                 "api_calls_last_minute": {
                     api: len(calls) for api, calls in self._api_calls.items()
-                }
+                },
             }
         except Exception as e:
             return {"error": str(e)}
@@ -822,7 +839,7 @@ class NotificationSystem:
         title: str,
         message: str,
         pipeline: Optional[Pipeline] = None,
-        metadata: Optional[Dict[str, Any]] = None
+        metadata: Optional[Dict[str, Any]] = None,
     ):
         """
         Send a notification.
@@ -850,7 +867,7 @@ class NotificationSystem:
             "title": title,
             "message": message,
             "timestamp": datetime.now(timezone.utc).isoformat(),
-            "metadata": metadata or {}
+            "metadata": metadata or {},
         }
 
         if pipeline:
@@ -859,7 +876,7 @@ class NotificationSystem:
                 "name": pipeline.name,
                 "channel": pipeline.channel_id,
                 "status": pipeline.status,
-                "progress": pipeline.progress_percent
+                "progress": pipeline.progress_percent,
             }
 
         # Send to configured channels
@@ -896,23 +913,29 @@ class NotificationSystem:
             "success": "#36a64f",
             "failure": "#ff0000",
             "warning": "#ffcc00",
-            "progress": "#3498db"
+            "progress": "#3498db",
         }.get(payload["type"], "#808080")
 
         slack_payload = {
-            "attachments": [{
-                "color": color,
-                "title": payload["title"],
-                "text": payload["message"],
-                "ts": int(datetime.now().timestamp())
-            }]
+            "attachments": [
+                {
+                    "color": color,
+                    "title": payload["title"],
+                    "text": payload["message"],
+                    "ts": int(datetime.now().timestamp()),
+                }
+            ]
         }
 
         if "pipeline" in payload:
             slack_payload["attachments"][0]["fields"] = [
                 {"title": "Pipeline", "value": payload["pipeline"]["name"], "short": True},
                 {"title": "Status", "value": payload["pipeline"]["status"], "short": True},
-                {"title": "Progress", "value": f"{payload['pipeline']['progress']:.0f}%", "short": True}
+                {
+                    "title": "Progress",
+                    "value": f"{payload['pipeline']['progress']:.0f}%",
+                    "short": True,
+                },
             ]
 
         try:
@@ -920,9 +943,7 @@ class NotificationSystem:
             # Slack uses the same webhook URL
             if self.config.webhook_url:
                 async with session.post(
-                    self.config.webhook_url,
-                    json=slack_payload,
-                    timeout=10
+                    self.config.webhook_url, json=slack_payload, timeout=10
                 ) as response:
                     if response.status >= 400:
                         logger.warning(f"Slack notification failed: {response.status}")
@@ -932,34 +953,38 @@ class NotificationSystem:
     async def _send_discord(self, payload: Dict[str, Any]):
         """Send Discord notification."""
         color = {
-            "success": 0x36a64f,
-            "failure": 0xff0000,
-            "warning": 0xffcc00,
-            "progress": 0x3498db
+            "success": 0x36A64F,
+            "failure": 0xFF0000,
+            "warning": 0xFFCC00,
+            "progress": 0x3498DB,
         }.get(payload["type"], 0x808080)
 
         discord_payload = {
-            "embeds": [{
-                "title": payload["title"],
-                "description": payload["message"],
-                "color": color,
-                "timestamp": payload["timestamp"]
-            }]
+            "embeds": [
+                {
+                    "title": payload["title"],
+                    "description": payload["message"],
+                    "color": color,
+                    "timestamp": payload["timestamp"],
+                }
+            ]
         }
 
         if "pipeline" in payload:
             discord_payload["embeds"][0]["fields"] = [
                 {"name": "Pipeline", "value": payload["pipeline"]["name"], "inline": True},
                 {"name": "Status", "value": payload["pipeline"]["status"], "inline": True},
-                {"name": "Progress", "value": f"{payload['pipeline']['progress']:.0f}%", "inline": True}
+                {
+                    "name": "Progress",
+                    "value": f"{payload['pipeline']['progress']:.0f}%",
+                    "inline": True,
+                },
             ]
 
         try:
             session = await self._get_session()
             async with session.post(
-                self.config.discord_webhook,
-                json=discord_payload,
-                timeout=10
+                self.config.discord_webhook, json=discord_payload, timeout=10
             ) as response:
                 if response.status >= 400:
                     logger.warning(f"Discord notification failed: {response.status}")
@@ -972,7 +997,7 @@ class NotificationSystem:
             NotificationType.SUCCESS,
             f"Pipeline Completed: {pipeline.name}",
             message or f"Successfully completed {len(pipeline.tasks)} tasks",
-            pipeline
+            pipeline,
         )
 
     async def notify_failure(self, pipeline: Pipeline, error: str):
@@ -981,7 +1006,7 @@ class NotificationSystem:
             NotificationType.FAILURE,
             f"Pipeline Failed: {pipeline.name}",
             f"Error: {error}",
-            pipeline
+            pipeline,
         )
 
     async def notify_progress(self, pipeline: Pipeline):
@@ -990,7 +1015,7 @@ class NotificationSystem:
             NotificationType.PROGRESS,
             f"Pipeline Progress: {pipeline.name}",
             f"Progress: {pipeline.progress_percent:.0f}% - {pipeline.current_task}",
-            pipeline
+            pipeline,
         )
 
 
@@ -1004,7 +1029,7 @@ class ParallelPipelineRunner:
         resource_manager: ResourceManager,
         progress_tracker: ProgressTracker,
         failure_recovery: FailureRecovery,
-        notification_system: NotificationSystem
+        notification_system: NotificationSystem,
     ):
         self.resource_manager = resource_manager
         self.progress_tracker = progress_tracker
@@ -1067,10 +1092,7 @@ class ParallelPipelineRunner:
                 )
 
                 # Run tasks in parallel
-                task_coroutines = [
-                    self._execute_task(task, pipeline)
-                    for task in level_tasks
-                ]
+                task_coroutines = [self._execute_task(task, pipeline) for task in level_tasks]
 
                 results = await asyncio.gather(*task_coroutines, return_exceptions=True)
 
@@ -1085,7 +1107,7 @@ class ParallelPipelineRunner:
                             task,
                             pipeline.pipeline_id,
                             str(result),
-                            self._task_handlers.get(task.handler)
+                            self._task_handlers.get(task.handler),
                         )
 
                         if not success:
@@ -1097,14 +1119,14 @@ class ParallelPipelineRunner:
 
                 # Update progress
                 await self.progress_tracker.update_progress(
-                    pipeline,
-                    f"Completed level {level_idx + 1}/{len(task_levels)}"
+                    pipeline, f"Completed level {level_idx + 1}/{len(task_levels)}"
                 )
 
                 # Check if progress milestone reached for notification
                 current_progress = int(pipeline.progress_percent)
-                if (current_progress - last_progress) >= \
-                   self.notification_system.config.progress_interval_percent:
+                if (
+                    current_progress - last_progress
+                ) >= self.notification_system.config.progress_interval_percent:
                     await self.notification_system.notify_progress(pipeline)
                     last_progress = current_progress
 
@@ -1148,10 +1170,7 @@ class ParallelPipelineRunner:
                     raise TimeoutError(f"API rate limit timeout for {api_name}")
 
             # Execute with timeout
-            result = await asyncio.wait_for(
-                handler(task, pipeline),
-                timeout=task.timeout_seconds
-            )
+            result = await asyncio.wait_for(handler(task, pipeline), timeout=task.timeout_seconds)
 
             task.status = TaskStatus.COMPLETED.value
             task.result = result
@@ -1170,9 +1189,7 @@ class ParallelPipelineRunner:
             raise
 
     async def run_parallel(
-        self,
-        pipelines: List[Pipeline],
-        max_concurrent: int = 3
+        self, pipelines: List[Pipeline], max_concurrent: int = 3
     ) -> List[Pipeline]:
         """
         Run multiple pipelines in parallel.
@@ -1191,14 +1208,10 @@ class ParallelPipelineRunner:
                 return await self.run_pipeline(pipeline)
 
         results = await asyncio.gather(
-            *[run_with_semaphore(p) for p in pipelines],
-            return_exceptions=True
+            *[run_with_semaphore(p) for p in pipelines], return_exceptions=True
         )
 
-        return [
-            r if isinstance(r, Pipeline) else pipelines[i]
-            for i, r in enumerate(results)
-        ]
+        return [r if isinstance(r, Pipeline) else pipelines[i] for i, r in enumerate(results)]
 
     async def cancel_pipeline(self, pipeline_id: str) -> bool:
         """Cancel a running pipeline."""
@@ -1217,7 +1230,7 @@ class PipelineOrchestrator:
         self,
         db_path: Optional[Path] = None,
         resource_limits: Optional[ResourceLimits] = None,
-        notification_config: Optional[NotificationConfig] = None
+        notification_config: Optional[NotificationConfig] = None,
     ):
         self.db_path = db_path or Path("data/pipeline.db")
 
@@ -1232,7 +1245,7 @@ class PipelineOrchestrator:
             self.resource_manager,
             self.progress_tracker,
             self.failure_recovery,
-            self.notification_system
+            self.notification_system,
         )
 
         # Pipeline storage
@@ -1245,7 +1258,8 @@ class PipelineOrchestrator:
         """Initialize database tables."""
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
         with sqlite3.connect(self.db_path) as conn:
-            conn.execute("""
+            conn.execute(
+                """
                 CREATE TABLE IF NOT EXISTS pipelines (
                     pipeline_id TEXT PRIMARY KEY,
                     name TEXT,
@@ -1259,24 +1273,33 @@ class PipelineOrchestrator:
                     completed_at TEXT,
                     error TEXT
                 )
-            """)
+            """
+            )
             # Create indexes for pipelines
-            conn.execute("""
+            conn.execute(
+                """
                 CREATE INDEX IF NOT EXISTS idx_pipeline_status
                 ON pipelines(status, created_at)
-            """)
-            conn.execute("""
+            """
+            )
+            conn.execute(
+                """
                 CREATE INDEX IF NOT EXISTS idx_pipeline_channel
                 ON pipelines(channel_id)
-            """)
-            conn.execute("""
+            """
+            )
+            conn.execute(
+                """
                 CREATE INDEX IF NOT EXISTS idx_pipeline_created
                 ON pipelines(created_at)
-            """)
-            conn.execute("""
+            """
+            )
+            conn.execute(
+                """
                 CREATE INDEX IF NOT EXISTS idx_pipeline_status_channel
                 ON pipelines(status, channel_id)
-            """)
+            """
+            )
 
     def _generate_pipeline_id(self, channel_id: str) -> str:
         """Generate unique pipeline ID."""
@@ -1293,7 +1316,7 @@ class PipelineOrchestrator:
         channel_id: str,
         name: str,
         tasks: List[Dict[str, Any]],
-        metadata: Optional[Dict[str, Any]] = None
+        metadata: Optional[Dict[str, Any]] = None,
     ) -> Pipeline:
         """
         Create a new pipeline.
@@ -1318,7 +1341,7 @@ class PipelineOrchestrator:
                 dependencies=t.get("dependencies", []),
                 max_retries=t.get("max_retries", 3),
                 timeout_seconds=t.get("timeout", 300),
-                metadata=t.get("metadata", {})
+                metadata=t.get("metadata", {}),
             )
             for i, t in enumerate(tasks)
         ]
@@ -1328,7 +1351,7 @@ class PipelineOrchestrator:
             name=name,
             channel_id=channel_id,
             tasks=task_objects,
-            metadata=metadata or {}
+            metadata=metadata or {},
         )
 
         self._pipelines[pipeline_id] = pipeline
@@ -1339,19 +1362,27 @@ class PipelineOrchestrator:
     async def _save_pipeline(self, pipeline: Pipeline):
         """Save pipeline to database."""
         with sqlite3.connect(self.db_path) as conn:
-            conn.execute("""
+            conn.execute(
+                """
                 INSERT OR REPLACE INTO pipelines
                 (pipeline_id, name, channel_id, status, progress_percent,
                  tasks, metadata, created_at, started_at, completed_at, error)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """, (
-                pipeline.pipeline_id, pipeline.name, pipeline.channel_id,
-                pipeline.status, pipeline.progress_percent,
-                json.dumps([t.to_dict() for t in pipeline.tasks]),
-                json.dumps(pipeline.metadata),
-                pipeline.created_at, pipeline.started_at,
-                pipeline.completed_at, pipeline.error
-            ))
+            """,
+                (
+                    pipeline.pipeline_id,
+                    pipeline.name,
+                    pipeline.channel_id,
+                    pipeline.status,
+                    pipeline.progress_percent,
+                    json.dumps([t.to_dict() for t in pipeline.tasks]),
+                    json.dumps(pipeline.metadata),
+                    pipeline.created_at,
+                    pipeline.started_at,
+                    pipeline.completed_at,
+                    pipeline.error,
+                ),
+            )
 
     async def _save_pipelines_batch(self, pipelines: List[Pipeline]):
         """
@@ -1374,33 +1405,35 @@ class PipelineOrchestrator:
             # Use executemany for batch insert
             data = []
             for pipeline in pipelines:
-                data.append((
-                    pipeline.pipeline_id,
-                    pipeline.name,
-                    pipeline.channel_id,
-                    pipeline.status,
-                    pipeline.progress_percent,
-                    json.dumps([t.to_dict() for t in pipeline.tasks]),
-                    json.dumps(pipeline.metadata),
-                    pipeline.created_at,
-                    pipeline.started_at,
-                    pipeline.completed_at,
-                    pipeline.error
-                ))
+                data.append(
+                    (
+                        pipeline.pipeline_id,
+                        pipeline.name,
+                        pipeline.channel_id,
+                        pipeline.status,
+                        pipeline.progress_percent,
+                        json.dumps([t.to_dict() for t in pipeline.tasks]),
+                        json.dumps(pipeline.metadata),
+                        pipeline.created_at,
+                        pipeline.started_at,
+                        pipeline.completed_at,
+                        pipeline.error,
+                    )
+                )
 
-            conn.executemany("""
+            conn.executemany(
+                """
                 INSERT OR REPLACE INTO pipelines
                 (pipeline_id, name, channel_id, status, progress_percent,
                  tasks, metadata, created_at, started_at, completed_at, error)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """, data)
+            """,
+                data,
+            )
 
             logger.debug(f"Batch saved {len(pipelines)} pipelines")
 
-    async def batch_update_status(
-        self,
-        updates: List[Dict[str, Any]]
-    ) -> int:
+    async def batch_update_status(self, updates: List[Dict[str, Any]]) -> int:
         """
         Update status for multiple pipelines in a single transaction.
 
@@ -1439,20 +1472,20 @@ class PipelineOrchestrator:
 
                 values.append(pipeline_id)
 
-                conn.execute(f"""
+                conn.execute(
+                    f"""
                     UPDATE pipelines
                     SET {', '.join(set_parts)}
                     WHERE pipeline_id = ?
-                """, values)
+                """,
+                    values,
+                )
                 updated += 1
 
             logger.debug(f"Batch updated {updated} pipeline statuses")
             return updated
 
-    async def batch_log_events(
-        self,
-        events: List[Dict[str, Any]]
-    ):
+    async def batch_log_events(self, events: List[Dict[str, Any]]):
         """
         Log multiple pipeline events in a single transaction.
 
@@ -1471,7 +1504,8 @@ class PipelineOrchestrator:
 
         # Create events table if not exists
         with sqlite3.connect(self.db_path) as conn:
-            conn.execute("""
+            conn.execute(
+                """
                 CREATE TABLE IF NOT EXISTS pipeline_events (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     pipeline_id TEXT NOT NULL,
@@ -1480,25 +1514,31 @@ class PipelineOrchestrator:
                     metadata TEXT,
                     created_at TEXT DEFAULT CURRENT_TIMESTAMP
                 )
-            """)
+            """
+            )
 
             # Batch insert events
             data = []
             now = datetime.now(timezone.utc).isoformat()
             for event in events:
-                data.append((
-                    event.get("pipeline_id"),
-                    event.get("event_type", "info"),
-                    event.get("message", ""),
-                    json.dumps(event.get("metadata", {})),
-                    now
-                ))
+                data.append(
+                    (
+                        event.get("pipeline_id"),
+                        event.get("event_type", "info"),
+                        event.get("message", ""),
+                        json.dumps(event.get("metadata", {})),
+                        now,
+                    )
+                )
 
-            conn.executemany("""
+            conn.executemany(
+                """
                 INSERT INTO pipeline_events
                 (pipeline_id, event_type, message, metadata, created_at)
                 VALUES (?, ?, ?, ?, ?)
-            """, data)
+            """,
+                data,
+            )
 
             logger.debug(f"Batch logged {len(events)} pipeline events")
 
@@ -1522,9 +1562,7 @@ class PipelineOrchestrator:
         return result
 
     async def run_parallel(
-        self,
-        items: List[Dict[str, Any]],
-        default_tasks: Optional[List[Dict[str, Any]]] = None
+        self, items: List[Dict[str, Any]], default_tasks: Optional[List[Dict[str, Any]]] = None
     ) -> Dict[str, Any]:
         """
         Create and run multiple pipelines in parallel.
@@ -1547,7 +1585,7 @@ class PipelineOrchestrator:
                 channel_id=channel_id,
                 name=f"Video: {topic[:30]}",
                 tasks=tasks,
-                metadata={"topic": topic, **item.get("metadata", {})}
+                metadata={"topic": topic, **item.get("metadata", {})},
             )
             pipelines.append(pipeline)
 
@@ -1561,7 +1599,7 @@ class PipelineOrchestrator:
             "pipelines": [p.to_dict() for p in results],
             "total": len(results),
             "completed": sum(1 for p in results if p.status == PipelineStatus.COMPLETED.value),
-            "failed": sum(1 for p in results if p.status == PipelineStatus.FAILED.value)
+            "failed": sum(1 for p in results if p.status == PipelineStatus.FAILED.value),
         }
 
     async def get_progress(self, pipeline_id: str) -> Optional[Dict[str, Any]]:
@@ -1585,7 +1623,7 @@ class PipelineOrchestrator:
         email: Optional[str] = None,
         webhook: Optional[str] = None,
         slack_channel: Optional[str] = None,
-        discord_webhook: Optional[str] = None
+        discord_webhook: Optional[str] = None,
     ):
         """Configure notification settings."""
         if email:
@@ -1631,7 +1669,7 @@ class IntegratedPipelineOrchestrator(PipelineOrchestrator):
         db_path: Optional[Path] = None,
         resource_limits: Optional[ResourceLimits] = None,
         notification_config: Optional[NotificationConfig] = None,
-        config_file: str = "config/integrations.yaml"
+        config_file: str = "config/integrations.yaml",
     ):
         super().__init__(db_path, resource_limits, notification_config)
 
@@ -1686,7 +1724,9 @@ class IntegratedPipelineOrchestrator(PipelineOrchestrator):
             self.hook_generator = None
 
         # Metadata Optimizer
-        if METADATA_OPTIMIZER_AVAILABLE and self.config.get("metadata_optimizer", {}).get("enabled", True):
+        if METADATA_OPTIMIZER_AVAILABLE and self.config.get("metadata_optimizer", {}).get(
+            "enabled", True
+        ):
             self.metadata_optimizer = MetadataOptimizer()
             logger.info("[IntegratedOrchestrator] Metadata optimizer enabled")
         else:
@@ -1715,7 +1755,9 @@ class IntegratedPipelineOrchestrator(PipelineOrchestrator):
             return {"skipped": True, "reason": "Whisper not available"}
 
         audio_file = task.metadata.get("audio_file") or pipeline.metadata.get("audio_file")
-        output_file = task.metadata.get("output_file") or f"output/{pipeline.pipeline_id}_captions.srt"
+        output_file = (
+            task.metadata.get("output_file") or f"output/{pipeline.pipeline_id}_captions.srt"
+        )
         format_type = task.metadata.get("format", "srt")
 
         if not audio_file:
@@ -1723,9 +1765,7 @@ class IntegratedPipelineOrchestrator(PipelineOrchestrator):
 
         try:
             result = await self.caption_generator.generate_captions(
-                audio_file=audio_file,
-                output_file=output_file,
-                format=format_type
+                audio_file=audio_file, output_file=output_file, format=format_type
             )
             logger.success(f"[Captions] Generated: {output_file}")
             return {"caption_file": result, "format": format_type}
@@ -1769,7 +1809,9 @@ class IntegratedPipelineOrchestrator(PipelineOrchestrator):
 
         try:
             analytics = await self.feedback_loop.analyze_video(video_id, niche)
-            logger.success(f"[Feedback] Analyzed {video_id}: score={analytics.performance_score:.1f}")
+            logger.success(
+                f"[Feedback] Analyzed {video_id}: score={analytics.performance_score:.1f}"
+            )
             return analytics.to_dict()
         except Exception as e:
             logger.error(f"[Feedback] Analysis failed: {e}")
@@ -1795,20 +1837,24 @@ class IntegratedPipelineOrchestrator(PipelineOrchestrator):
         enhanced_script = self.hook_generator.enhance_script_retention(
             script=script,
             video_duration=duration,
-            min_open_loops=self.config.get("viral_hooks", {}).get("min_open_loops", 3)
+            min_open_loops=self.config.get("viral_hooks", {}).get("min_open_loops", 3),
         )
 
         # Get pattern interrupts
         interrupts = self.hook_generator.get_pattern_interrupts(
             video_duration=duration,
-            interrupt_interval=self.config.get("viral_hooks", {}).get("pattern_interrupt_interval", 45)
+            interrupt_interval=self.config.get("viral_hooks", {}).get(
+                "pattern_interrupt_interval", 45
+            ),
         )
 
         logger.success(f"[ViralHooks] Enhanced script with {len(interrupts)} pattern interrupts")
         return {
             "hook": hook,
             "enhanced_script": enhanced_script,
-            "pattern_interrupts": [{"timestamp": i.timestamp, "type": i.type, "content": i.content} for i in interrupts]
+            "pattern_interrupts": [
+                {"timestamp": i.timestamp, "type": i.type, "content": i.content} for i in interrupts
+            ],
         }
 
     async def _handle_metadata_optimization(self, task: Task, pipeline: Pipeline) -> Dict[str, Any]:
@@ -1829,10 +1875,7 @@ class IntegratedPipelineOrchestrator(PipelineOrchestrator):
 
         # Generate complete metadata
         metadata = self.metadata_optimizer.create_complete_metadata(
-            topic=topic,
-            keywords=keywords,
-            script=script,
-            video_duration=duration
+            topic=topic, keywords=keywords, script=script, video_duration=duration
         )
 
         logger.success(f"[Metadata] Optimized: title_score={metadata.title_score:.1f}")
@@ -1842,7 +1885,7 @@ class IntegratedPipelineOrchestrator(PipelineOrchestrator):
             "tags": metadata.tags,
             "title_score": metadata.title_score,
             "keyword_density": metadata.keyword_density,
-            "chapters": metadata.chapters
+            "chapters": metadata.chapters,
         }
 
     async def create_integrated_pipeline(
@@ -1853,7 +1896,7 @@ class IntegratedPipelineOrchestrator(PipelineOrchestrator):
         include_captions: bool = True,
         include_hooks: bool = True,
         include_optimization: bool = True,
-        metadata: Optional[Dict[str, Any]] = None
+        metadata: Optional[Dict[str, Any]] = None,
     ) -> Pipeline:
         """
         Create a pipeline with all integrated modules.
@@ -1873,9 +1916,10 @@ class IntegratedPipelineOrchestrator(PipelineOrchestrator):
         tasks = []
 
         # Base tasks from config
-        base_stages = self.config.get("pipeline", {}).get("stages", [
-            "research", "script_generation", "tts_generation", "video_assembly", "upload"
-        ])
+        base_stages = self.config.get("pipeline", {}).get(
+            "stages",
+            ["research", "script_generation", "tts_generation", "video_assembly", "upload"],
+        )
 
         # Build tasks based on stages
         task_idx = 0
@@ -1886,7 +1930,7 @@ class IntegratedPipelineOrchestrator(PipelineOrchestrator):
                 "name": stage.replace("_", " ").title(),
                 "handler": stage,
                 "dependencies": [prev_task_id] if prev_task_id else [],
-                "metadata": {"stage": stage, "niche": niche}
+                "metadata": {"stage": stage, "niche": niche},
             }
 
             # Add integrated tasks
@@ -1896,12 +1940,14 @@ class IntegratedPipelineOrchestrator(PipelineOrchestrator):
                 task_idx += 1
 
                 # Add viral hooks after script generation
-                tasks.append({
-                    "name": "Enhance with Viral Hooks",
-                    "handler": "enhance_with_hooks",
-                    "dependencies": [prev_task_id],
-                    "metadata": {"niche": niche, "topic": topic}
-                })
+                tasks.append(
+                    {
+                        "name": "Enhance with Viral Hooks",
+                        "handler": "enhance_with_hooks",
+                        "dependencies": [prev_task_id],
+                        "metadata": {"niche": niche, "topic": topic},
+                    }
+                )
                 prev_task_id = f"task_{task_idx}"
                 task_idx += 1
                 continue
@@ -1912,12 +1958,14 @@ class IntegratedPipelineOrchestrator(PipelineOrchestrator):
                 task_idx += 1
 
                 # Add caption generation after TTS
-                tasks.append({
-                    "name": "Generate Captions",
-                    "handler": "generate_captions",
-                    "dependencies": [prev_task_id],
-                    "metadata": {"format": "srt"}
-                })
+                tasks.append(
+                    {
+                        "name": "Generate Captions",
+                        "handler": "generate_captions",
+                        "dependencies": [prev_task_id],
+                        "metadata": {"format": "srt"},
+                    }
+                )
                 prev_task_id = f"task_{task_idx}"
                 task_idx += 1
                 continue
@@ -1925,22 +1973,26 @@ class IntegratedPipelineOrchestrator(PipelineOrchestrator):
             if stage == "upload":
                 # Add metadata optimization before upload
                 if include_optimization:
-                    tasks.append({
-                        "name": "Optimize Metadata",
-                        "handler": "optimize_metadata",
-                        "dependencies": [prev_task_id] if prev_task_id else [],
-                        "metadata": {"topic": topic, "niche": niche}
-                    })
+                    tasks.append(
+                        {
+                            "name": "Optimize Metadata",
+                            "handler": "optimize_metadata",
+                            "dependencies": [prev_task_id] if prev_task_id else [],
+                            "metadata": {"topic": topic, "niche": niche},
+                        }
+                    )
                     prev_task_id = f"task_{task_idx}"
                     task_idx += 1
 
                 # Add AI disclosure tracking before upload
-                tasks.append({
-                    "name": "Track AI Disclosure",
-                    "handler": "track_ai_disclosure",
-                    "dependencies": [prev_task_id] if prev_task_id else [],
-                    "metadata": {"tts_used": True, "ai_script": True}
-                })
+                tasks.append(
+                    {
+                        "name": "Track AI Disclosure",
+                        "handler": "track_ai_disclosure",
+                        "dependencies": [prev_task_id] if prev_task_id else [],
+                        "metadata": {"tts_used": True, "ai_script": True},
+                    }
+                )
                 prev_task_id = f"task_{task_idx}"
                 task_idx += 1
 
@@ -1953,14 +2005,14 @@ class IntegratedPipelineOrchestrator(PipelineOrchestrator):
             "topic": topic,
             "niche": niche,
             "channel_id": channel_id,
-            **(metadata or {})
+            **(metadata or {}),
         }
 
         return await self.create_pipeline(
             channel_id=channel_id,
             name=f"Integrated Video: {topic[:30]}",
             tasks=tasks,
-            metadata=pipeline_metadata
+            metadata=pipeline_metadata,
         )
 
     def get_integration_status(self) -> Dict[str, Any]:
@@ -1969,25 +2021,29 @@ class IntegratedPipelineOrchestrator(PipelineOrchestrator):
             "whisper_captioning": {
                 "available": WHISPER_AVAILABLE,
                 "enabled": self.caption_generator is not None,
-                "model": self.config.get("captioning", {}).get("model", "base") if self.caption_generator else None
+                "model": (
+                    self.config.get("captioning", {}).get("model", "base")
+                    if self.caption_generator
+                    else None
+                ),
             },
             "ai_disclosure": {
                 "available": AI_DISCLOSURE_AVAILABLE,
-                "enabled": self.disclosure_tracker is not None
+                "enabled": self.disclosure_tracker is not None,
             },
             "feedback_loop": {
                 "available": FEEDBACK_LOOP_AVAILABLE,
-                "enabled": self.feedback_loop is not None
+                "enabled": self.feedback_loop is not None,
             },
             "viral_hooks": {
                 "available": VIRAL_HOOKS_AVAILABLE,
-                "enabled": self.hook_generator is not None
+                "enabled": self.hook_generator is not None,
             },
             "metadata_optimizer": {
                 "available": METADATA_OPTIMIZER_AVAILABLE,
-                "enabled": self.metadata_optimizer is not None
+                "enabled": self.metadata_optimizer is not None,
             },
-            "config_loaded": len(self.config) > 0
+            "config_loaded": len(self.config) > 0,
         }
 
 
@@ -2023,14 +2079,14 @@ if __name__ == "__main__":
 
                 tasks = [
                     {"name": "Research", "handler": "research"},
-                    {"name": "Script", "handler": "script", "dependencies": ["research"]}
+                    {"name": "Script", "handler": "script", "dependencies": ["research"]},
                 ]
 
                 pipeline = await orchestrator.create_pipeline(
                     channel_id=channel,
                     name=f"Video: {topic}",
                     tasks=tasks,
-                    metadata={"topic": topic}
+                    metadata={"topic": topic},
                 )
 
                 print(f"Created pipeline: {pipeline.pipeline_id}")

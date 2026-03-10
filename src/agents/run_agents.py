@@ -8,15 +8,16 @@ Usage:
     python src/agents/run_agents.py "true crime" --upload
 """
 
-import sys
 import argparse
+import sys
 from pathlib import Path
 
 # Add project root to path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 from loguru import logger
-from src.agents.subagents import AgentOrchestrator, quick_video
+
+from src.agents.subagents import AgentOrchestrator
 
 
 def main():
@@ -33,38 +34,25 @@ Channels:
   money_blueprints  - Finance & Wealth ($10-25 CPM)
   mind_unlocked     - Psychology ($5-12 CPM)
   untold_stories    - Stories & Entertainment ($4-10 CPM)
-        """
+        """,
     )
 
-    parser.add_argument(
-        "niche",
-        type=str,
-        help="Topic niche for the video"
-    )
-    parser.add_argument(
-        "--channel",
-        type=str,
-        default=None,
-        help="Channel ID from channels.yaml"
-    )
-    parser.add_argument(
-        "--upload",
-        action="store_true",
-        help="Upload to YouTube after creation"
-    )
+    parser.add_argument("niche", type=str, help="Topic niche for the video")
+    parser.add_argument("--channel", type=str, default=None, help="Channel ID from channels.yaml")
+    parser.add_argument("--upload", action="store_true", help="Upload to YouTube after creation")
     parser.add_argument(
         "--privacy",
         type=str,
         default="unlisted",
         choices=["public", "unlisted", "private"],
-        help="YouTube privacy setting"
+        help="YouTube privacy setting",
     )
     parser.add_argument(
         "--provider",
         type=str,
         default="ollama",
         choices=["ollama", "groq", "claude", "openai"],
-        help="AI provider for script generation"
+        help="AI provider for script generation",
     )
 
     args = parser.parse_args()
@@ -74,12 +62,12 @@ Channels:
     logger.add(
         sys.stderr,
         format="<green>{time:HH:mm:ss}</green> | <level>{level: <8}</level> | <level>{message}</level>",
-        level="INFO"
+        level="INFO",
     )
 
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print("  YOUTUBE VIDEO CREATION - SUBAGENT SYSTEM")
-    print("="*60)
+    print("=" * 60)
     print(f"\n  Niche: {args.niche}")
     if args.channel:
         print(f"  Channel: {args.channel}")
@@ -90,16 +78,13 @@ Channels:
     # Create orchestrator and run
     orchestrator = AgentOrchestrator(ai_provider=args.provider)
     project = orchestrator.create_video(
-        niche=args.niche,
-        channel=args.channel,
-        upload=args.upload,
-        privacy=args.privacy
+        niche=args.niche, channel=args.channel, upload=args.upload, privacy=args.privacy
     )
 
     # Print results
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print("  RESULTS")
-    print("="*60)
+    print("=" * 60)
     print(f"\n  Status: {project.status}")
 
     if project.topic:

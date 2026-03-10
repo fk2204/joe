@@ -36,10 +36,11 @@ Example:
 
 import re
 from dataclasses import dataclass, field
-from typing import List, Dict, Any, Optional, Set
+from typing import Any, Dict, List
+
 from loguru import logger
 
-from .base_agent import BaseAgent, AgentResult
+from .base_agent import AgentResult, BaseAgent
 
 
 @dataclass
@@ -57,6 +58,7 @@ class ComplianceResult:
         policy_violations: Direct YouTube policy violations
         score: Compliance score from 0-100
     """
+
     compliant: bool
     issues: List[str] = field(default_factory=list)
     required_disclosures: List[str] = field(default_factory=list)
@@ -76,7 +78,7 @@ class ComplianceResult:
             "copyright_concerns": self.copyright_concerns,
             "trademark_concerns": self.trademark_concerns,
             "policy_violations": self.policy_violations,
-            "score": self.score
+            "score": self.score,
         }
 
 
@@ -97,86 +99,115 @@ class ComplianceAgent(BaseAgent):
 
     # Known safe stock footage sources
     SAFE_FOOTAGE_SOURCES = {
-        "pexels", "pixabay", "coverr", "unsplash", "videvo",
-        "mixkit", "lifeofvids", "videezy", "original", "self-recorded",
-        "stock", "licensed"
+        "pexels",
+        "pixabay",
+        "coverr",
+        "unsplash",
+        "videvo",
+        "mixkit",
+        "lifeofvids",
+        "videezy",
+        "original",
+        "self-recorded",
+        "stock",
+        "licensed",
     }
 
     # Patterns that suggest copyrighted content
     COPYRIGHT_PATTERNS = [
-        r'\b(movie|film|trailer|clip|scene)\s+(from|of)\s+[\w\s]+',
-        r'\b(song|music|track|beat)\s+by\s+[\w\s]+',
-        r'\b(cover|remix)\s+of\s+[\w\s]+',
-        r'\b(gameplay|walkthrough)\s+of\s+[\w\s]+',
-        r'\b(copyright|copyrighted|all rights reserved)\b',
+        r"\b(movie|film|trailer|clip|scene)\s+(from|of)\s+[\w\s]+",
+        r"\b(song|music|track|beat)\s+by\s+[\w\s]+",
+        r"\b(cover|remix)\s+of\s+[\w\s]+",
+        r"\b(gameplay|walkthrough)\s+of\s+[\w\s]+",
+        r"\b(copyright|copyrighted|all rights reserved)\b",
     ]
 
     # Patterns that indicate sponsored/affiliate content
     DISCLOSURE_PATTERNS = {
         "sponsored": [
-            r'\bsponsored\b', r'\bpartner(ship|ed)?\b', r'\bpromo(tion|ted)?\b',
-            r'\bpaid\s+(promotion|partnership|ad)\b', r'\bbrand\s+deal\b',
+            r"\bsponsored\b",
+            r"\bpartner(ship|ed)?\b",
+            r"\bpromo(tion|ted)?\b",
+            r"\bpaid\s+(promotion|partnership|ad)\b",
+            r"\bbrand\s+deal\b",
         ],
         "affiliate": [
-            r'\baffiliate\b', r'\bcommission\b', r'\buse\s+(my|this)\s+link\b',
-            r'\b(link|code)\s+(below|in\s+description)\b', r'\bdiscount\s+code\b',
-            r'\bpromo\s+code\b', r'\b\d+%\s+off\b',
+            r"\baffiliate\b",
+            r"\bcommission\b",
+            r"\buse\s+(my|this)\s+link\b",
+            r"\b(link|code)\s+(below|in\s+description)\b",
+            r"\bdiscount\s+code\b",
+            r"\bpromo\s+code\b",
+            r"\b\d+%\s+off\b",
         ],
         "gifted": [
-            r'\bgifted\b', r'\bfree\s+product\b', r'\bsent\s+(me|for\s+review)\b',
-            r'\bprovided\s+by\b', r'\bcourtesy\s+of\b',
+            r"\bgifted\b",
+            r"\bfree\s+product\b",
+            r"\bsent\s+(me|for\s+review)\b",
+            r"\bprovided\s+by\b",
+            r"\bcourtesy\s+of\b",
         ],
     }
 
     # Sensitive topics that may trigger demonetization or restrictions
     SENSITIVE_TOPICS = {
         "health_claims": [
-            r'\bcure[sd]?\b', r'\btreat(s|ed|ment)?\b.*\b(disease|illness|cancer|diabetes)\b',
-            r'\bmedical\s+advice\b', r'\bhealth\s+benefits?\b.*\b(proven|guaranteed)\b',
-            r'\b(miracle|wonder)\s+(cure|drug|supplement)\b',
+            r"\bcure[sd]?\b",
+            r"\btreat(s|ed|ment)?\b.*\b(disease|illness|cancer|diabetes)\b",
+            r"\bmedical\s+advice\b",
+            r"\bhealth\s+benefits?\b.*\b(proven|guaranteed)\b",
+            r"\b(miracle|wonder)\s+(cure|drug|supplement)\b",
         ],
         "financial_claims": [
-            r'\bguaranteed\s+(returns?|profit|income)\b',
-            r'\bget\s+rich\s+quick\b', r'\bmake\s+\$?\d+[kK]?\s+(fast|easy|quick)\b',
-            r'\bfinancial\s+freedom\s+in\s+\d+\s+(days?|weeks?|months?)\b',
-            r'\bnot\s+financial\s+advice\b',  # Needs disclosure
+            r"\bguaranteed\s+(returns?|profit|income)\b",
+            r"\bget\s+rich\s+quick\b",
+            r"\bmake\s+\$?\d+[kK]?\s+(fast|easy|quick)\b",
+            r"\bfinancial\s+freedom\s+in\s+\d+\s+(days?|weeks?|months?)\b",
+            r"\bnot\s+financial\s+advice\b",  # Needs disclosure
         ],
         "controversial": [
-            r'\b(conspiracy|hoax)\b', r'\bfake\s+news\b',
-            r'\belection\s+(fraud|rigged)\b',
+            r"\b(conspiracy|hoax)\b",
+            r"\bfake\s+news\b",
+            r"\belection\s+(fraud|rigged)\b",
         ],
         "violence": [
-            r'\b(graphic|explicit)\s+(violence|content)\b',
-            r'\b(blood|gore|death)\b.*\b(real|actual)\b',
+            r"\b(graphic|explicit)\s+(violence|content)\b",
+            r"\b(blood|gore|death)\b.*\b(real|actual)\b",
         ],
         "adult": [
-            r'\b(nsfw|adult|18\+|xxx)\b',
-            r'\bsexual(ly)?\s+(explicit|content)\b',
+            r"\b(nsfw|adult|18\+|xxx)\b",
+            r"\bsexual(ly)?\s+(explicit|content)\b",
         ],
     }
 
     # Common trademarks to check
     TRADEMARK_PATTERNS = [
         # Tech companies
-        (r'\b(iphone|ipad|macbook|airpods?|apple\s+watch)\b', "Apple"),
-        (r'\b(google|youtube|android|pixel|chrome)\b', "Google"),
-        (r'\b(microsoft|windows|xbox|office)\b', "Microsoft"),
-        (r'\b(amazon|alexa|kindle|aws)\b', "Amazon"),
-        (r'\b(facebook|instagram|whatsapp|meta)\b', "Meta"),
-        (r'\b(tesla|spacex)\b', "Tesla/SpaceX"),
+        (r"\b(iphone|ipad|macbook|airpods?|apple\s+watch)\b", "Apple"),
+        (r"\b(google|youtube|android|pixel|chrome)\b", "Google"),
+        (r"\b(microsoft|windows|xbox|office)\b", "Microsoft"),
+        (r"\b(amazon|alexa|kindle|aws)\b", "Amazon"),
+        (r"\b(facebook|instagram|whatsapp|meta)\b", "Meta"),
+        (r"\b(tesla|spacex)\b", "Tesla/SpaceX"),
         # Avoid using these in titles/thumbnails
-        (r'\b(netflix|disney\+?|hbo|hulu)\b', "Streaming Services"),
-        (r'\b(coca-?cola|pepsi|mcdonald\'?s?|starbucks)\b', "Food/Beverage Brands"),
+        (r"\b(netflix|disney\+?|hbo|hulu)\b", "Streaming Services"),
+        (r"\b(coca-?cola|pepsi|mcdonald\'?s?|starbucks)\b", "Food/Beverage Brands"),
     ]
 
     # YouTube-specific policy triggers
     POLICY_TRIGGERS = [
         # Clickbait that violates policies
-        (r'\b(shocking|you\s+won\'?t\s+believe)\b.*\b(died|dead|death)\b', "Misleading death claims"),
-        (r'\b(leaked|exposed|hacked)\b', "Potential privacy violation claims"),
-        (r'\b(free\s+download|crack|keygen|pirat(e|ed))\b', "Piracy promotion"),
-        (r'\b(sub\s*4\s*sub|sub\s+for\s+sub)\b', "Fake engagement"),
-        (r'\b(giveaway|contest).*\b(subscribe|like|comment)\b', "Potentially against giveaway rules"),
+        (
+            r"\b(shocking|you\s+won\'?t\s+believe)\b.*\b(died|dead|death)\b",
+            "Misleading death claims",
+        ),
+        (r"\b(leaked|exposed|hacked)\b", "Potential privacy violation claims"),
+        (r"\b(free\s+download|crack|keygen|pirat(e|ed))\b", "Piracy promotion"),
+        (r"\b(sub\s*4\s*sub|sub\s+for\s+sub)\b", "Fake engagement"),
+        (
+            r"\b(giveaway|contest).*\b(subscribe|like|comment)\b",
+            "Potentially against giveaway rules",
+        ),
     ]
 
     def __init__(self, provider: str = "rule_based", api_key: str = None):
@@ -198,7 +229,7 @@ class ComplianceAgent(BaseAgent):
         tags: List[str] = None,
         music_sources: List[str] = None,
         footage_sources: List[str] = None,
-        **kwargs
+        **kwargs,
     ) -> AgentResult:
         """
         Check content for YouTube policy compliance.
@@ -240,9 +271,7 @@ class ComplianceAgent(BaseAgent):
         compliance_result = ComplianceResult(compliant=True, score=100)
 
         # Run all checks
-        self._check_copyright(
-            full_text, music_sources, footage_sources, compliance_result
-        )
+        self._check_copyright(full_text, music_sources, footage_sources, compliance_result)
         self._check_disclosures(full_text, compliance_result)
         self._check_sensitive_content(full_text, compliance_result)
         self._check_trademarks(title, description, compliance_result)
@@ -254,13 +283,14 @@ class ComplianceAgent(BaseAgent):
         # Determine final compliance status
         # Critical issues make content non-compliant
         compliance_result.compliant = (
-            len(compliance_result.policy_violations) == 0 and
-            compliance_result.score >= 60
+            len(compliance_result.policy_violations) == 0 and compliance_result.score >= 60
         )
 
         # Log results
         if compliance_result.compliant:
-            logger.success(f"[ComplianceAgent] Content is compliant (score: {compliance_result.score})")
+            logger.success(
+                f"[ComplianceAgent] Content is compliant (score: {compliance_result.score})"
+            )
         else:
             logger.warning(
                 f"[ComplianceAgent] Compliance issues found: "
@@ -275,10 +305,13 @@ class ComplianceAgent(BaseAgent):
             cost=0.0,
             metadata={
                 "checks_performed": [
-                    "copyright", "disclosures", "sensitive_content",
-                    "trademarks", "policy_violations"
+                    "copyright",
+                    "disclosures",
+                    "sensitive_content",
+                    "trademarks",
+                    "policy_violations",
                 ]
-            }
+            },
         )
 
     def _check_copyright(
@@ -286,7 +319,7 @@ class ComplianceAgent(BaseAgent):
         text: str,
         music_sources: List[str],
         footage_sources: List[str],
-        result: ComplianceResult
+        result: ComplianceResult,
     ):
         """Check for potential copyright issues."""
         text_lower = text.lower()
@@ -295,13 +328,20 @@ class ComplianceAgent(BaseAgent):
         for source in music_sources:
             source_lower = source.lower()
             # Check if it's from a known safe source
-            safe_music_terms = ["royalty free", "creative commons", "cc0",
-                               "no copyright", "ncs", "stock", "licensed"]
+            safe_music_terms = [
+                "royalty free",
+                "creative commons",
+                "cc0",
+                "no copyright",
+                "ncs",
+                "stock",
+                "licensed",
+            ]
             is_safe = any(term in source_lower for term in safe_music_terms)
 
             if not is_safe:
                 # Check if it looks like copyrighted music
-                if re.search(r'[\w\s]+\s*-\s*[\w\s]+', source):  # Artist - Song format
+                if re.search(r"[\w\s]+\s*-\s*[\w\s]+", source):  # Artist - Song format
                     result.copyright_concerns.append(
                         f"Music source '{source}' may be copyrighted. "
                         "Ensure you have proper licensing."
@@ -370,12 +410,7 @@ class ComplianceAgent(BaseAgent):
                         result.score -= 30
                     break
 
-    def _check_trademarks(
-        self,
-        title: str,
-        description: str,
-        result: ComplianceResult
-    ):
+    def _check_trademarks(self, title: str, description: str, result: ComplianceResult):
         """Check for trademark usage that might cause issues."""
         title_lower = title.lower()
 
@@ -388,20 +423,13 @@ class ComplianceAgent(BaseAgent):
                 )
                 result.score -= 3
 
-    def _check_policy_violations(
-        self,
-        text: str,
-        title: str,
-        result: ComplianceResult
-    ):
+    def _check_policy_violations(self, text: str, title: str, result: ComplianceResult):
         """Check for direct YouTube policy violations."""
         combined = f"{title}\n{text}"
 
         for pattern, violation_type in self.POLICY_TRIGGERS:
             if re.search(pattern, combined, re.IGNORECASE):
-                result.policy_violations.append(
-                    f"Potential policy violation: {violation_type}"
-                )
+                result.policy_violations.append(f"Potential policy violation: {violation_type}")
                 result.issues.append(f"Review content for: {violation_type}")
                 result.score -= 20
 
@@ -415,31 +443,33 @@ class ComplianceAgent(BaseAgent):
         Returns:
             Dictionary with licensing information
         """
-        results = {
-            "safe": [],
-            "needs_verification": [],
-            "potentially_copyrighted": []
-        }
+        results = {"safe": [], "needs_verification": [], "potentially_copyrighted": []}
 
-        safe_terms = ["royalty free", "creative commons", "cc0", "no copyright",
-                     "ncs", "stock", "licensed", "original", "self-composed"]
+        safe_terms = [
+            "royalty free",
+            "creative commons",
+            "cc0",
+            "no copyright",
+            "ncs",
+            "stock",
+            "licensed",
+            "original",
+            "self-composed",
+        ]
 
         for source in music_sources:
             source_lower = source.lower()
 
             if any(term in source_lower for term in safe_terms):
                 results["safe"].append(source)
-            elif re.search(r'[\w\s]+\s*-\s*[\w\s]+', source):
+            elif re.search(r"[\w\s]+\s*-\s*[\w\s]+", source):
                 results["potentially_copyrighted"].append(source)
             else:
                 results["needs_verification"].append(source)
 
         return results
 
-    def generate_disclosure_text(
-        self,
-        disclosure_types: List[str]
-    ) -> Dict[str, str]:
+    def generate_disclosure_text(self, disclosure_types: List[str]) -> Dict[str, str]:
         """
         Generate required disclosure text.
 
@@ -457,18 +487,18 @@ class ComplianceAgent(BaseAgent):
         templates = {
             "sponsored_disclosure": {
                 "description": "This video is sponsored by [SPONSOR NAME]. "
-                              "All opinions are my own.",
+                "All opinions are my own.",
                 "pinned_comment": "This video contains a paid promotion.",
             },
             "affiliate_disclosure": {
                 "description": "Some links in this description are affiliate links. "
-                              "If you purchase through these links, I may earn a commission "
-                              "at no extra cost to you. Thank you for supporting the channel!",
+                "If you purchase through these links, I may earn a commission "
+                "at no extra cost to you. Thank you for supporting the channel!",
                 "pinned_comment": "Disclosure: This video contains affiliate links.",
             },
             "gifted_disclosure": {
                 "description": "Products in this video were provided for review. "
-                              "All opinions are my own and not influenced by the brand.",
+                "All opinions are my own and not influenced by the brand.",
                 "pinned_comment": "Disclosure: Products shown were gifted for review.",
             },
         }
@@ -490,7 +520,8 @@ def main():
     import sys
 
     if len(sys.argv) < 2:
-        print("""
+        print(
+            """
 Compliance Agent - YouTube Policy Compliance Checking
 
 Usage:
@@ -506,7 +537,8 @@ Options:
 Examples:
     python -m src.agents.compliance_agent "Check out my affiliate link!" --title "Product Review"
     python -m src.agents.compliance_agent --file script.txt --music "Royalty Free,NCS"
-        """)
+        """
+        )
         return
 
     # Parse arguments
@@ -539,10 +571,7 @@ Examples:
     # Run agent
     agent = ComplianceAgent()
     result = agent.run(
-        script=script,
-        title=title,
-        music_sources=music_sources,
-        footage_sources=footage_sources
+        script=script, title=title, music_sources=music_sources, footage_sources=footage_sources
     )
 
     # Print result

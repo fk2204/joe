@@ -10,8 +10,8 @@ Cost savings: 50-70% vs using premium providers for everything.
 
 import os
 from dataclasses import dataclass
-from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Tuple
+from datetime import datetime
+from typing import Dict, List, Optional
 
 from loguru import logger
 
@@ -33,7 +33,7 @@ class ProviderCost:
 PROVIDER_COSTS_2026: Dict[str, ProviderCost] = {
     "groq": ProviderCost(
         name="Groq (Llama 3)",
-        cost_per_1k_input=0.0,      # FREE tier: 30 req/min
+        cost_per_1k_input=0.0,  # FREE tier: 30 req/min
         cost_per_1k_output=0.0,
         rate_limit_rpm=30,
         quality_score=0.75,
@@ -41,7 +41,7 @@ PROVIDER_COSTS_2026: Dict[str, ProviderCost] = {
     ),
     "gemini-flash": ProviderCost(
         name="Gemini 1.5 Flash",
-        cost_per_1k_input=0.0,      # FREE tier
+        cost_per_1k_input=0.0,  # FREE tier
         cost_per_1k_output=0.0,
         rate_limit_rpm=15,
         quality_score=0.70,
@@ -49,7 +49,7 @@ PROVIDER_COSTS_2026: Dict[str, ProviderCost] = {
     ),
     "claude-haiku": ProviderCost(
         name="Claude 3.5 Haiku",
-        cost_per_1k_input=0.25,     # $0.25/$1.25 per 1k tokens
+        cost_per_1k_input=0.25,  # $0.25/$1.25 per 1k tokens
         cost_per_1k_output=1.25,
         rate_limit_rpm=1000,
         quality_score=0.85,
@@ -100,12 +100,10 @@ TASK_ROUTING: Dict[str, List[str]] = {
     "description": ["groq", "claude-haiku"],
     "keyword_extraction": ["groq", "gemini-flash"],
     "simple_rewrite": ["groq", "gemini-flash"],
-
     # Quality-critical tasks use better providers
     "quality_check": ["claude-haiku", "claude-sonnet"],
     "hook_generation": ["claude-haiku", "gpt-4o-mini"],
     "script_revision": ["claude-haiku", "gpt-4o-mini"],
-
     # Premium tasks for best quality
     "complex_reasoning": ["claude-sonnet", "gpt-4o"],
     "creative_writing": ["claude-sonnet", "claude-haiku"],
@@ -144,9 +142,7 @@ class SmartProviderRouter:
         Args:
             daily_budget: Maximum daily spend in USD (default: from env or $10)
         """
-        self.daily_budget = daily_budget or float(
-            os.getenv("DAILY_AI_BUDGET", "10.0")
-        )
+        self.daily_budget = daily_budget or float(os.getenv("DAILY_AI_BUDGET", "10.0"))
         self.daily_spend = 0.0
         self.spend_reset_time = datetime.now()
 
@@ -161,7 +157,7 @@ class SmartProviderRouter:
         task_type: str,
         estimated_tokens: int = 1000,
         min_quality: float = 0.0,
-        force_provider: Optional[str] = None
+        force_provider: Optional[str] = None,
     ) -> str:
         """
         Select optimal provider for task.
@@ -223,12 +219,14 @@ class SmartProviderRouter:
                 # Free providers: use inverse quality as "cost"
                 adjusted_cost = (1 - provider.quality_score) * 0.01
 
-            candidates.append({
-                "provider": provider_key,
-                "cost": total_cost,
-                "adjusted_cost": adjusted_cost,
-                "quality": provider.quality_score,
-            })
+            candidates.append(
+                {
+                    "provider": provider_key,
+                    "cost": total_cost,
+                    "adjusted_cost": adjusted_cost,
+                    "quality": provider.quality_score,
+                }
+            )
 
         if not candidates:
             # Fallback to free provider
@@ -246,11 +244,7 @@ class SmartProviderRouter:
         return best["provider"]
 
     def track_usage(
-        self,
-        provider: str,
-        input_tokens: int,
-        output_tokens: int,
-        task_type: str = "unknown"
+        self, provider: str, input_tokens: int, output_tokens: int, task_type: str = "unknown"
     ) -> float:
         """
         Track API usage and cost.
@@ -278,14 +272,16 @@ class SmartProviderRouter:
         self.daily_spend += total_cost
         self.provider_usage[provider] = self.provider_usage.get(provider, 0) + 1
 
-        self.usage_history.append({
-            "timestamp": datetime.now().isoformat(),
-            "provider": provider,
-            "task_type": task_type,
-            "input_tokens": input_tokens,
-            "output_tokens": output_tokens,
-            "cost": total_cost,
-        })
+        self.usage_history.append(
+            {
+                "timestamp": datetime.now().isoformat(),
+                "provider": provider,
+                "task_type": task_type,
+                "input_tokens": input_tokens,
+                "output_tokens": output_tokens,
+                "cost": total_cost,
+            }
+        )
 
         logger.debug(
             f"Usage tracked: {provider} - {input_tokens}+{output_tokens} tokens, "
@@ -295,10 +291,7 @@ class SmartProviderRouter:
         return total_cost
 
     def get_cost_estimate(
-        self,
-        provider: str,
-        estimated_tokens: int,
-        input_ratio: float = 0.25
+        self, provider: str, estimated_tokens: int, input_ratio: float = 0.25
     ) -> float:
         """
         Estimate cost for a request.
@@ -329,17 +322,15 @@ class SmartProviderRouter:
             "daily_spend": self.daily_spend,
             "daily_budget": self.daily_budget,
             "remaining_budget": self.daily_budget - self.daily_spend,
-            "budget_used_pct": (self.daily_spend / self.daily_budget * 100) if self.daily_budget > 0 else 0,
+            "budget_used_pct": (
+                (self.daily_spend / self.daily_budget * 100) if self.daily_budget > 0 else 0
+            ),
             "provider_usage": dict(self.provider_usage),
             "total_requests": len(self.usage_history),
             "reset_time": self.spend_reset_time.isoformat(),
         }
 
-    def get_provider_recommendation(
-        self,
-        task_types: List[str],
-        total_videos: int = 1
-    ) -> Dict:
+    def get_provider_recommendation(self, task_types: List[str], total_videos: int = 1) -> Dict:
         """
         Get cost recommendations for a batch of videos.
 
@@ -377,17 +368,20 @@ class SmartProviderRouter:
             total_cost_optimized += opt_cost
             total_cost_premium += prem_cost
 
-            breakdown.append({
-                "task": task_type,
-                "optimized_provider": opt_provider,
-                "optimized_cost": opt_cost,
-                "premium_cost": prem_cost,
-                "savings": prem_cost - opt_cost,
-            })
+            breakdown.append(
+                {
+                    "task": task_type,
+                    "optimized_provider": opt_provider,
+                    "optimized_cost": opt_cost,
+                    "premium_cost": prem_cost,
+                    "savings": prem_cost - opt_cost,
+                }
+            )
 
         savings_pct = (
             (total_cost_premium - total_cost_optimized) / total_cost_premium * 100
-            if total_cost_premium > 0 else 0
+            if total_cost_premium > 0
+            else 0
         )
 
         return {
@@ -411,7 +405,8 @@ class SmartProviderRouter:
     def _get_best_free_provider(self) -> str:
         """Get the best available free provider."""
         free_providers = [
-            (k, v) for k, v in PROVIDER_COSTS_2026.items()
+            (k, v)
+            for k, v in PROVIDER_COSTS_2026.items()
             if v.cost_per_1k_input == 0 and v.cost_per_1k_output == 0
         ]
 
@@ -441,10 +436,7 @@ def route_task(task_type: str, estimated_tokens: int = 1000) -> str:
 
 
 def track_usage(
-    provider: str,
-    input_tokens: int,
-    output_tokens: int,
-    task_type: str = "unknown"
+    provider: str, input_tokens: int, output_tokens: int, task_type: str = "unknown"
 ) -> float:
     """Convenience function to track usage."""
     return get_router().track_usage(provider, input_tokens, output_tokens, task_type)

@@ -25,23 +25,24 @@ Usage:
         manager.apply_winner(test.id)
 """
 
-from dataclasses import dataclass, field
-from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Any, Tuple
-from pathlib import Path
-import sqlite3
 import json
-import random
-import uuid
-import re
 import math
+import random
+import re
+import sqlite3
+import uuid
+from dataclasses import dataclass, field
+from datetime import datetime
 from enum import Enum
+from pathlib import Path
+from typing import Any, Dict, List, Optional, Tuple
 
 from loguru import logger
 
 # Try to import scipy for advanced statistical tests
 try:
     from scipy import stats as scipy_stats
+
     HAS_SCIPY = True
 except ImportError:
     HAS_SCIPY = False
@@ -49,7 +50,8 @@ except ImportError:
 
 # Try to import PIL for thumbnail manipulation
 try:
-    from PIL import Image, ImageDraw, ImageFont, ImageFilter, ImageEnhance
+    from PIL import Image, ImageDraw, ImageEnhance, ImageFont
+
     HAS_PIL = True
 except ImportError:
     HAS_PIL = False
@@ -58,6 +60,7 @@ except ImportError:
 
 class TestStatus(Enum):
     """Status of an A/B test."""
+
     PENDING = "pending"
     RUNNING = "running"
     COMPLETED = "completed"
@@ -68,6 +71,7 @@ class TestStatus(Enum):
 
 class TestType(Enum):
     """Type of content being tested."""
+
     TITLE = "title"
     THUMBNAIL = "thumbnail"
     DESCRIPTION = "description"
@@ -77,6 +81,7 @@ class TestType(Enum):
 @dataclass
 class Variant:
     """A single variant in an A/B test."""
+
     id: str
     content: str  # Title text, thumbnail path, or description
     video_id: Optional[str] = None
@@ -113,7 +118,7 @@ class Variant:
             "shares": self.shares,
             "subscribers_gained": self.subscribers_gained,
             "created_at": self.created_at,
-            "metadata": self.metadata
+            "metadata": self.metadata,
         }
 
     @classmethod
@@ -132,13 +137,14 @@ class Variant:
             shares=data.get("shares", 0),
             subscribers_gained=data.get("subscribers_gained", 0),
             created_at=data.get("created_at", datetime.now().isoformat()),
-            metadata=data.get("metadata", {})
+            metadata=data.get("metadata", {}),
         )
 
 
 @dataclass
 class ABTest:
     """An A/B test configuration and state."""
+
     id: str
     test_type: TestType
     base_video_id: str
@@ -172,7 +178,7 @@ class ABTest:
             "notes": self.notes,
             "niche": self.niche,
             "target_metric": self.target_metric,
-            "auto_apply_winner": self.auto_apply_winner
+            "auto_apply_winner": self.auto_apply_winner,
         }
 
     @classmethod
@@ -193,7 +199,7 @@ class ABTest:
             notes=data.get("notes", ""),
             niche=data.get("niche", ""),
             target_metric=data.get("target_metric", "ctr"),
-            auto_apply_winner=data.get("auto_apply_winner", False)
+            auto_apply_winner=data.get("auto_apply_winner", False),
         )
 
     def get_total_impressions(self) -> int:
@@ -230,7 +236,8 @@ class ABTestManager:
         cursor = conn.cursor()
 
         # Tests table
-        cursor.execute("""
+        cursor.execute(
+            """
             CREATE TABLE IF NOT EXISTS tests (
                 id TEXT PRIMARY KEY,
                 test_type TEXT NOT NULL,
@@ -247,10 +254,12 @@ class ABTestManager:
                 target_metric TEXT DEFAULT 'ctr',
                 auto_apply_winner INTEGER DEFAULT 0
             )
-        """)
+        """
+        )
 
         # Variants table
-        cursor.execute("""
+        cursor.execute(
+            """
             CREATE TABLE IF NOT EXISTS variants (
                 id TEXT PRIMARY KEY,
                 test_id TEXT NOT NULL,
@@ -268,10 +277,12 @@ class ABTestManager:
                 metadata TEXT,
                 FOREIGN KEY (test_id) REFERENCES tests(id)
             )
-        """)
+        """
+        )
 
         # Metrics history table for tracking over time
-        cursor.execute("""
+        cursor.execute(
+            """
             CREATE TABLE IF NOT EXISTS metrics_history (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 variant_id TEXT NOT NULL,
@@ -284,12 +295,15 @@ class ABTestManager:
                 FOREIGN KEY (variant_id) REFERENCES variants(id),
                 FOREIGN KEY (test_id) REFERENCES tests(id)
             )
-        """)
+        """
+        )
 
         # Create indexes
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_tests_status ON tests(status)")
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_variants_test_id ON variants(test_id)")
-        cursor.execute("CREATE INDEX IF NOT EXISTS idx_metrics_variant ON metrics_history(variant_id)")
+        cursor.execute(
+            "CREATE INDEX IF NOT EXISTS idx_metrics_variant ON metrics_history(variant_id)"
+        )
 
         conn.commit()
         conn.close()
@@ -307,7 +321,7 @@ class ABTestManager:
         min_impressions: int = 1000,
         confidence_level: float = 0.95,
         niche: str = "",
-        auto_apply: bool = False
+        auto_apply: bool = False,
     ) -> ABTest:
         """
         Create an A/B test for different titles.
@@ -335,7 +349,7 @@ class ABTestManager:
                 id=f"variant_{chr(65 + i)}",  # A, B, C, ...
                 content=title,
                 video_id=video_id if i == 0 else None,  # First variant is active
-                metadata={"position": i, "original": i == 0}
+                metadata={"position": i, "original": i == 0},
             )
             variants.append(variant)
 
@@ -348,7 +362,7 @@ class ABTestManager:
             min_impressions=min_impressions,
             confidence_level=confidence_level,
             niche=niche,
-            auto_apply_winner=auto_apply
+            auto_apply_winner=auto_apply,
         )
 
         # Save to database
@@ -364,7 +378,7 @@ class ABTestManager:
         min_impressions: int = 1000,
         confidence_level: float = 0.95,
         niche: str = "",
-        auto_apply: bool = False
+        auto_apply: bool = False,
     ) -> ABTest:
         """
         Create an A/B test for different thumbnails.
@@ -396,7 +410,7 @@ class ABTestManager:
                 id=f"variant_{chr(65 + i)}",
                 content=str(Path(path).absolute()),
                 video_id=video_id if i == 0 else None,
-                metadata={"position": i, "original": i == 0, "filename": Path(path).name}
+                metadata={"position": i, "original": i == 0, "filename": Path(path).name},
             )
             variants.append(variant)
 
@@ -409,7 +423,7 @@ class ABTestManager:
             min_impressions=min_impressions,
             confidence_level=confidence_level,
             niche=niche,
-            auto_apply_winner=auto_apply
+            auto_apply_winner=auto_apply,
         )
 
         self._save_test(test)
@@ -423,7 +437,7 @@ class ABTestManager:
         min_impressions: int = 1000,
         confidence_level: float = 0.95,
         niche: str = "",
-        auto_apply: bool = False
+        auto_apply: bool = False,
     ) -> ABTest:
         """
         Create an A/B test for different descriptions.
@@ -450,7 +464,7 @@ class ABTestManager:
                 id=f"variant_{chr(65 + i)}",
                 content=desc,
                 video_id=video_id if i == 0 else None,
-                metadata={"position": i, "original": i == 0, "length": len(desc)}
+                metadata={"position": i, "original": i == 0, "length": len(desc)},
             )
             variants.append(variant)
 
@@ -463,7 +477,7 @@ class ABTestManager:
             min_impressions=min_impressions,
             confidence_level=confidence_level,
             niche=niche,
-            auto_apply_winner=auto_apply
+            auto_apply_winner=auto_apply,
         )
 
         self._save_test(test)
@@ -477,32 +491,58 @@ class ABTestManager:
 
         try:
             # Insert or update test
-            cursor.execute("""
+            cursor.execute(
+                """
                 INSERT OR REPLACE INTO tests
                 (id, test_type, base_video_id, status, winner_id, start_time, end_time,
                  min_impressions, confidence_level, created_at, notes, niche, target_metric, auto_apply_winner)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """, (
-                test.id, test.test_type.value, test.base_video_id, test.status.value,
-                test.winner_id, test.start_time, test.end_time, test.min_impressions,
-                test.confidence_level, test.created_at, test.notes, test.niche,
-                test.target_metric, 1 if test.auto_apply_winner else 0
-            ))
+            """,
+                (
+                    test.id,
+                    test.test_type.value,
+                    test.base_video_id,
+                    test.status.value,
+                    test.winner_id,
+                    test.start_time,
+                    test.end_time,
+                    test.min_impressions,
+                    test.confidence_level,
+                    test.created_at,
+                    test.notes,
+                    test.niche,
+                    test.target_metric,
+                    1 if test.auto_apply_winner else 0,
+                ),
+            )
 
             # Save variants
             for variant in test.variants:
-                cursor.execute("""
+                cursor.execute(
+                    """
                     INSERT OR REPLACE INTO variants
                     (id, test_id, content, video_id, impressions, clicks, ctr,
                      avg_view_duration, likes, comments, shares, subscribers_gained,
                      created_at, metadata)
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                """, (
-                    f"{test.id}_{variant.id}", test.id, variant.content, variant.video_id,
-                    variant.impressions, variant.clicks, variant.ctr, variant.avg_view_duration,
-                    variant.likes, variant.comments, variant.shares, variant.subscribers_gained,
-                    variant.created_at, json.dumps(variant.metadata)
-                ))
+                """,
+                    (
+                        f"{test.id}_{variant.id}",
+                        test.id,
+                        variant.content,
+                        variant.video_id,
+                        variant.impressions,
+                        variant.clicks,
+                        variant.ctr,
+                        variant.avg_view_duration,
+                        variant.likes,
+                        variant.comments,
+                        variant.shares,
+                        variant.subscribers_gained,
+                        variant.created_at,
+                        json.dumps(variant.metadata),
+                    ),
+                )
 
             conn.commit()
         except Exception as e:
@@ -543,7 +583,7 @@ class ABTestManager:
                 shares=vrow["shares"],
                 subscribers_gained=vrow["subscribers_gained"],
                 created_at=vrow["created_at"],
-                metadata=json.loads(vrow["metadata"]) if vrow["metadata"] else {}
+                metadata=json.loads(vrow["metadata"]) if vrow["metadata"] else {},
             )
             variants.append(variant)
 
@@ -562,7 +602,7 @@ class ABTestManager:
             notes=row["notes"] or "",
             niche=row["niche"] or "",
             target_metric=row["target_metric"] or "ctr",
-            auto_apply_winner=bool(row["auto_apply_winner"])
+            auto_apply_winner=bool(row["auto_apply_winner"]),
         )
 
         conn.close()
@@ -645,7 +685,7 @@ class ABTestManager:
         likes: int = 0,
         comments: int = 0,
         shares: int = 0,
-        subscribers_gained: int = 0
+        subscribers_gained: int = 0,
     ):
         """
         Update metrics for a variant.
@@ -666,7 +706,9 @@ class ABTestManager:
             raise ValueError(f"Test not found: {test_id}")
 
         if test.status not in [TestStatus.RUNNING, TestStatus.PAUSED]:
-            logger.warning(f"Cannot update metrics for test {test_id} (status: {test.status.value})")
+            logger.warning(
+                f"Cannot update metrics for test {test_id} (status: {test.status.value})"
+            )
             return
 
         # Find and update variant
@@ -711,15 +753,22 @@ class ABTestManager:
         conn = self._get_connection()
         cursor = conn.cursor()
 
-        cursor.execute("""
+        cursor.execute(
+            """
             INSERT INTO metrics_history
             (variant_id, test_id, impressions, clicks, ctr, avg_view_duration, recorded_at)
             VALUES (?, ?, ?, ?, ?, ?, ?)
-        """, (
-            f"{test_id}_{variant_id}", test_id,
-            variant.impressions, variant.clicks, variant.ctr,
-            variant.avg_view_duration, datetime.now().isoformat()
-        ))
+        """,
+            (
+                f"{test_id}_{variant_id}",
+                test_id,
+                variant.impressions,
+                variant.clicks,
+                variant.ctr,
+                variant.avg_view_duration,
+                datetime.now().isoformat(),
+            ),
+        )
 
         conn.commit()
         conn.close()
@@ -750,7 +799,7 @@ class ABTestManager:
                 "message": f"Need {min_required} impressions total, have {total_impressions}",
                 "total_impressions": total_impressions,
                 "required_impressions": min_required,
-                "progress_percent": round((total_impressions / min_required) * 100, 1)
+                "progress_percent": round((total_impressions / min_required) * 100, 1),
             }
 
         # Prepare contingency table for chi-square test
@@ -794,9 +843,16 @@ class ABTestManager:
             "best_ctr": round(best_variant.ctr, 4),
             "worst_ctr": round(worst_variant.ctr, 4),
             "ctr_lift": round(ctr_lift, 4),
-            "ctr_lift_percent": round((ctr_lift / worst_variant.ctr * 100) if worst_variant.ctr > 0 else 0, 2),
-            "variant_stats": {v.id: {"ctr": v.ctr, "impressions": v.impressions, "clicks": v.clicks} for v in test.variants},
-            "recommendation": self._generate_recommendation(is_significant, best_variant, ctr_lift, confidence)
+            "ctr_lift_percent": round(
+                (ctr_lift / worst_variant.ctr * 100) if worst_variant.ctr > 0 else 0, 2
+            ),
+            "variant_stats": {
+                v.id: {"ctr": v.ctr, "impressions": v.impressions, "clicks": v.clicks}
+                for v in test.variants
+            },
+            "recommendation": self._generate_recommendation(
+                is_significant, best_variant, ctr_lift, confidence
+            ),
         }
 
     def _chi_square_fallback(self, observed: List[List[int]]) -> Tuple[float, float]:
@@ -807,7 +863,9 @@ class ABTestManager:
         """
         # Calculate row and column totals
         row_totals = [sum(row) for row in observed]
-        col_totals = [sum(observed[i][j] for i in range(len(observed))) for j in range(len(observed[0]))]
+        col_totals = [
+            sum(observed[i][j] for i in range(len(observed))) for j in range(len(observed[0]))
+        ]
         grand_total = sum(row_totals)
 
         if grand_total == 0:
@@ -865,7 +923,7 @@ class ABTestManager:
 
         # Compute using continued fraction for better accuracy
         # Simplified version - returns approximate p-value
-        result = math.exp(-x) * (x ** a)
+        result = math.exp(-x) * (x**a)
 
         # Normalize
         try:
@@ -879,11 +937,7 @@ class ABTestManager:
         return max(0.0, min(1.0, 1.0 - result))
 
     def _generate_recommendation(
-        self,
-        is_significant: bool,
-        best_variant: Variant,
-        ctr_lift: float,
-        confidence: float
+        self, is_significant: bool, best_variant: Variant, ctr_lift: float, confidence: float
     ) -> str:
         """Generate human-readable recommendation."""
         if is_significant:
@@ -1092,12 +1146,15 @@ class ABTestManager:
         # Get metrics history
         conn = self._get_connection()
         cursor = conn.cursor()
-        cursor.execute("""
+        cursor.execute(
+            """
             SELECT variant_id, impressions, clicks, ctr, recorded_at
             FROM metrics_history
             WHERE test_id = ?
             ORDER BY recorded_at
-        """, (test_id,))
+        """,
+            (test_id,),
+        )
         history = [dict(row) for row in cursor.fetchall()]
         conn.close()
 
@@ -1121,8 +1178,8 @@ class ABTestManager:
                 "min_impressions": test.min_impressions,
                 "confidence_level": test.confidence_level,
                 "target_metric": test.target_metric,
-                "auto_apply_winner": test.auto_apply_winner
-            }
+                "auto_apply_winner": test.auto_apply_winner,
+            },
         }
 
         return report
@@ -1143,7 +1200,9 @@ class ABTestManager:
         print("-" * 70)
         print("VARIANT PERFORMANCE")
         print("-" * 70)
-        print(f"{'Variant':<12} {'Impressions':>12} {'Clicks':>10} {'CTR':>10} {'Avg Duration':>14}")
+        print(
+            f"{'Variant':<12} {'Impressions':>12} {'Clicks':>10} {'CTR':>10} {'Avg Duration':>14}"
+        )
         print("-" * 70)
 
         for v in report["variants"]:
@@ -1186,41 +1245,75 @@ class TitleVariantGenerator:
     }
 
     POWER_WORDS = [
-        "Secret", "Proven", "Ultimate", "Shocking", "Hidden", "Explosive",
-        "Incredible", "Mind-Blowing", "Unexpected", "Surprising", "Essential",
-        "Crucial", "Dangerous", "Revolutionary", "Powerful", "Amazing",
-        "Unbelievable", "Insane", "Genius", "Epic", "Massive", "Complete"
+        "Secret",
+        "Proven",
+        "Ultimate",
+        "Shocking",
+        "Hidden",
+        "Explosive",
+        "Incredible",
+        "Mind-Blowing",
+        "Unexpected",
+        "Surprising",
+        "Essential",
+        "Crucial",
+        "Dangerous",
+        "Revolutionary",
+        "Powerful",
+        "Amazing",
+        "Unbelievable",
+        "Insane",
+        "Genius",
+        "Epic",
+        "Massive",
+        "Complete",
     ]
 
     QUESTION_WORDS = ["Why", "How", "What", "When", "Which", "Where", "Who"]
 
     HOOKS = [
-        "Must Watch", "Game Changer", "Life Hack", "Pro Tips", "Beginner's Guide",
-        "2024 Update", "Full Guide", "Step by Step", "No BS", "Real Results",
-        "Expert Advice", "Quick Tips", "Deep Dive", "Breakdown", "Explained"
+        "Must Watch",
+        "Game Changer",
+        "Life Hack",
+        "Pro Tips",
+        "Beginner's Guide",
+        "2024 Update",
+        "Full Guide",
+        "Step by Step",
+        "No BS",
+        "Real Results",
+        "Expert Advice",
+        "Quick Tips",
+        "Deep Dive",
+        "Breakdown",
+        "Explained",
     ]
 
     NUMBERS = ["3", "5", "7", "10", "12", "15", "21", "30", "50", "100"]
 
     ADJECTIVES = [
-        "Simple", "Easy", "Quick", "Powerful", "Effective", "Proven",
-        "Secret", "Hidden", "Unknown", "Surprising", "Essential", "Critical"
+        "Simple",
+        "Easy",
+        "Quick",
+        "Powerful",
+        "Effective",
+        "Proven",
+        "Secret",
+        "Hidden",
+        "Unknown",
+        "Surprising",
+        "Essential",
+        "Critical",
     ]
 
-    TIME_PERIODS = [
-        "7 Days", "30 Days", "1 Week", "1 Month", "3 Months", "1 Year"
-    ]
+    TIME_PERIODS = ["7 Days", "30 Days", "1 Week", "1 Month", "3 Months", "1 Year"]
 
     def __init__(self):
         """Initialize the generator."""
         self.used_patterns = set()
 
     def generate_variants(
-        self,
-        base_title: str,
-        niche: str = "",
-        count: int = 4,
-        include_original: bool = True
+        self, base_title: str, niche: str = "", count: int = 4, include_original: bool = True
     ) -> List[str]:
         """
         Generate multiple title variants.
@@ -1279,34 +1372,34 @@ class TitleVariantGenerator:
         topic = title.strip()
 
         # Remove brackets and their content first
-        topic = re.sub(r'\s*\[.*?\]\s*', '', topic)
-        topic = re.sub(r'\s*\(.*?\)\s*', '', topic)
+        topic = re.sub(r"\s*\[.*?\]\s*", "", topic)
+        topic = re.sub(r"\s*\(.*?\)\s*", "", topic)
 
         # Handle "How to" pattern FIRST - extract the actual action
-        how_to_match = re.match(r'^How\s+to\s+(.+)$', topic, flags=re.IGNORECASE)
+        how_to_match = re.match(r"^How\s+to\s+(.+)$", topic, flags=re.IGNORECASE)
         if how_to_match:
             topic = how_to_match.group(1)
             # Clean up and return early
-            return topic.strip('?!.:')
+            return topic.strip("?!.:")
 
         # Remove numbers at start (like "5 Ways to...")
-        topic = re.sub(r'^\d+\s+\w+\s+(?:to\s+)?', '', topic)
+        topic = re.sub(r"^\d+\s+\w+\s+(?:to\s+)?", "", topic)
 
         # Remove question words at start
         for word in self.QUESTION_WORDS:
-            topic = re.sub(rf'^{word}\s+', '', topic, flags=re.IGNORECASE)
+            topic = re.sub(rf"^{word}\s+", "", topic, flags=re.IGNORECASE)
 
         # Remove leading "to" if present after other processing
-        topic = re.sub(r'^to\s+', '', topic, flags=re.IGNORECASE)
+        topic = re.sub(r"^to\s+", "", topic, flags=re.IGNORECASE)
 
         # Clean up
-        topic = topic.strip('?!.:')
+        topic = topic.strip("?!.:")
 
         return topic
 
     def _is_how_to_title(self, title: str) -> bool:
         """Check if the title is a 'How to' style title."""
-        return bool(re.match(r'^How\s+to\s+', title, flags=re.IGNORECASE))
+        return bool(re.match(r"^How\s+to\s+", title, flags=re.IGNORECASE))
 
     def _apply_pattern(self, pattern_name: str, topic: str, original: str) -> Optional[str]:
         """Apply a specific pattern to generate a variant."""
@@ -1378,10 +1471,37 @@ class TitleVariantGenerator:
     def _is_action_phrase(self, text: str) -> bool:
         """Check if the text is an action phrase (starts with a verb)."""
         action_verbs = [
-            "make", "get", "build", "create", "start", "learn", "grow", "find",
-            "improve", "increase", "boost", "master", "become", "achieve", "earn",
-            "save", "lose", "gain", "develop", "write", "design", "code", "cook",
-            "play", "speak", "read", "invest", "trade", "sell", "buy", "fix"
+            "make",
+            "get",
+            "build",
+            "create",
+            "start",
+            "learn",
+            "grow",
+            "find",
+            "improve",
+            "increase",
+            "boost",
+            "master",
+            "become",
+            "achieve",
+            "earn",
+            "save",
+            "lose",
+            "gain",
+            "develop",
+            "write",
+            "design",
+            "code",
+            "cook",
+            "play",
+            "speak",
+            "read",
+            "invest",
+            "trade",
+            "sell",
+            "buy",
+            "fix",
         ]
         first_word = text.split()[0].lower() if text else ""
         return first_word in action_verbs
@@ -1390,7 +1510,21 @@ class TitleVariantGenerator:
         """Smart capitalize preserving acronyms and proper nouns."""
         words = text.split()
         result = []
-        lowercase_words = {"a", "an", "the", "and", "or", "but", "in", "on", "at", "to", "for", "of", "with"}
+        lowercase_words = {
+            "a",
+            "an",
+            "the",
+            "and",
+            "or",
+            "but",
+            "in",
+            "on",
+            "at",
+            "to",
+            "for",
+            "of",
+            "with",
+        }
 
         for i, word in enumerate(words):
             # Keep all-caps words (acronyms like AI, SEO)
@@ -1427,14 +1561,14 @@ class TitleVariantGenerator:
     def _add_bracket_hook(self, title: str) -> str:
         """Add a bracketed hook to the title."""
         # Remove existing brackets first
-        clean_title = re.sub(r'\s*\[.*?\]\s*', '', title).strip()
+        clean_title = re.sub(r"\s*\[.*?\]\s*", "", title).strip()
         hook = random.choice(self.HOOKS)
         return f"{clean_title} [{hook}]"
 
     def _add_number_prefix(self, title: str) -> str:
         """Add a number prefix to create a listicle title."""
         # Check if already has number
-        if re.match(r'^\d+', title):
+        if re.match(r"^\d+", title):
             return title
 
         number = random.choice(self.NUMBERS)
@@ -1448,20 +1582,26 @@ class ThumbnailVariantGenerator:
     # Color schemes for different moods/styles
     COLOR_SCHEMES = {
         "urgent": ["#FF0000", "#FF4444", "#CC0000"],  # Red
-        "trust": ["#0066CC", "#0088FF", "#004499"],   # Blue
+        "trust": ["#0066CC", "#0088FF", "#004499"],  # Blue
         "growth": ["#00CC00", "#44FF44", "#009900"],  # Green
-        "premium": ["#FFD700", "#FFA500", "#FF8C00"], # Gold/Orange
-        "calm": ["#9966FF", "#7744FF", "#5522CC"],    # Purple
-        "energy": ["#FF6600", "#FF9900", "#FFCC00"], # Orange/Yellow
-        "dark": ["#1A1A1A", "#333333", "#4D4D4D"],   # Dark
+        "premium": ["#FFD700", "#FFA500", "#FF8C00"],  # Gold/Orange
+        "calm": ["#9966FF", "#7744FF", "#5522CC"],  # Purple
+        "energy": ["#FF6600", "#FF9900", "#FFCC00"],  # Orange/Yellow
+        "dark": ["#1A1A1A", "#333333", "#4D4D4D"],  # Dark
         "light": ["#FFFFFF", "#F5F5F5", "#EEEEEE"],  # Light
     }
 
     # Text overlay positions
     TEXT_POSITIONS = [
-        "top_left", "top_center", "top_right",
-        "center_left", "center", "center_right",
-        "bottom_left", "bottom_center", "bottom_right"
+        "top_left",
+        "top_center",
+        "top_right",
+        "center_left",
+        "center",
+        "center_right",
+        "bottom_left",
+        "bottom_center",
+        "bottom_right",
     ]
 
     def __init__(self, output_dir: str = "data/thumbnails"):
@@ -1478,7 +1618,7 @@ class ThumbnailVariantGenerator:
         self,
         base_thumbnail: str,
         colors: Optional[List[str]] = None,
-        output_prefix: str = "variant"
+        output_prefix: str = "variant",
     ) -> List[str]:
         """
         Create thumbnail variants with different background colors.
@@ -1530,7 +1670,7 @@ class ThumbnailVariantGenerator:
         position: str = "center",
         font_size: int = 72,
         font_color: str = "#FFFFFF",
-        output_prefix: str = "variant"
+        output_prefix: str = "variant",
     ) -> List[str]:
         """
         Create thumbnail variants with different text overlays.
@@ -1570,7 +1710,9 @@ class ThumbnailVariantGenerator:
                 font = ImageFont.truetype("arial.ttf", font_size)
             except OSError:
                 try:
-                    font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", font_size)
+                    font = ImageFont.truetype(
+                        "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", font_size
+                    )
                 except OSError:
                     font = ImageFont.load_default()
 
@@ -1579,9 +1721,7 @@ class ThumbnailVariantGenerator:
             text_width = bbox[2] - bbox[0]
             text_height = bbox[3] - bbox[1]
 
-            x, y = self._calculate_position(
-                img.size, (text_width, text_height), position
-            )
+            x, y = self._calculate_position(img.size, (text_width, text_height), position)
 
             # Draw text shadow
             shadow_offset = max(2, font_size // 20)
@@ -1603,7 +1743,7 @@ class ThumbnailVariantGenerator:
         self,
         base_thumbnail: str,
         styles: Optional[List[str]] = None,
-        output_prefix: str = "variant"
+        output_prefix: str = "variant",
     ) -> List[str]:
         """
         Create thumbnail variants with different visual styles.
@@ -1667,10 +1807,7 @@ class ThumbnailVariantGenerator:
         return variants
 
     def _calculate_position(
-        self,
-        image_size: Tuple[int, int],
-        text_size: Tuple[int, int],
-        position: str
+        self, image_size: Tuple[int, int], text_size: Tuple[int, int], position: str
     ) -> Tuple[int, int]:
         """Calculate x, y coordinates for text position."""
         img_width, img_height = image_size
@@ -1695,8 +1832,8 @@ class ThumbnailVariantGenerator:
 
 # CLI interface
 if __name__ == "__main__":
-    import sys
     import argparse
+    import sys
 
     parser = argparse.ArgumentParser(description="A/B Testing Framework for YouTube")
     subparsers = parser.add_subparsers(dest="command", help="Commands")
@@ -1705,8 +1842,12 @@ if __name__ == "__main__":
     create_title = subparsers.add_parser("create-title", help="Create a title A/B test")
     create_title.add_argument("video_id", help="YouTube video ID")
     create_title.add_argument("titles", nargs="+", help="Title variants to test")
-    create_title.add_argument("--min-impressions", type=int, default=1000, help="Min impressions per variant")
-    create_title.add_argument("--confidence", type=float, default=0.95, help="Required confidence level")
+    create_title.add_argument(
+        "--min-impressions", type=int, default=1000, help="Min impressions per variant"
+    )
+    create_title.add_argument(
+        "--confidence", type=float, default=0.95, help="Required confidence level"
+    )
     create_title.add_argument("--niche", default="", help="Content niche")
 
     # Create thumbnail test
@@ -1762,7 +1903,7 @@ if __name__ == "__main__":
             titles=args.titles,
             min_impressions=args.min_impressions,
             confidence_level=args.confidence,
-            niche=args.niche
+            niche=args.niche,
         )
         print(f"Created test: {test.id}")
         for v in test.variants:
@@ -1773,7 +1914,7 @@ if __name__ == "__main__":
             video_id=args.video_id,
             thumbnail_paths=args.thumbnails,
             min_impressions=args.min_impressions,
-            confidence_level=args.confidence
+            confidence_level=args.confidence,
         )
         print(f"Created test: {test.id}")
 
@@ -1787,7 +1928,7 @@ if __name__ == "__main__":
             variant_id=args.variant_id,
             impressions=args.impressions,
             clicks=args.clicks,
-            avg_duration=args.duration
+            avg_duration=args.duration,
         )
         print(f"Updated metrics for {args.test_id}/{args.variant_id}")
 
@@ -1821,9 +1962,7 @@ if __name__ == "__main__":
     elif args.command == "generate-titles":
         generator = TitleVariantGenerator()
         variants = generator.generate_variants(
-            base_title=args.base_title,
-            niche=args.niche,
-            count=args.count
+            base_title=args.base_title, niche=args.niche, count=args.count
         )
         print("Generated title variants:")
         for i, title in enumerate(variants):

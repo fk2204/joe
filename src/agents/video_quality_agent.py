@@ -27,15 +27,16 @@ Example:
     1920x1080
 """
 
-import os
-import subprocess
-import shutil
 import json
+import os
+import shutil
+import subprocess
 from dataclasses import dataclass, field
-from typing import List, Dict, Any, Optional, Tuple
+from typing import Any, Dict, List, Optional
+
 from loguru import logger
 
-from .base_agent import BaseAgent, AgentResult
+from .base_agent import AgentResult, BaseAgent
 
 
 @dataclass
@@ -59,6 +60,7 @@ class VideoQualityResult:
         warnings: Non-critical warnings
         recommendations: Suggested improvements
     """
+
     passed: bool
     resolution: Optional[str] = None
     width: Optional[int] = None
@@ -90,7 +92,7 @@ class VideoQualityResult:
             "has_audio": self.has_audio,
             "issues": self.issues,
             "warnings": self.warnings,
-            "recommendations": self.recommendations
+            "recommendations": self.recommendations,
         }
 
 
@@ -111,21 +113,21 @@ class VideoQualityAgent(BaseAgent):
 
     # YouTube recommended video specs
     RESOLUTION_REGULAR = (1920, 1080)  # 16:9 landscape
-    RESOLUTION_SHORTS = (1080, 1920)   # 9:16 portrait
-    MIN_BITRATE_MBPS = 8.0             # Minimum recommended bitrate
-    TARGET_BITRATE_MBPS = 12.0         # Optimal bitrate for 1080p
-    TARGET_FRAME_RATE = 30.0           # Standard frame rate
-    MIN_FRAME_RATE = 24.0              # Minimum acceptable frame rate
-    MAX_FRAME_RATE = 60.0              # Maximum common frame rate
+    RESOLUTION_SHORTS = (1080, 1920)  # 9:16 portrait
+    MIN_BITRATE_MBPS = 8.0  # Minimum recommended bitrate
+    TARGET_BITRATE_MBPS = 12.0  # Optimal bitrate for 1080p
+    TARGET_FRAME_RATE = 30.0  # Standard frame rate
+    MIN_FRAME_RATE = 24.0  # Minimum acceptable frame rate
+    MAX_FRAME_RATE = 60.0  # Maximum common frame rate
     SUPPORTED_CODECS = ["h264", "hevc", "h265", "vp9", "av1"]
     RECOMMENDED_CODECS = ["h264", "hevc", "h265"]
     RECOMMENDED_PIXEL_FORMAT = "yuv420p"
 
     # Duration limits
     MAX_DURATION_REGULAR = 12 * 60 * 60  # 12 hours
-    MAX_DURATION_SHORTS = 60             # 60 seconds
-    MIN_DURATION_SHORTS = 15             # 15 seconds
-    OPTIMAL_DURATION_SHORTS = (20, 45)   # Optimal range for engagement
+    MAX_DURATION_SHORTS = 60  # 60 seconds
+    MIN_DURATION_SHORTS = 15  # 15 seconds
+    OPTIMAL_DURATION_SHORTS = (20, 45)  # Optimal range for engagement
 
     # File size limits
     MAX_FILE_SIZE_GB = 256  # YouTube's limit
@@ -194,11 +196,7 @@ class VideoQualityAgent(BaseAgent):
         return None
 
     def run(
-        self,
-        video_file: str = "",
-        is_short: bool = False,
-        check_encoding: bool = True,
-        **kwargs
+        self, video_file: str = "", is_short: bool = False, check_encoding: bool = True, **kwargs
     ) -> AgentResult:
         """
         Analyze video file quality for YouTube.
@@ -225,14 +223,14 @@ class VideoQualityAgent(BaseAgent):
             return AgentResult(
                 success=False,
                 data=VideoQualityResult(passed=False, issues=["No video file provided"]).to_dict(),
-                error="No video file provided"
+                error="No video file provided",
             )
 
         if not os.path.exists(video_file):
             return AgentResult(
                 success=False,
                 data=VideoQualityResult(passed=False, issues=["Video file not found"]).to_dict(),
-                error=f"Video file not found: {video_file}"
+                error=f"Video file not found: {video_file}",
             )
 
         quality_result = VideoQualityResult(passed=True)
@@ -246,9 +244,7 @@ class VideoQualityAgent(BaseAgent):
             quality_result.issues.append("FFprobe not available for detailed analysis")
             quality_result.passed = False
             return AgentResult(
-                success=False,
-                data=quality_result.to_dict(),
-                error="FFprobe not found"
+                success=False, data=quality_result.to_dict(), error="FFprobe not found"
             )
 
         # Run all quality checks
@@ -291,11 +287,16 @@ class VideoQualityAgent(BaseAgent):
                 "video_file": video_file,
                 "is_short": is_short,
                 "checks_performed": [
-                    "video_info", "resolution", "bitrate", "frame_rate",
-                    "codec", "duration", "audio_track",
-                    "encoding" if check_encoding else None
-                ]
-            }
+                    "video_info",
+                    "resolution",
+                    "bitrate",
+                    "frame_rate",
+                    "codec",
+                    "duration",
+                    "audio_track",
+                    "encoding" if check_encoding else None,
+                ],
+            },
         )
 
     def _get_video_info(self, video_file: str, result: VideoQualityResult):
@@ -303,20 +304,20 @@ class VideoQualityAgent(BaseAgent):
         try:
             cmd = [
                 self.ffprobe,
-                '-v', 'error',
-                '-select_streams', 'v:0',
-                '-show_entries', 'stream=width,height,codec_name,pix_fmt,r_frame_rate,bit_rate,duration',
-                '-show_entries', 'format=duration,bit_rate',
-                '-of', 'json',
-                video_file
+                "-v",
+                "error",
+                "-select_streams",
+                "v:0",
+                "-show_entries",
+                "stream=width,height,codec_name,pix_fmt,r_frame_rate,bit_rate,duration",
+                "-show_entries",
+                "format=duration,bit_rate",
+                "-of",
+                "json",
+                video_file,
             ]
 
-            proc_result = subprocess.run(
-                cmd,
-                capture_output=True,
-                text=True,
-                timeout=30
-            )
+            proc_result = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
 
             if proc_result.returncode != 0:
                 result.warnings.append("Could not read video metadata")
@@ -325,43 +326,43 @@ class VideoQualityAgent(BaseAgent):
             data = json.loads(proc_result.stdout)
 
             # Extract stream info
-            if 'streams' in data and data['streams']:
-                stream = data['streams'][0]
+            if "streams" in data and data["streams"]:
+                stream = data["streams"][0]
 
-                result.width = int(stream.get('width', 0))
-                result.height = int(stream.get('height', 0))
+                result.width = int(stream.get("width", 0))
+                result.height = int(stream.get("height", 0))
                 result.resolution = f"{result.width}x{result.height}"
-                result.codec = stream.get('codec_name', '').lower()
-                result.pixel_format = stream.get('pix_fmt', '')
+                result.codec = stream.get("codec_name", "").lower()
+                result.pixel_format = stream.get("pix_fmt", "")
 
                 # Parse frame rate (can be "30/1" or "30000/1001")
-                fps_str = stream.get('r_frame_rate', '0/1')
-                if '/' in fps_str:
-                    num, den = fps_str.split('/')
+                fps_str = stream.get("r_frame_rate", "0/1")
+                if "/" in fps_str:
+                    num, den = fps_str.split("/")
                     result.frame_rate = float(num) / float(den) if float(den) != 0 else 0
                 else:
                     result.frame_rate = float(fps_str)
 
                 # Get bitrate from stream or format
-                bit_rate = stream.get('bit_rate')
+                bit_rate = stream.get("bit_rate")
                 if bit_rate:
                     result.bitrate = int(bit_rate) / 1_000_000  # Convert to Mbps
 
             # Get format-level info (fallback for bitrate and duration)
-            if 'format' in data:
-                fmt = data['format']
+            if "format" in data:
+                fmt = data["format"]
 
                 if not result.duration:
-                    result.duration = float(fmt.get('duration', 0))
+                    result.duration = float(fmt.get("duration", 0))
 
                 if not result.bitrate:
-                    bit_rate = fmt.get('bit_rate')
+                    bit_rate = fmt.get("bit_rate")
                     if bit_rate:
                         result.bitrate = int(bit_rate) / 1_000_000
 
             # Also get duration from stream if not in format
-            if not result.duration and 'streams' in data and data['streams']:
-                stream_duration = data['streams'][0].get('duration')
+            if not result.duration and "streams" in data and data["streams"]:
+                stream_duration = data["streams"][0].get("duration")
                 if stream_duration:
                     result.duration = float(stream_duration)
 
@@ -397,9 +398,7 @@ class VideoQualityAgent(BaseAgent):
 
         if aspect_diff > 0.1:  # More than 10% difference
             expected = "9:16 portrait" if is_short else "16:9 landscape"
-            result.issues.append(
-                f"Wrong aspect ratio: {result.resolution} (expected {expected})"
-            )
+            result.issues.append(f"Wrong aspect ratio: {result.resolution} (expected {expected})")
         elif result.width < target_width or result.height < target_height:
             result.warnings.append(
                 f"Resolution below optimal: {result.resolution} "
@@ -480,15 +479,18 @@ class VideoQualityAgent(BaseAgent):
         if is_short:
             if result.duration > self.MAX_DURATION_SHORTS:
                 result.issues.append(
-                    f"Short too long: {result.duration:.1f}s "
-                    f"(max: {self.MAX_DURATION_SHORTS}s)"
+                    f"Short too long: {result.duration:.1f}s " f"(max: {self.MAX_DURATION_SHORTS}s)"
                 )
             elif result.duration < self.MIN_DURATION_SHORTS:
                 result.issues.append(
                     f"Short too brief: {result.duration:.1f}s "
                     f"(min: {self.MIN_DURATION_SHORTS}s)"
                 )
-            elif not (self.OPTIMAL_DURATION_SHORTS[0] <= result.duration <= self.OPTIMAL_DURATION_SHORTS[1]):
+            elif not (
+                self.OPTIMAL_DURATION_SHORTS[0]
+                <= result.duration
+                <= self.OPTIMAL_DURATION_SHORTS[1]
+            ):
                 result.warnings.append(
                     f"Short duration ({result.duration:.1f}s) outside optimal range "
                     f"({self.OPTIMAL_DURATION_SHORTS[0]}-{self.OPTIMAL_DURATION_SHORTS[1]}s)"
@@ -505,23 +507,22 @@ class VideoQualityAgent(BaseAgent):
         try:
             cmd = [
                 self.ffprobe,
-                '-v', 'error',
-                '-select_streams', 'a',
-                '-show_entries', 'stream=codec_type',
-                '-of', 'json',
-                video_file
+                "-v",
+                "error",
+                "-select_streams",
+                "a",
+                "-show_entries",
+                "stream=codec_type",
+                "-of",
+                "json",
+                video_file,
             ]
 
-            proc_result = subprocess.run(
-                cmd,
-                capture_output=True,
-                text=True,
-                timeout=30
-            )
+            proc_result = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
 
             if proc_result.returncode == 0:
                 data = json.loads(proc_result.stdout)
-                streams = data.get('streams', [])
+                streams = data.get("streams", [])
                 result.has_audio = len(streams) > 0
 
                 if not result.has_audio:
@@ -537,26 +538,26 @@ class VideoQualityAgent(BaseAgent):
             # Check for errors in the first 10 seconds
             cmd = [
                 self.ffmpeg,
-                '-v', 'error',
-                '-i', video_file,
-                '-t', '10',
-                '-f', 'null',
-                '-y',
-                'NUL' if os.name == 'nt' else '/dev/null'
+                "-v",
+                "error",
+                "-i",
+                video_file,
+                "-t",
+                "10",
+                "-f",
+                "null",
+                "-y",
+                "NUL" if os.name == "nt" else "/dev/null",
             ]
 
-            proc_result = subprocess.run(
-                cmd,
-                capture_output=True,
-                text=True,
-                timeout=60
-            )
+            proc_result = subprocess.run(cmd, capture_output=True, text=True, timeout=60)
 
             # Check stderr for errors
             if proc_result.stderr:
                 error_lines = [
-                    line for line in proc_result.stderr.split('\n')
-                    if 'error' in line.lower() or 'corrupt' in line.lower()
+                    line
+                    for line in proc_result.stderr.split("\n")
+                    if "error" in line.lower() or "corrupt" in line.lower()
                 ]
                 if error_lines:
                     result.warnings.append(
@@ -576,9 +577,7 @@ class VideoQualityAgent(BaseAgent):
             )
 
         if result.frame_rate and result.frame_rate < self.MIN_FRAME_RATE:
-            result.recommendations.append(
-                f"Re-encode video with {self.TARGET_FRAME_RATE} fps"
-            )
+            result.recommendations.append(f"Re-encode video with {self.TARGET_FRAME_RATE} fps")
 
         if result.codec and result.codec.lower() not in self.RECOMMENDED_CODECS:
             result.recommendations.append(
@@ -593,14 +592,10 @@ class VideoQualityAgent(BaseAgent):
                 )
 
         if not result.has_audio:
-            result.recommendations.append(
-                "Add audio track (narration or background music)"
-            )
+            result.recommendations.append("Add audio track (narration or background music)")
 
         if not result.recommendations and not result.issues:
-            result.recommendations.append(
-                "Video quality meets YouTube recommendations"
-            )
+            result.recommendations.append("Video quality meets YouTube recommendations")
 
     def quick_check(self, video_file: str, is_short: bool = False) -> Dict[str, Any]:
         """
@@ -622,7 +617,7 @@ class VideoQualityAgent(BaseAgent):
             "bitrate": data["bitrate"],
             "fps": data["frame_rate"],
             "codec": data["codec"],
-            "issues_count": len(data["issues"])
+            "issues_count": len(data["issues"]),
         }
 
 
@@ -632,7 +627,8 @@ def main():
     import sys
 
     if len(sys.argv) < 2:
-        print("""
+        print(
+            """
 Video Quality Agent - Video Quality Validation for YouTube
 
 Usage:
@@ -654,7 +650,8 @@ Targets:
     - Bitrate: >= 8 Mbps (12 Mbps recommended)
     - Frame Rate: 30 fps
     - Codec: H.264 or H.265
-        """)
+        """
+        )
         return
 
     # Parse arguments
@@ -679,11 +676,7 @@ Targets:
                 f"{result['codec']} | Issues: {result['issues_count']}"
             )
     else:
-        result = agent.run(
-            video_file=video_file,
-            is_short=is_short,
-            check_encoding=check_encoding
-        )
+        result = agent.run(video_file=video_file, is_short=is_short, check_encoding=check_encoding)
 
         if output_json:
             print(json.dumps(result.data, indent=2))
@@ -700,12 +693,20 @@ Targets:
             print(f"Format: {format_type}")
             print(f"\nMetrics:")
             print(f"  Resolution: {data['resolution']}")
-            print(f"  Bitrate: {data['bitrate']:.1f} Mbps" if data['bitrate'] else "  Bitrate: N/A")
-            print(f"  Frame Rate: {data['frame_rate']:.1f} fps" if data['frame_rate'] else "  Frame Rate: N/A")
+            print(f"  Bitrate: {data['bitrate']:.1f} Mbps" if data["bitrate"] else "  Bitrate: N/A")
+            print(
+                f"  Frame Rate: {data['frame_rate']:.1f} fps"
+                if data["frame_rate"]
+                else "  Frame Rate: N/A"
+            )
             print(f"  Codec: {data['codec']}")
             print(f"  Pixel Format: {data['pixel_format']}")
-            print(f"  Duration: {data['duration']:.1f}s" if data['duration'] else "  Duration: N/A")
-            print(f"  File Size: {data['file_size_mb']:.1f} MB" if data['file_size_mb'] else "  File Size: N/A")
+            print(f"  Duration: {data['duration']:.1f}s" if data["duration"] else "  Duration: N/A")
+            print(
+                f"  File Size: {data['file_size_mb']:.1f} MB"
+                if data["file_size_mb"]
+                else "  File Size: N/A"
+            )
             print(f"  Has Audio: {'Yes' if data['has_audio'] else 'No'}")
 
             if data["issues"]:

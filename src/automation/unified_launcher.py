@@ -5,11 +5,12 @@ Single entry point for all automation tasks with parallel execution.
 
 import asyncio
 import sys
-from pathlib import Path
-from typing import Dict, List, Optional, Any
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 from datetime import datetime
-from concurrent.futures import ThreadPoolExecutor, as_completed
+from pathlib import Path
+from typing import Any, Dict, List, Optional
+
 from loguru import logger
 
 # Add project root
@@ -19,6 +20,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 @dataclass
 class LaunchConfig:
     """Configuration for a launch operation."""
+
     channels: List[str] = field(default_factory=list)
     video_types: List[str] = field(default_factory=lambda: ["video", "short"])
     parallel_videos: int = 3
@@ -31,6 +33,7 @@ class LaunchConfig:
 @dataclass
 class LaunchResult:
     """Result of a launch operation."""
+
     success: bool
     videos_created: int = 0
     shorts_created: int = 0
@@ -79,20 +82,18 @@ class UnifiedLauncher:
             logger.info(f"Starting {video_type} pipeline for {channel}")
 
             # Import agents
-            from src.agents.orchestrator import get_orchestrator, VideoPipelines
+            from src.agents.orchestrator import VideoPipelines, get_orchestrator
 
             orchestrator = get_orchestrator()
 
             # Get appropriate pipeline
             if video_type == "short":
                 pipeline = VideoPipelines.short_video_pipeline(
-                    niche=self._get_channel_niche(channel),
-                    channel=channel
+                    niche=self._get_channel_niche(channel), channel=channel
                 )
             else:
                 pipeline = VideoPipelines.full_video_pipeline(
-                    niche=self._get_channel_niche(channel),
-                    channel=channel
+                    niche=self._get_channel_niche(channel), channel=channel
                 )
 
             # Run pipeline
@@ -119,7 +120,7 @@ class UnifiedLauncher:
         self,
         channels: Optional[List[str]] = None,
         videos_per_channel: int = 1,
-        include_shorts: bool = True
+        include_shorts: bool = True,
     ) -> LaunchResult:
         """
         Launch parallel video creation across multiple channels.
@@ -159,8 +160,7 @@ class UnifiedLauncher:
                 return await run_task(video_type, channel)
 
         results = await asyncio.gather(
-            *[limited_task(vtype, ch) for vtype, ch in tasks],
-            return_exceptions=True
+            *[limited_task(vtype, ch) for vtype, ch in tasks], return_exceptions=True
         )
 
         # Aggregate results
@@ -180,10 +180,7 @@ class UnifiedLauncher:
         result.duration_seconds = (datetime.now() - self._start_time).total_seconds()
         return result
 
-    async def launch_agents_parallel(
-        self,
-        agent_tasks: List[tuple]
-    ) -> Dict[str, Any]:
+    async def launch_agents_parallel(self, agent_tasks: List[tuple]) -> Dict[str, Any]:
         """
         Launch multiple agents in parallel.
 
@@ -257,9 +254,7 @@ class UnifiedLauncher:
 
         # Run parallel batch for all channels
         result = await self.launch_parallel_batch(
-            channels=None,  # All channels
-            videos_per_channel=1,
-            include_shorts=True
+            channels=None, videos_per_channel=1, include_shorts=True  # All channels
         )
 
         # Log results
@@ -276,7 +271,7 @@ class UnifiedLauncher:
         niches = {
             "money_blueprints": "finance",
             "mind_unlocked": "psychology",
-            "untold_stories": "storytelling"
+            "untold_stories": "storytelling",
         }
         return niches.get(channel, "general")
 
@@ -286,10 +281,10 @@ class UnifiedLauncher:
             "config": {
                 "parallel_videos": self.config.parallel_videos,
                 "parallel_agents": self.config.parallel_agents,
-                "use_cache": self.config.use_cache
+                "use_cache": self.config.use_cache,
             },
             "results": self._results,
-            "executor_threads": self.executor._max_workers
+            "executor_threads": self.executor._max_workers,
         }
 
     def print_status(self):

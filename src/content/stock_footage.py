@@ -24,30 +24,35 @@ Usage:
     pixabay = PixabayProvider()
 """
 
-import os
-import json
-import time
-import hashlib
-import requests
-import random
 import asyncio
+import hashlib
+import json
+import os
+import random
+import time
 from abc import ABC, abstractmethod
+from dataclasses import dataclass
 from pathlib import Path
-from typing import List, Dict, Optional, Union
-from dataclasses import dataclass, field
+from typing import Dict, List, Optional, Union
+
+import requests
 from loguru import logger
 
 try:
     import aiohttp
+
     AIOHTTP_AVAILABLE = True
 except ImportError:
     AIOHTTP_AVAILABLE = False
-    logger.warning("aiohttp not installed. Async downloads unavailable. Install with: pip install aiohttp")
+    logger.warning(
+        "aiohttp not installed. Async downloads unavailable. Install with: pip install aiohttp"
+    )
 
 
 @dataclass
 class StockVideo:
     """Stock video metadata."""
+
     id: Union[int, str]
     url: str
     duration: int  # seconds
@@ -63,6 +68,7 @@ class StockVideo:
 @dataclass
 class StockImage:
     """Stock image metadata."""
+
     id: Union[int, str]
     url: str
     width: int
@@ -76,6 +82,7 @@ class StockImage:
 @dataclass
 class CacheEntry:
     """Cache entry for search results."""
+
     data: List
     timestamp: float
     query: str
@@ -123,18 +130,18 @@ class SearchCache:
         cache_file = self.cache_dir / f"{key}.json"
         if cache_file.exists():
             try:
-                with open(cache_file, 'r', encoding='utf-8') as f:
+                with open(cache_file, "r", encoding="utf-8") as f:
                     cached = json.load(f)
-                if time.time() - cached['timestamp'] < self.ttl:
+                if time.time() - cached["timestamp"] < self.ttl:
                     logger.debug(f"Cache hit (file): {query} from {source}")
                     # Store in memory for faster subsequent access
                     self._memory_cache[key] = CacheEntry(
-                        data=cached['data'],
-                        timestamp=cached['timestamp'],
+                        data=cached["data"],
+                        timestamp=cached["timestamp"],
                         query=query,
-                        source=source
+                        source=source,
                     )
-                    return cached['data']
+                    return cached["data"]
             except (json.JSONDecodeError, KeyError):
                 pass
 
@@ -147,10 +154,7 @@ class SearchCache:
 
         # Store in memory
         self._memory_cache[key] = CacheEntry(
-            data=data,
-            timestamp=timestamp,
-            query=query,
-            source=source
+            data=data, timestamp=timestamp, query=query, source=source
         )
 
         # Store in file
@@ -159,18 +163,21 @@ class SearchCache:
             # Convert StockVideo/StockImage objects to dicts for JSON serialization
             serializable_data = []
             for item in data:
-                if hasattr(item, '__dict__'):
+                if hasattr(item, "__dict__"):
                     serializable_data.append(item.__dict__)
                 else:
                     serializable_data.append(item)
 
-            with open(cache_file, 'w', encoding='utf-8') as f:
-                json.dump({
-                    'data': serializable_data,
-                    'timestamp': timestamp,
-                    'query': query,
-                    'source': source
-                }, f)
+            with open(cache_file, "w", encoding="utf-8") as f:
+                json.dump(
+                    {
+                        "data": serializable_data,
+                        "timestamp": timestamp,
+                        "query": query,
+                        "source": source,
+                    },
+                    f,
+                )
             logger.debug(f"Cached {len(data)} results for: {query} from {source}")
         except Exception as e:
             logger.warning(f"Failed to write cache: {e}")
@@ -183,11 +190,11 @@ class SearchCache:
             cutoff = time.time() - older_than_seconds
             for cache_file in self.cache_dir.glob("*.json"):
                 try:
-                    with open(cache_file, 'r') as f:
+                    with open(cache_file, "r") as f:
                         cached = json.load(f)
-                    if cached['timestamp'] < cutoff:
+                    if cached["timestamp"] < cutoff:
                         cache_file.unlink()
-                except:
+                except Exception:
                     pass
         else:
             for cache_file in self.cache_dir.glob("*.json"):
@@ -218,7 +225,7 @@ class AsyncStockDownloader:
         max_concurrent: int = 5,
         timeout: int = 120,
         max_retries: int = 3,
-        retry_delay: float = 1.0
+        retry_delay: float = 1.0,
     ):
         """
         Initialize async downloader.
@@ -230,7 +237,9 @@ class AsyncStockDownloader:
             retry_delay: Delay between retries in seconds (default 1.0)
         """
         if not AIOHTTP_AVAILABLE:
-            raise ImportError("aiohttp required for async downloads. Install with: pip install aiohttp")
+            raise ImportError(
+                "aiohttp required for async downloads. Install with: pip install aiohttp"
+            )
 
         self.max_concurrent = max_concurrent
         self.timeout = timeout
@@ -242,14 +251,16 @@ class AsyncStockDownloader:
     async def _download_one(
         self,
         session: aiohttp.ClientSession,
-        video: 'StockVideo',
+        video: "StockVideo",
         output_path: str,
-        attempt: int = 1
+        attempt: int = 1,
     ) -> Optional[str]:
         """Download a single video file with retry logic."""
         async with self.semaphore:  # Limit concurrent downloads
             try:
-                logger.info(f"Downloading {video.id} from {video.source} (attempt {attempt}/{self.max_retries})...")
+                logger.info(
+                    f"Downloading {video.id} from {video.source} (attempt {attempt}/{self.max_retries})..."
+                )
 
                 timeout_obj = aiohttp.ClientTimeout(total=self.timeout)
                 async with session.get(video.download_url, timeout=timeout_obj) as response:
@@ -261,10 +272,10 @@ class AsyncStockDownloader:
                     Path(output_path).parent.mkdir(parents=True, exist_ok=True)
 
                     # Download with progress tracking
-                    total_size = int(response.headers.get('content-length', 0))
+                    total_size = int(response.headers.get("content-length", 0))
                     downloaded = 0
 
-                    with open(output_path, 'wb') as f:
+                    with open(output_path, "wb") as f:
                         async for chunk in response.content.iter_chunked(8192):
                             f.write(chunk)
                             downloaded += len(chunk)
@@ -272,7 +283,9 @@ class AsyncStockDownloader:
                             # Call progress callback if set
                             if self.progress_callback and total_size > 0:
                                 progress = (downloaded / total_size) * 100
-                                await self.progress_callback(video.id, progress, downloaded, total_size)
+                                await self.progress_callback(
+                                    video.id, progress, downloaded, total_size
+                                )
 
                     logger.success(f"Downloaded {video.id} -> {output_path}")
                     return output_path
@@ -292,10 +305,7 @@ class AsyncStockDownloader:
                 return None
 
     async def download_batch(
-        self,
-        videos: List['StockVideo'],
-        output_dir: str,
-        progress_callback=None
+        self, videos: List["StockVideo"], output_dir: str, progress_callback=None
     ) -> List[Optional[str]]:
         """
         Download multiple videos concurrently.
@@ -324,7 +334,9 @@ class AsyncStockDownloader:
                 tasks.append(task)
 
             # Download all concurrently with progress tracking
-            logger.info(f"Starting batch download of {len(videos)} videos (max {self.max_concurrent} concurrent)...")
+            logger.info(
+                f"Starting batch download of {len(videos)} videos (max {self.max_concurrent} concurrent)..."
+            )
             start_time = time.time()
 
             results = await asyncio.gather(*tasks, return_exceptions=True)
@@ -335,15 +347,14 @@ class AsyncStockDownloader:
             elapsed = time.time() - start_time
             success_count = sum(1 for r in results if r is not None)
 
-            logger.info(f"Batch download complete: {success_count}/{len(videos)} succeeded in {elapsed:.1f}s")
+            logger.info(
+                f"Batch download complete: {success_count}/{len(videos)} succeeded in {elapsed:.1f}s"
+            )
 
             return results
 
     async def download_urls(
-        self,
-        urls: List[str],
-        output_dir: str,
-        filenames: List[str] = None
+        self, urls: List[str], output_dir: str, filenames: List[str] = None
     ) -> List[Optional[str]]:
         """
         Download files from URLs directly (without StockVideo objects).
@@ -363,7 +374,6 @@ class AsyncStockDownloader:
             filenames = [f"url_{i}.mp4" for i in range(len(urls))]
 
         # Create dummy StockVideo objects for download_batch
-        from dataclasses import replace
 
         videos = []
         for i, url in enumerate(urls):
@@ -377,7 +387,7 @@ class AsyncStockDownloader:
                 download_url=url,
                 photographer="Unknown",
                 tags=[],
-                source="direct"
+                source="direct",
             )
             videos.append(video)
 
@@ -412,67 +422,206 @@ class BaseStockProvider(ABC):
     # Topic-specific keyword mappings for smarter stock footage matching
     NICHE_KEYWORDS = {
         "psychology": {
-            "narcissism": ["manipulative person", "toxic relationship", "gaslighting", "emotional abuse", "fake smile", "controlling behavior", "sad person", "argument couple"],
-            "anxiety": ["stressed person", "worried face", "panic", "breathing exercise", "calm meditation"],
-            "motivation": ["success celebration", "goal achievement", "determined person", "workout motivation"],
+            "narcissism": [
+                "manipulative person",
+                "toxic relationship",
+                "gaslighting",
+                "emotional abuse",
+                "fake smile",
+                "controlling behavior",
+                "sad person",
+                "argument couple",
+            ],
+            "anxiety": [
+                "stressed person",
+                "worried face",
+                "panic",
+                "breathing exercise",
+                "calm meditation",
+            ],
+            "motivation": [
+                "success celebration",
+                "goal achievement",
+                "determined person",
+                "workout motivation",
+            ],
             "depression": ["sad person", "loneliness", "dark room", "isolation", "empty room"],
-            "relationships": ["couple talking", "family conflict", "communication", "listening", "emotional support"],
-            "trauma": ["broken glass", "dark memories", "healing process", "therapy session", "recovery"],
-            "self_esteem": ["mirror reflection", "confident person", "self doubt", "body image", "positive affirmation"],
-            "default": ["brain", "thinking person", "psychology session", "mental health"]
+            "relationships": [
+                "couple talking",
+                "family conflict",
+                "communication",
+                "listening",
+                "emotional support",
+            ],
+            "trauma": [
+                "broken glass",
+                "dark memories",
+                "healing process",
+                "therapy session",
+                "recovery",
+            ],
+            "self_esteem": [
+                "mirror reflection",
+                "confident person",
+                "self doubt",
+                "body image",
+                "positive affirmation",
+            ],
+            "default": ["brain", "thinking person", "psychology session", "mental health"],
         },
         "storytelling": {
-            "disappearance": ["missing person poster", "police investigation", "abandoned place", "old photographs", "detective", "search party"],
-            "crime": ["crime scene tape", "police lights", "courtroom", "evidence", "investigation"],
-            "mystery": ["dark forest", "fog", "abandoned building", "eerie location", "night scene"],
-            "horror": ["haunted house", "dark corridor", "creepy atmosphere", "night forest", "shadow figure"],
-            "true_crime": ["police car", "handcuffs", "jail cell", "trial courtroom", "news broadcast"],
-            "historical": ["old film footage", "vintage photos", "historical documents", "archive footage", "sepia tone"],
-            "default": ["documentary footage", "historical photos", "newspaper", "timeline"]
+            "disappearance": [
+                "missing person poster",
+                "police investigation",
+                "abandoned place",
+                "old photographs",
+                "detective",
+                "search party",
+            ],
+            "crime": [
+                "crime scene tape",
+                "police lights",
+                "courtroom",
+                "evidence",
+                "investigation",
+            ],
+            "mystery": [
+                "dark forest",
+                "fog",
+                "abandoned building",
+                "eerie location",
+                "night scene",
+            ],
+            "horror": [
+                "haunted house",
+                "dark corridor",
+                "creepy atmosphere",
+                "night forest",
+                "shadow figure",
+            ],
+            "true_crime": [
+                "police car",
+                "handcuffs",
+                "jail cell",
+                "trial courtroom",
+                "news broadcast",
+            ],
+            "historical": [
+                "old film footage",
+                "vintage photos",
+                "historical documents",
+                "archive footage",
+                "sepia tone",
+            ],
+            "default": ["documentary footage", "historical photos", "newspaper", "timeline"],
         },
         "finance": {
             "investing": ["stock market", "trading screen", "money growth", "investment chart"],
             "budgeting": ["calculator money", "savings jar", "piggy bank", "budget planning"],
-            "passive_income": ["laptop money", "rental property", "dividend stocks", "online business"],
-            "crypto": ["bitcoin", "cryptocurrency", "blockchain", "digital currency", "crypto trading"],
+            "passive_income": [
+                "laptop money",
+                "rental property",
+                "dividend stocks",
+                "online business",
+            ],
+            "crypto": [
+                "bitcoin",
+                "cryptocurrency",
+                "blockchain",
+                "digital currency",
+                "crypto trading",
+            ],
             "debt": ["credit card", "bills pile", "financial stress", "debt payoff", "money worry"],
             "wealth": ["luxury lifestyle", "expensive car", "mansion", "yacht", "wealthy person"],
-            "retirement": ["elderly couple", "retirement planning", "pension", "golden years", "senior lifestyle"],
-            "default": ["money", "business meeting", "office work", "financial planning"]
+            "retirement": [
+                "elderly couple",
+                "retirement planning",
+                "pension",
+                "golden years",
+                "senior lifestyle",
+            ],
+            "default": ["money", "business meeting", "office work", "financial planning"],
         },
         "technology": {
-            "ai": ["artificial intelligence", "robot", "machine learning", "neural network", "futuristic"],
-            "coding": ["programming", "developer", "code screen", "software development", "computer coding"],
+            "ai": [
+                "artificial intelligence",
+                "robot",
+                "machine learning",
+                "neural network",
+                "futuristic",
+            ],
+            "coding": [
+                "programming",
+                "developer",
+                "code screen",
+                "software development",
+                "computer coding",
+            ],
             "cybersecurity": ["hacker", "data security", "encryption", "cyber attack", "firewall"],
             "gadgets": ["smartphone", "laptop", "tech devices", "electronics", "innovation"],
-            "default": ["technology", "computer", "digital", "circuit board", "data center"]
+            "default": ["technology", "computer", "digital", "circuit board", "data center"],
         },
         "motivation": {
             "fitness": ["gym workout", "running", "exercise", "training", "athlete"],
             "success": ["celebration", "trophy", "achievement", "winning", "podium"],
-            "entrepreneurship": ["startup", "business owner", "hustle", "working late", "entrepreneur"],
+            "entrepreneurship": [
+                "startup",
+                "business owner",
+                "hustle",
+                "working late",
+                "entrepreneur",
+            ],
             "mindset": ["meditation", "focus", "determination", "mindfulness", "positive thinking"],
-            "default": ["success celebration", "goal achievement", "determined person", "sunrise motivation"]
+            "default": [
+                "success celebration",
+                "goal achievement",
+                "determined person",
+                "sunrise motivation",
+            ],
         },
         "health": {
             "fitness": ["workout", "gym", "exercise", "running", "yoga"],
             "nutrition": ["healthy food", "vegetables", "cooking", "meal prep", "diet"],
             "mental_health": ["meditation", "therapy", "relaxation", "stress relief", "self care"],
             "medical": ["doctor", "hospital", "medical equipment", "healthcare", "treatment"],
-            "default": ["healthy lifestyle", "wellness", "medical", "fitness"]
-        }
+            "default": ["healthy lifestyle", "wellness", "medical", "fitness"],
+        },
     }
 
     # Keywords/phrases that map to sub-topics for detection
     SUBTOPIC_TRIGGERS = {
         "psychology": {
-            "narcissism": ["narciss", "manipulat", "toxic", "gaslight", "emotional abuse", "covert", "supply", "flying monkey"],
+            "narcissism": [
+                "narciss",
+                "manipulat",
+                "toxic",
+                "gaslight",
+                "emotional abuse",
+                "covert",
+                "supply",
+                "flying monkey",
+            ],
             "anxiety": ["anxiet", "anxious", "worry", "panic", "nervous", "stress", "overwhelm"],
-            "motivation": ["motivat", "inspire", "achiev", "success", "goal", "discipline", "habit"],
+            "motivation": [
+                "motivat",
+                "inspire",
+                "achiev",
+                "success",
+                "goal",
+                "discipline",
+                "habit",
+            ],
             "depression": ["depress", "sad", "lonely", "hopeless", "empty", "meaningless"],
-            "relationships": ["relationship", "partner", "marriage", "dating", "attachment", "love bomb"],
+            "relationships": [
+                "relationship",
+                "partner",
+                "marriage",
+                "dating",
+                "attachment",
+                "love bomb",
+            ],
             "trauma": ["trauma", "ptsd", "abuse", "survivor", "healing", "recover"],
-            "self_esteem": ["self-esteem", "self esteem", "confidence", "self-worth", "insecur"]
+            "self_esteem": ["self-esteem", "self esteem", "confidence", "self-worth", "insecur"],
         },
         "storytelling": {
             "disappearance": ["disappear", "missing", "vanish", "gone", "lost person", "search"],
@@ -480,35 +629,57 @@ class BaseStockProvider(ABC):
             "mystery": ["mystery", "unsolved", "strange", "unexplained", "bizarre", "weird"],
             "horror": ["horror", "scary", "terrif", "haunt", "creepy", "paranormal"],
             "true_crime": ["true crime", "serial", "case", "investigation", "suspect", "trial"],
-            "historical": ["history", "historical", "ancient", "century", "war", "past"]
+            "historical": ["history", "historical", "ancient", "century", "war", "past"],
         },
         "finance": {
-            "investing": ["invest", "stock", "market", "portfolio", "dividend", "etf", "index fund"],
+            "investing": [
+                "invest",
+                "stock",
+                "market",
+                "portfolio",
+                "dividend",
+                "etf",
+                "index fund",
+            ],
             "budgeting": ["budget", "saving", "frugal", "expense", "spending", "money management"],
             "passive_income": ["passive", "income stream", "side hustle", "affiliate", "royalt"],
             "crypto": ["crypto", "bitcoin", "ethereum", "blockchain", "nft", "defi"],
             "debt": ["debt", "credit card", "loan", "payoff", "interest", "owe"],
             "wealth": ["wealth", "rich", "millionaire", "billionaire", "luxury", "affluent"],
-            "retirement": ["retire", "401k", "pension", "ira", "social security", "golden years"]
+            "retirement": ["retire", "401k", "pension", "ira", "social security", "golden years"],
         },
         "technology": {
-            "ai": ["ai", "artificial intelligence", "machine learning", "chatgpt", "neural", "deep learning"],
+            "ai": [
+                "ai",
+                "artificial intelligence",
+                "machine learning",
+                "chatgpt",
+                "neural",
+                "deep learning",
+            ],
             "coding": ["cod", "program", "develop", "software", "javascript", "python", "web dev"],
             "cybersecurity": ["security", "hack", "cyber", "breach", "malware", "phishing"],
-            "gadgets": ["phone", "laptop", "device", "gadget", "smart", "wearable"]
+            "gadgets": ["phone", "laptop", "device", "gadget", "smart", "wearable"],
         },
         "motivation": {
             "fitness": ["fitness", "workout", "gym", "exercise", "body", "muscle", "weight"],
             "success": ["success", "win", "achieve", "goal", "champion", "victory"],
-            "entrepreneurship": ["entrepreneur", "business", "startup", "founder", "hustle", "grind"],
-            "mindset": ["mindset", "mental", "focus", "meditat", "mindful", "discipline"]
+            "entrepreneurship": [
+                "entrepreneur",
+                "business",
+                "startup",
+                "founder",
+                "hustle",
+                "grind",
+            ],
+            "mindset": ["mindset", "mental", "focus", "meditat", "mindful", "discipline"],
         },
         "health": {
             "fitness": ["fitness", "workout", "exercise", "gym", "training"],
             "nutrition": ["nutrition", "diet", "food", "eat", "meal", "vitamin"],
             "mental_health": ["mental health", "therapy", "anxiety", "depression", "stress"],
-            "medical": ["doctor", "hospital", "treatment", "medicine", "diagnosis"]
-        }
+            "medical": ["doctor", "hospital", "treatment", "medicine", "diagnosis"],
+        },
     }
 
     def __init__(self, cache: SearchCache = None):
@@ -523,25 +694,19 @@ class BaseStockProvider(ABC):
         count: int = 10,
         min_duration: int = 5,
         max_duration: int = 60,
-        orientation: str = "landscape"
+        orientation: str = "landscape",
     ) -> List[StockVideo]:
         """Search for stock videos."""
-        pass
 
     @abstractmethod
     def search_images(
-        self,
-        query: str,
-        count: int = 10,
-        orientation: str = "landscape"
+        self, query: str, count: int = 10, orientation: str = "landscape"
     ) -> List[StockImage]:
         """Search for stock images."""
-        pass
 
     @abstractmethod
     def is_available(self) -> bool:
         """Check if this provider is available (API key configured)."""
-        pass
 
     def _detect_subtopic(self, topic: str, niche: str) -> Optional[str]:
         """Detect the sub-topic from the topic text."""
@@ -559,7 +724,9 @@ class BaseStockProvider(ABC):
 
         if scores:
             best_subtopic = max(scores, key=scores.get)
-            logger.debug(f"Detected subtopic '{best_subtopic}' for topic '{topic}' (score: {scores[best_subtopic]})")
+            logger.debug(
+                f"Detected subtopic '{best_subtopic}' for topic '{topic}' (score: {scores[best_subtopic]})"
+            )
             return best_subtopic
 
         return None
@@ -574,7 +741,9 @@ class BaseStockProvider(ABC):
         if detected_subtopic and detected_subtopic in niche_data:
             subtopic_keywords = niche_data[detected_subtopic]
             keywords.extend(subtopic_keywords)
-            logger.info(f"Using '{detected_subtopic}' keywords for niche '{niche}': {subtopic_keywords[:3]}...")
+            logger.info(
+                f"Using '{detected_subtopic}' keywords for niche '{niche}': {subtopic_keywords[:3]}..."
+            )
         else:
             default_keywords = niche_data.get("default", [])
             keywords.extend(default_keywords)
@@ -641,7 +810,7 @@ class PexelsProvider(BaseStockProvider):
         count: int = 10,
         min_duration: int = 5,
         max_duration: int = 60,
-        orientation: str = "landscape"
+        orientation: str = "landscape",
     ) -> List[StockVideo]:
         """
         Search for stock videos.
@@ -666,7 +835,7 @@ class PexelsProvider(BaseStockProvider):
                 "query": query,
                 "per_page": min(count * 2, 80),  # Fetch extra for filtering
                 "orientation": orientation,
-                "size": "medium"  # medium quality for faster downloads
+                "size": "medium",  # medium quality for faster downloads
             }
 
             response = self.session.get(url, params=params, timeout=30)
@@ -706,18 +875,20 @@ class PexelsProvider(BaseStockProvider):
                 preview_pics = video.get("video_pictures", [])
                 preview_url = preview_pics[0]["picture"] if preview_pics else ""
 
-                videos.append(StockVideo(
-                    id=video["id"],
-                    url=video["url"],
-                    duration=duration,
-                    width=best_file.get("width", 1920),
-                    height=best_file.get("height", 1080),
-                    preview_url=preview_url,
-                    download_url=best_file["link"],
-                    photographer=video.get("user", {}).get("name", "Unknown"),
-                    tags=query.split(),
-                    source="pexels"
-                ))
+                videos.append(
+                    StockVideo(
+                        id=video["id"],
+                        url=video["url"],
+                        duration=duration,
+                        width=best_file.get("width", 1920),
+                        height=best_file.get("height", 1080),
+                        preview_url=preview_url,
+                        download_url=best_file["link"],
+                        photographer=video.get("user", {}).get("name", "Unknown"),
+                        tags=query.split(),
+                        source="pexels",
+                    )
+                )
 
                 if len(videos) >= count:
                     break
@@ -730,10 +901,7 @@ class PexelsProvider(BaseStockProvider):
             return []
 
     def search_images(
-        self,
-        query: str,
-        count: int = 10,
-        orientation: str = "landscape"
+        self, query: str, count: int = 10, orientation: str = "landscape"
     ) -> List[StockImage]:
         """
         Search for stock images.
@@ -751,11 +919,7 @@ class PexelsProvider(BaseStockProvider):
 
         try:
             url = f"{self.BASE_URL}/v1/search"
-            params = {
-                "query": query,
-                "per_page": count,
-                "orientation": orientation
-            }
+            params = {"query": query, "per_page": count, "orientation": orientation}
 
             response = self.session.get(url, params=params, timeout=30)
             self.requests_made += 1
@@ -768,16 +932,18 @@ class PexelsProvider(BaseStockProvider):
             images = []
 
             for photo in data.get("photos", []):
-                images.append(StockImage(
-                    id=photo["id"],
-                    url=photo["url"],
-                    width=photo["width"],
-                    height=photo["height"],
-                    download_url=photo["src"]["large2x"],  # High quality
-                    photographer=photo["photographer"],
-                    alt=photo.get("alt", ""),
-                    source="pexels"
-                ))
+                images.append(
+                    StockImage(
+                        id=photo["id"],
+                        url=photo["url"],
+                        width=photo["width"],
+                        height=photo["height"],
+                        download_url=photo["src"]["large2x"],  # High quality
+                        photographer=photo["photographer"],
+                        alt=photo.get("alt", ""),
+                        source="pexels",
+                    )
+                )
 
             logger.info(f"Found {len(images)} images for: {query}")
             return images
@@ -787,10 +953,7 @@ class PexelsProvider(BaseStockProvider):
             return []
 
     def get_videos_for_script(
-        self,
-        script_sections: List[Dict],
-        niche: str = "general",
-        topic: str = ""
+        self, script_sections: List[Dict], niche: str = "general", topic: str = ""
     ) -> List[Dict]:
         """
         Get relevant videos for each script section.
@@ -837,11 +1000,7 @@ class PexelsProvider(BaseStockProvider):
                 fallback = random.choice(smart_keywords)
                 videos = self.search_videos(fallback, count=3)
 
-            results.append({
-                "section": section,
-                "query": query,
-                "videos": videos
-            })
+            results.append({"section": section, "query": query, "videos": videos})
 
         return results
 
@@ -850,7 +1009,7 @@ class PexelsProvider(BaseStockProvider):
         topic: str,
         niche: str = "general",
         count: int = 10,
-        total_duration: int = 300  # 5 minutes
+        total_duration: int = 300,  # 5 minutes
     ) -> List[StockVideo]:
         """
         Get B-roll clips for a topic.
@@ -923,9 +1082,7 @@ class PlaceholderFootage:
 
     @staticmethod
     def create_gradient_video(
-        output_path: str,
-        duration: int = 10,
-        colors: List[str] = None
+        output_path: str, duration: int = 10, colors: List[str] = None
     ) -> str:
         """Create a gradient background video using FFmpeg."""
         from .video_fast import FastVideoGenerator
@@ -938,21 +1095,31 @@ class PlaceholderFootage:
         color = random.choice(colors)
 
         # Create background image
-        bg_path = str(Path(output_path).with_suffix('.bg.png'))
+        bg_path = str(Path(output_path).with_suffix(".bg.png"))
         gen.create_background_image(bg_path)
 
         # Create silent video
         import subprocess
+
         cmd = [
-            gen.ffmpeg, '-y',
-            '-loop', '1',
-            '-i', bg_path,
-            '-f', 'lavfi', '-i', 'anullsrc=r=44100:cl=stereo',
-            '-t', str(duration),
-            '-c:v', 'libx264',
-            '-c:a', 'aac',
-            '-shortest',
-            output_path
+            gen.ffmpeg,
+            "-y",
+            "-loop",
+            "1",
+            "-i",
+            bg_path,
+            "-f",
+            "lavfi",
+            "-i",
+            "anullsrc=r=44100:cl=stereo",
+            "-t",
+            str(duration),
+            "-c:v",
+            "libx264",
+            "-c:a",
+            "aac",
+            "-shortest",
+            output_path,
         ]
 
         subprocess.run(cmd, capture_output=True, timeout=60)
@@ -1007,7 +1174,7 @@ class PixabayProvider(BaseStockProvider):
         count: int = 10,
         min_duration: int = 5,
         max_duration: int = 60,
-        orientation: str = "landscape"
+        orientation: str = "landscape",
     ) -> List[StockVideo]:
         """
         Search for stock videos on Pixabay.
@@ -1028,7 +1195,11 @@ class PixabayProvider(BaseStockProvider):
 
         # Check cache first
         if self.cache:
-            params_key = {"min_dur": min_duration, "max_dur": max_duration, "orientation": orientation}
+            params_key = {
+                "min_dur": min_duration,
+                "max_dur": max_duration,
+                "orientation": orientation,
+            }
             cached = self.cache.get(query, "pixabay_videos", params_key)
             if cached:
                 # Reconstruct StockVideo objects from cached dicts
@@ -1045,7 +1216,7 @@ class PixabayProvider(BaseStockProvider):
                 "q": query,
                 "per_page": min(count * 2, 200),  # Fetch extra for filtering
                 "orientation": pixabay_orientation,
-                "safesearch": "true"
+                "safesearch": "true",
             }
 
             response = self.session.get(url, params=params, timeout=30)
@@ -1078,18 +1249,20 @@ class PixabayProvider(BaseStockProvider):
                 if not best_file:
                     continue
 
-                videos.append(StockVideo(
-                    id=f"pixabay_{video['id']}",
-                    url=video.get("pageURL", ""),
-                    duration=duration,
-                    width=best_file.get("width", 1920),
-                    height=best_file.get("height", 1080),
-                    preview_url=video.get("picture_id", ""),
-                    download_url=best_file["url"],
-                    photographer=video.get("user", "Unknown"),
-                    tags=video.get("tags", "").split(", "),
-                    source="pixabay"
-                ))
+                videos.append(
+                    StockVideo(
+                        id=f"pixabay_{video['id']}",
+                        url=video.get("pageURL", ""),
+                        duration=duration,
+                        width=best_file.get("width", 1920),
+                        height=best_file.get("height", 1080),
+                        preview_url=video.get("picture_id", ""),
+                        download_url=best_file["url"],
+                        photographer=video.get("user", "Unknown"),
+                        tags=video.get("tags", "").split(", "),
+                        source="pixabay",
+                    )
+                )
 
                 if len(videos) >= count:
                     break
@@ -1098,7 +1271,11 @@ class PixabayProvider(BaseStockProvider):
 
             # Cache the results
             if self.cache and videos:
-                params_key = {"min_dur": min_duration, "max_dur": max_duration, "orientation": orientation}
+                params_key = {
+                    "min_dur": min_duration,
+                    "max_dur": max_duration,
+                    "orientation": orientation,
+                }
                 self.cache.set(query, "pixabay_videos", videos, params_key)
 
             return videos
@@ -1108,10 +1285,7 @@ class PixabayProvider(BaseStockProvider):
             return []
 
     def search_images(
-        self,
-        query: str,
-        count: int = 10,
-        orientation: str = "landscape"
+        self, query: str, count: int = 10, orientation: str = "landscape"
     ) -> List[StockImage]:
         """
         Search for stock images on Pixabay.
@@ -1146,7 +1320,7 @@ class PixabayProvider(BaseStockProvider):
                 "per_page": count,
                 "orientation": pixabay_orientation,
                 "safesearch": "true",
-                "image_type": "photo"
+                "image_type": "photo",
             }
 
             response = self.session.get(url, params=params, timeout=30)
@@ -1160,16 +1334,18 @@ class PixabayProvider(BaseStockProvider):
             images = []
 
             for photo in data.get("hits", []):
-                images.append(StockImage(
-                    id=f"pixabay_{photo['id']}",
-                    url=photo.get("pageURL", ""),
-                    width=photo.get("imageWidth", 1920),
-                    height=photo.get("imageHeight", 1080),
-                    download_url=photo.get("largeImageURL", photo.get("webformatURL", "")),
-                    photographer=photo.get("user", "Unknown"),
-                    alt=photo.get("tags", ""),
-                    source="pixabay"
-                ))
+                images.append(
+                    StockImage(
+                        id=f"pixabay_{photo['id']}",
+                        url=photo.get("pageURL", ""),
+                        width=photo.get("imageWidth", 1920),
+                        height=photo.get("imageHeight", 1080),
+                        download_url=photo.get("largeImageURL", photo.get("webformatURL", "")),
+                        photographer=photo.get("user", "Unknown"),
+                        alt=photo.get("tags", ""),
+                        source="pixabay",
+                    )
+                )
 
             logger.info(f"[Pixabay] Found {len(images)} images for: {query}")
 
@@ -1213,7 +1389,7 @@ class CoverrProvider(BaseStockProvider):
         count: int = 10,
         min_duration: int = 5,
         max_duration: int = 60,
-        orientation: str = "landscape"
+        orientation: str = "landscape",
     ) -> List[StockVideo]:
         """
         Search for stock videos on Coverr.
@@ -1237,15 +1413,11 @@ class CoverrProvider(BaseStockProvider):
 
         try:
             # Try the Coverr API endpoint
-            params = {
-                "query": query,
-                "page": 1,
-                "page_size": min(count * 2, 25)
-            }
+            params = {"query": query, "page": 1, "page_size": min(count * 2, 25)}
 
             headers = {
                 "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
-                "Accept": "application/json"
+                "Accept": "application/json",
             }
 
             response = self.session.get(self.API_URL, params=params, headers=headers, timeout=30)
@@ -1276,18 +1448,20 @@ class CoverrProvider(BaseStockProvider):
                 if not video_url:
                     continue
 
-                videos.append(StockVideo(
-                    id=f"coverr_{video.get('id', hash(video_url))}",
-                    url=video.get("url", f"{self.BASE_URL}/videos/{video.get('slug', '')}"),
-                    duration=duration,
-                    width=video.get("width", 1920),
-                    height=video.get("height", 1080),
-                    preview_url=video.get("thumbnail", video.get("poster", "")),
-                    download_url=video_url,
-                    photographer=video.get("user", {}).get("name", "Coverr"),
-                    tags=video.get("tags", query.split()),
-                    source="coverr"
-                ))
+                videos.append(
+                    StockVideo(
+                        id=f"coverr_{video.get('id', hash(video_url))}",
+                        url=video.get("url", f"{self.BASE_URL}/videos/{video.get('slug', '')}"),
+                        duration=duration,
+                        width=video.get("width", 1920),
+                        height=video.get("height", 1080),
+                        preview_url=video.get("thumbnail", video.get("poster", "")),
+                        download_url=video_url,
+                        photographer=video.get("user", {}).get("name", "Coverr"),
+                        tags=video.get("tags", query.split()),
+                        source="coverr",
+                    )
+                )
 
                 if len(videos) >= count:
                     break
@@ -1306,19 +1480,13 @@ class CoverrProvider(BaseStockProvider):
             return []
 
     def _search_fallback(
-        self,
-        query: str,
-        count: int,
-        min_duration: int,
-        max_duration: int
+        self, query: str, count: int, min_duration: int, max_duration: int
     ) -> List[StockVideo]:
         """Fallback search using web scraping if API fails."""
         try:
             # Try to scrape the search page
             search_url = f"{self.BASE_URL}/s/{query.replace(' ', '-')}"
-            headers = {
-                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
-            }
+            headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
 
             response = self.session.get(search_url, headers=headers, timeout=30)
 
@@ -1332,22 +1500,25 @@ class CoverrProvider(BaseStockProvider):
 
             # Look for MP4 URLs
             import re
+
             mp4_pattern = r'https?://[^\s"\'<>]+\.mp4[^\s"\'<>]*'
             mp4_urls = re.findall(mp4_pattern, content)
 
             for i, url in enumerate(set(mp4_urls)[:count]):
-                videos.append(StockVideo(
-                    id=f"coverr_fallback_{i}",
-                    url=search_url,
-                    duration=15,  # Default duration
-                    width=1920,
-                    height=1080,
-                    preview_url="",
-                    download_url=url,
-                    photographer="Coverr",
-                    tags=query.split(),
-                    source="coverr"
-                ))
+                videos.append(
+                    StockVideo(
+                        id=f"coverr_fallback_{i}",
+                        url=search_url,
+                        duration=15,  # Default duration
+                        width=1920,
+                        height=1080,
+                        preview_url="",
+                        download_url=url,
+                        photographer="Coverr",
+                        tags=query.split(),
+                        source="coverr",
+                    )
+                )
 
             return videos
 
@@ -1356,10 +1527,7 @@ class CoverrProvider(BaseStockProvider):
             return []
 
     def search_images(
-        self,
-        query: str,
-        count: int = 10,
-        orientation: str = "landscape"
+        self, query: str, count: int = 10, orientation: str = "landscape"
     ) -> List[StockImage]:
         """Coverr primarily provides videos, not images."""
         logger.debug("Coverr does not provide images, returning empty list")
@@ -1387,7 +1555,7 @@ class StockFootageProvider(BaseStockProvider):
         pexels_key: Optional[str] = None,
         pixabay_key: Optional[str] = None,
         cache_ttl: int = 3600,
-        source_order: List[str] = None
+        source_order: List[str] = None,
     ):
         """
         Initialize multi-source provider.
@@ -1409,7 +1577,7 @@ class StockFootageProvider(BaseStockProvider):
         self.providers: Dict[str, BaseStockProvider] = {
             "pexels": PexelsProvider(pexels_key, self.cache),
             "pixabay": PixabayProvider(pixabay_key, self.cache),
-            "coverr": CoverrProvider(self.cache)
+            "coverr": CoverrProvider(self.cache),
         }
 
         # Set source order (customizable)
@@ -1436,7 +1604,7 @@ class StockFootageProvider(BaseStockProvider):
         count: int = 10,
         min_duration: int = 5,
         max_duration: int = 60,
-        orientation: str = "landscape"
+        orientation: str = "landscape",
     ) -> List[StockVideo]:
         """
         Search for stock videos from multiple sources.
@@ -1472,7 +1640,7 @@ class StockFootageProvider(BaseStockProvider):
                     count=needed + 2,  # Fetch a few extra for filtering duplicates
                     min_duration=min_duration,
                     max_duration=max_duration,
-                    orientation=orientation
+                    orientation=orientation,
                 )
 
                 # Add unique videos
@@ -1498,10 +1666,7 @@ class StockFootageProvider(BaseStockProvider):
         return all_videos
 
     def search_images(
-        self,
-        query: str,
-        count: int = 10,
-        orientation: str = "landscape"
+        self, query: str, count: int = 10, orientation: str = "landscape"
     ) -> List[StockImage]:
         """
         Search for stock images from multiple sources.
@@ -1528,9 +1693,7 @@ class StockFootageProvider(BaseStockProvider):
             try:
                 needed = count - len(all_images)
                 images = provider.search_images(
-                    query=query,
-                    count=needed + 2,
-                    orientation=orientation
+                    query=query, count=needed + 2, orientation=orientation
                 )
 
                 for image in images:
@@ -1549,10 +1712,7 @@ class StockFootageProvider(BaseStockProvider):
         return all_images
 
     def download_video(
-        self,
-        video: StockVideo,
-        output_path: str,
-        timeout: int = 120
+        self, video: StockVideo, output_path: str, timeout: int = 120
     ) -> Optional[str]:
         """
         Download a stock video (synchronous version).
@@ -1572,6 +1732,7 @@ class StockFootageProvider(BaseStockProvider):
             cache_file = self.cache_dir / f"video_{video.source}_{video.id}.mp4"
             if cache_file.exists():
                 import shutil
+
                 shutil.copy(cache_file, output_path)
                 logger.debug(f"Using cached video: {video.source}/{video.id}")
                 return output_path
@@ -1585,11 +1746,12 @@ class StockFootageProvider(BaseStockProvider):
                 return None
 
             # Save to cache and output
-            with open(cache_file, 'wb') as f:
+            with open(cache_file, "wb") as f:
                 for chunk in response.iter_content(chunk_size=8192):
                     f.write(chunk)
 
             import shutil
+
             shutil.copy(cache_file, output_path)
 
             logger.success(f"Downloaded: {output_path}")
@@ -1604,7 +1766,7 @@ class StockFootageProvider(BaseStockProvider):
         videos: List[StockVideo],
         output_dir: str,
         max_concurrent: int = 5,
-        use_cache: bool = True
+        use_cache: bool = True,
     ) -> List[Optional[str]]:
         """
         Download multiple videos concurrently (5-10x faster than sequential).
@@ -1638,6 +1800,7 @@ class StockFootageProvider(BaseStockProvider):
 
                 if cache_file.exists():
                     import shutil
+
                     Path(output_path).parent.mkdir(parents=True, exist_ok=True)
                     shutil.copy(cache_file, output_path)
                     cached_results[i] = output_path
@@ -1649,17 +1812,15 @@ class StockFootageProvider(BaseStockProvider):
                 logger.info(f"All {len(videos)} videos found in cache")
                 return cached_results
 
-            logger.info(f"Found {len(cached_results) - len(videos_to_download)} cached, downloading {len(videos_to_download)} new")
+            logger.info(
+                f"Found {len(cached_results) - len(videos_to_download)} cached, downloading {len(videos_to_download)} new"
+            )
         else:
             videos_to_download = list(enumerate(videos))
             cached_results = [None] * len(videos)
 
         # Download non-cached videos concurrently
-        downloader = AsyncStockDownloader(
-            max_concurrent=max_concurrent,
-            timeout=120,
-            max_retries=3
-        )
+        downloader = AsyncStockDownloader(max_concurrent=max_concurrent, timeout=120, max_retries=3)
 
         # Prepare videos for batch download
         batch_videos = [v for _, v in videos_to_download]
@@ -1673,6 +1834,7 @@ class StockFootageProvider(BaseStockProvider):
                 # Copy to cache
                 cache_file = self.cache_dir / f"video_{video.source}_{video.id}.mp4"
                 import shutil
+
                 shutil.copy(result, str(cache_file))
 
             cached_results[i] = result
@@ -1683,11 +1845,7 @@ class StockFootageProvider(BaseStockProvider):
 
         return cached_results
 
-    def download_image(
-        self,
-        image: StockImage,
-        output_path: str
-    ) -> Optional[str]:
+    def download_image(self, image: StockImage, output_path: str) -> Optional[str]:
         """Download a stock image."""
         try:
             Path(output_path).parent.mkdir(parents=True, exist_ok=True)
@@ -1697,7 +1855,7 @@ class StockFootageProvider(BaseStockProvider):
             if response.status_code != 200:
                 return None
 
-            with open(output_path, 'wb') as f:
+            with open(output_path, "wb") as f:
                 f.write(response.content)
 
             logger.debug(f"Downloaded image: {output_path}")
@@ -1708,10 +1866,7 @@ class StockFootageProvider(BaseStockProvider):
             return None
 
     def get_videos_for_script(
-        self,
-        script_sections: List[Dict],
-        niche: str = "general",
-        topic: str = ""
+        self, script_sections: List[Dict], niche: str = "general", topic: str = ""
     ) -> List[Dict]:
         """
         Get relevant videos for each script section from multiple sources.
@@ -1750,20 +1905,12 @@ class StockFootageProvider(BaseStockProvider):
                 fallback = random.choice(smart_keywords)
                 videos = self.search_videos(fallback, count=3)
 
-            results.append({
-                "section": section,
-                "query": query,
-                "videos": videos
-            })
+            results.append({"section": section, "query": query, "videos": videos})
 
         return results
 
     def get_b_roll_clips(
-        self,
-        topic: str,
-        niche: str = "general",
-        count: int = 10,
-        total_duration: int = 300
+        self, topic: str, niche: str = "general", count: int = 10, total_duration: int = 300
     ) -> List[StockVideo]:
         """
         Get B-roll clips from multiple sources for variety.
@@ -1824,7 +1971,9 @@ class StockFootageProvider(BaseStockProvider):
         source_counts = {}
         for v in all_videos:
             source_counts[v.source] = source_counts.get(v.source, 0) + 1
-        logger.info(f"Collected {len(all_videos)} B-roll clips ({total_time}s total) from: {source_counts}")
+        logger.info(
+            f"Collected {len(all_videos)} B-roll clips ({total_time}s total) from: {source_counts}"
+        )
 
         return all_videos
 
@@ -1837,7 +1986,9 @@ class StockFootageProvider(BaseStockProvider):
         """
         seconds = older_than_hours * 3600 if older_than_hours else None
         self.cache.clear(seconds)
-        logger.info(f"Cache cleared{f' (entries older than {older_than_hours}h)' if older_than_hours else ''}")
+        logger.info(
+            f"Cache cleared{f' (entries older than {older_than_hours}h)' if older_than_hours else ''}"
+        )
 
 
 # Backwards compatibility alias
@@ -1846,9 +1997,9 @@ StockFootage = StockFootageProvider
 
 # Example usage
 if __name__ == "__main__":
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print("  MULTI-SOURCE STOCK FOOTAGE TEST")
-    print("="*60 + "\n")
+    print("=" * 60 + "\n")
 
     # Initialize multi-source provider
     provider = StockFootageProvider()
@@ -1877,19 +2028,19 @@ if __name__ == "__main__":
         print()
 
     if provider.is_available():
-        print("\n" + "-"*60)
+        print("\n" + "-" * 60)
         print("Testing Multi-Source Search (fetching clips):\n")
 
         # Test B-roll with smart keywords from multiple sources
         videos = provider.get_b_roll_clips(
-            topic="How Narcissists Manipulate Their Victims",
-            niche="psychology",
-            count=10
+            topic="How Narcissists Manipulate Their Victims", niche="psychology", count=10
         )
 
         print(f"Found {len(videos)} videos from multiple sources:\n")
         for v in videos:
-            print(f"  - [{v.source}] {v.id}: {v.duration}s ({v.width}x{v.height}) by {v.photographer}")
+            print(
+                f"  - [{v.source}] {v.id}: {v.duration}s ({v.width}x{v.height}) by {v.photographer}"
+            )
 
         # Show source distribution
         source_counts = {}

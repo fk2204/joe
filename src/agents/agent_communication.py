@@ -47,34 +47,20 @@ Usage:
 """
 
 import asyncio
-import hashlib
 import json
 import pickle
 import sqlite3
 import threading
-import time
 from collections import defaultdict
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from enum import Enum
 from pathlib import Path
-from queue import PriorityQueue, Empty
-from typing import (
-    Any,
-    Callable,
-    Dict,
-    Generic,
-    List,
-    Optional,
-    Set,
-    Tuple,
-    TypeVar,
-    Union,
-)
+from queue import Empty, PriorityQueue
+from typing import Any, Callable, Dict, List, Optional, Set, TypeVar
 from uuid import uuid4
 
 from loguru import logger
-
 
 # ============================================================================
 # Type Variables
@@ -90,6 +76,7 @@ T = TypeVar("T")
 
 class MessagePriority(Enum):
     """Message priority levels."""
+
     CRITICAL = 1
     HIGH = 2
     NORMAL = 3
@@ -99,6 +86,7 @@ class MessagePriority(Enum):
 @dataclass
 class Message:
     """Message for inter-agent communication."""
+
     topic: str
     payload: Dict[str, Any]
     sender: str = "unknown"
@@ -132,7 +120,9 @@ class Message:
             sender=data.get("sender", "unknown"),
             message_id=data.get("message_id", uuid4().hex),
             priority=MessagePriority(data.get("priority", 3)),
-            timestamp=datetime.fromisoformat(data["timestamp"]) if "timestamp" in data else datetime.now(),
+            timestamp=(
+                datetime.fromisoformat(data["timestamp"]) if "timestamp" in data else datetime.now()
+            ),
             correlation_id=data.get("correlation_id"),
             reply_to=data.get("reply_to"),
             ttl_seconds=data.get("ttl_seconds"),
@@ -143,6 +133,7 @@ class Message:
 @dataclass
 class Event:
     """Event for broadcasting to agents."""
+
     event_type: str
     data: Dict[str, Any]
     source: str = "system"
@@ -164,6 +155,7 @@ class Event:
 @dataclass
 class QueuedTask:
     """Task in the priority queue."""
+
     task_id: str
     task_type: str
     params: Dict[str, Any]
@@ -187,6 +179,7 @@ class QueuedTask:
 @dataclass
 class CachedResult:
     """Cached result with TTL."""
+
     key: str
     value: Any
     created_at: datetime = field(default_factory=datetime.now)
@@ -237,7 +230,8 @@ class MessageBus:
         """Initialize persistence database."""
         Path(self._db_path).parent.mkdir(parents=True, exist_ok=True)
         with sqlite3.connect(self._db_path) as conn:
-            conn.execute("""
+            conn.execute(
+                """
                 CREATE TABLE IF NOT EXISTS messages (
                     message_id TEXT PRIMARY KEY,
                     topic TEXT,
@@ -247,13 +241,18 @@ class MessageBus:
                     timestamp TEXT,
                     processed INTEGER DEFAULT 0
                 )
-            """)
-            conn.execute("""
+            """
+            )
+            conn.execute(
+                """
                 CREATE INDEX IF NOT EXISTS idx_topic ON messages(topic)
-            """)
-            conn.execute("""
+            """
+            )
+            conn.execute(
+                """
                 CREATE INDEX IF NOT EXISTS idx_processed ON messages(processed)
-            """)
+            """
+            )
 
     def subscribe(
         self,
@@ -431,7 +430,9 @@ class MessageBus:
         """Find all subscription topics matching the published topic."""
         matches = []
         with self._lock:
-            for sub_topic in list(self._subscriptions.keys()) + list(self._async_subscriptions.keys()):
+            for sub_topic in list(self._subscriptions.keys()) + list(
+                self._async_subscriptions.keys()
+            ):
                 if self._topic_matches(sub_topic, topic):
                     if sub_topic not in matches:
                         matches.append(sub_topic)
@@ -498,10 +499,11 @@ class MessageBus:
         """Get message bus statistics."""
         with self._lock:
             return {
-                "total_subscriptions": sum(
-                    len(h) for h in self._subscriptions.values()
-                ) + sum(len(h) for h in self._async_subscriptions.values()),
-                "topics": list(set(self._subscriptions.keys()) | set(self._async_subscriptions.keys())),
+                "total_subscriptions": sum(len(h) for h in self._subscriptions.values())
+                + sum(len(h) for h in self._async_subscriptions.values()),
+                "topics": list(
+                    set(self._subscriptions.keys()) | set(self._async_subscriptions.keys())
+                ),
                 "messages_processed": len(self._message_history),
                 "dead_letters": len(self._dead_letters),
             }
@@ -613,7 +615,7 @@ class EventEmitter:
             # Add to history
             self._history.append(event)
             if len(self._history) > self._max_history:
-                self._history = self._history[-self._max_history:]
+                self._history = self._history[-self._max_history :]
 
             # Call regular listeners
             for handler in self._listeners.get(event_type, []):
@@ -738,14 +740,16 @@ class SharedState:
         """Initialize persistence database."""
         Path(self._db_path).parent.mkdir(parents=True, exist_ok=True)
         with sqlite3.connect(self._db_path) as conn:
-            conn.execute("""
+            conn.execute(
+                """
                 CREATE TABLE IF NOT EXISTS state (
                     key TEXT PRIMARY KEY,
                     value BLOB,
                     namespace TEXT DEFAULT 'default',
                     updated_at TEXT
                 )
-            """)
+            """
+            )
 
     def _load_state(self):
         """Load state from database."""
@@ -946,9 +950,7 @@ class SharedState:
             return {
                 "default_keys": len(self._state),
                 "namespaces": list(self._namespaces.keys()),
-                "namespace_counts": {
-                    ns: len(vals) for ns, vals in self._namespaces.items()
-                },
+                "namespace_counts": {ns: len(vals) for ns, vals in self._namespaces.items()},
                 "watchers": len(self._watchers),
             }
 
@@ -994,7 +996,8 @@ class TaskQueue:
         """Initialize persistence database."""
         Path(self._db_path).parent.mkdir(parents=True, exist_ok=True)
         with sqlite3.connect(self._db_path) as conn:
-            conn.execute("""
+            conn.execute(
+                """
                 CREATE TABLE IF NOT EXISTS tasks (
                     task_id TEXT PRIMARY KEY,
                     task_type TEXT,
@@ -1005,10 +1008,13 @@ class TaskQueue:
                     retries INTEGER DEFAULT 0,
                     status TEXT DEFAULT 'pending'
                 )
-            """)
-            conn.execute("""
+            """
+            )
+            conn.execute(
+                """
                 CREATE INDEX IF NOT EXISTS idx_status ON tasks(status)
-            """)
+            """
+            )
 
     def _load_tasks(self):
         """Load pending tasks from database."""
@@ -1290,14 +1296,16 @@ class ResultCache:
         """Initialize persistence database."""
         Path(self._db_path).parent.mkdir(parents=True, exist_ok=True)
         with sqlite3.connect(self._db_path) as conn:
-            conn.execute("""
+            conn.execute(
+                """
                 CREATE TABLE IF NOT EXISTS cache (
                     key TEXT PRIMARY KEY,
                     value BLOB,
                     created_at TEXT,
                     expires_at TEXT
                 )
-            """)
+            """
+            )
 
     def set(
         self,
@@ -1435,9 +1443,7 @@ class ResultCache:
                 count = len(self._cache)
                 self._cache.clear()
             else:
-                keys_to_delete = [
-                    k for k in self._cache if k.startswith(pattern)
-                ]
+                keys_to_delete = [k for k in self._cache if k.startswith(pattern)]
                 count = len(keys_to_delete)
                 for key in keys_to_delete:
                     del self._cache[key]
@@ -1505,9 +1511,7 @@ class ResultCache:
     def cleanup_expired(self) -> int:
         """Remove all expired items."""
         with self._lock:
-            expired = [
-                k for k, v in self._cache.items() if v.is_expired
-            ]
+            expired = [k for k, v in self._cache.items() if v.is_expired]
             for key in expired:
                 del self._cache[key]
             return len(expired)

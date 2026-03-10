@@ -1,17 +1,15 @@
 # Research modules
-from .trends import TrendResearcher
-from .reddit import RedditResearcher
 from .idea_generator import IdeaGenerator
+from .reddit import RedditResearcher
+from .trends import TrendResearcher
 
 # Enhanced Reddit researcher (optional - requires praw)
 try:
-    from .reddit_researcher import (
-        RedditResearcher as EnhancedRedditResearcher,
-        RedditPost,
-        VideoIdea as RedditVideoIdea,
-        RedditResearchReport,
-        SubredditStats,
-    )
+    from .reddit_researcher import RedditPost
+    from .reddit_researcher import RedditResearcher as EnhancedRedditResearcher
+    from .reddit_researcher import RedditResearchReport, SubredditStats
+    from .reddit_researcher import VideoIdea as RedditVideoIdea
+
     ENHANCED_REDDIT_AVAILABLE = True
 except ImportError:
     ENHANCED_REDDIT_AVAILABLE = False

@@ -15,18 +15,18 @@ Usage:
 """
 
 import os
-import time
 import random
 import re
-from pathlib import Path
-from typing import Optional, List, Dict, Any
-from datetime import datetime, timedelta
+import time
 from dataclasses import dataclass, field
+from datetime import datetime
+from typing import Any, Dict, List, Optional
+
 from loguru import logger
 
 try:
-    from googleapiclient.http import MediaFileUpload
     from googleapiclient.errors import HttpError
+    from googleapiclient.http import MediaFileUpload
 except ImportError:
     raise ImportError("Please install google-api-python-client")
 
@@ -35,12 +35,13 @@ from .auth import YouTubeAuth
 # Import YouTube optimization utilities
 try:
     from src.utils.youtube_optimizer import (
-        UploadTimingOptimizer,
         FirstHourBooster,
         TitlePatternAnalyzer,
+        UploadTimingOptimizer,
         generate_chapters_from_script,
         optimize_description_keywords,
     )
+
     YOUTUBE_OPTIMIZER_AVAILABLE = True
 except ImportError:
     YOUTUBE_OPTIMIZER_AVAILABLE = False
@@ -48,7 +49,8 @@ except ImportError:
 
 # Import AI Disclosure Tracker
 try:
-    from src.compliance.ai_disclosure import AIDisclosureTracker, DisclosureMetadata
+    from src.compliance.ai_disclosure import AIDisclosureTracker
+
     AI_DISCLOSURE_AVAILABLE = True
 except ImportError:
     AI_DISCLOSURE_AVAILABLE = False
@@ -56,7 +58,8 @@ except ImportError:
 
 # Import Metadata Optimizer
 try:
-    from src.seo.metadata_optimizer import MetadataOptimizer, OptimizedMetadata
+    from src.seo.metadata_optimizer import MetadataOptimizer
+
     METADATA_OPTIMIZER_AVAILABLE = True
 except ImportError:
     METADATA_OPTIMIZER_AVAILABLE = False
@@ -74,49 +77,87 @@ NICHE_HASHTAGS = {
     "storytelling": ["#truecrime", "#documentary", "#mystery", "#truestory", "#untoldstories"],
     "programming": ["#coding", "#programming", "#developer", "#tech", "#tutorial"],
     "education": ["#education", "#learning", "#howto", "#tutorial", "#explained"],
-    "default": ["#viral", "#trending", "#mustwatch", "#facts", "#knowledge"]
+    "default": ["#viral", "#trending", "#mustwatch", "#facts", "#knowledge"],
 }
 
 # Trending tags by niche for SEO
 NICHE_TRENDING_TAGS = {
     "finance": [
-        "passive income 2026", "how to make money", "financial freedom",
-        "investing for beginners", "side hustle ideas", "money tips",
-        "stock market", "wealth building", "personal finance", "budgeting",
-        "crypto", "dividend investing", "real estate investing", "retire early"
+        "passive income 2026",
+        "how to make money",
+        "financial freedom",
+        "investing for beginners",
+        "side hustle ideas",
+        "money tips",
+        "stock market",
+        "wealth building",
+        "personal finance",
+        "budgeting",
+        "crypto",
+        "dividend investing",
+        "real estate investing",
+        "retire early",
     ],
     "psychology": [
-        "psychology facts", "dark psychology", "manipulation tactics",
-        "body language", "cognitive bias", "human behavior", "mind tricks",
-        "self improvement", "stoicism", "narcissist signs", "emotional intelligence",
-        "subconscious mind", "persuasion techniques", "mental health"
+        "psychology facts",
+        "dark psychology",
+        "manipulation tactics",
+        "body language",
+        "cognitive bias",
+        "human behavior",
+        "mind tricks",
+        "self improvement",
+        "stoicism",
+        "narcissist signs",
+        "emotional intelligence",
+        "subconscious mind",
+        "persuasion techniques",
+        "mental health",
     ],
     "storytelling": [
-        "true story", "documentary", "unsolved mysteries", "true crime",
-        "what happened to", "rise and fall", "company documentary",
-        "business story", "scandal", "untold story", "investigation",
-        "mystery explained", "crime documentary", "horror story"
+        "true story",
+        "documentary",
+        "unsolved mysteries",
+        "true crime",
+        "what happened to",
+        "rise and fall",
+        "company documentary",
+        "business story",
+        "scandal",
+        "untold story",
+        "investigation",
+        "mystery explained",
+        "crime documentary",
+        "horror story",
     ],
     "default": [
-        "explained", "how to", "tutorial", "guide", "tips and tricks",
-        "facts", "interesting facts", "did you know", "education"
-    ]
+        "explained",
+        "how to",
+        "tutorial",
+        "guide",
+        "tips and tricks",
+        "facts",
+        "interesting facts",
+        "did you know",
+        "education",
+    ],
 }
 
 # Category mapping optimized by niche
 NICHE_CATEGORIES = {
-    "finance": "22",        # People & Blogs (performs better than Education for finance)
-    "psychology": "27",     # Education
-    "storytelling": "24",   # Entertainment
-    "programming": "28",    # Science & Technology
-    "education": "27",      # Education
-    "default": "27"         # Education
+    "finance": "22",  # People & Blogs (performs better than Education for finance)
+    "psychology": "27",  # Education
+    "storytelling": "24",  # Entertainment
+    "programming": "28",  # Science & Technology
+    "education": "27",  # Education
+    "default": "27",  # Education
 }
 
 
 @dataclass
 class UploadResult:
     """Result of a video upload."""
+
     success: bool
     video_id: Optional[str]
     video_url: Optional[str]
@@ -126,6 +167,7 @@ class UploadResult:
 @dataclass
 class VideoSEOMetadata:
     """SEO-optimized metadata for YouTube upload."""
+
     title: str
     description: str
     tags: List[str]
@@ -160,7 +202,7 @@ class YouTubeSEOOptimizer:
         main_description: str,
         chapters: Optional[List[Dict[str, Any]]] = None,
         related_videos: Optional[List[str]] = None,
-        channel_name: str = ""
+        channel_name: str = "",
     ) -> str:
         """
         Build an SEO-optimized YouTube description.
@@ -188,8 +230,8 @@ class YouTubeSEOOptimizer:
         # 1. HOOK + KEYWORDS (First 2 lines - CRITICAL for search)
         # YouTube shows first ~100 chars in search results
         hook = hook.strip()
-        if not hook.endswith(('.', '!', '?')):
-            hook += '.'
+        if not hook.endswith((".", "!", "?")):
+            hook += "."
         parts.append(hook)
         parts.append("")  # Blank line
 
@@ -252,12 +294,7 @@ class YouTubeSEOOptimizer:
 
         return niche_tags[:5]
 
-    def optimize_tags(
-        self,
-        base_tags: List[str],
-        title: str = "",
-        max_tags: int = 30
-    ) -> List[str]:
+    def optimize_tags(self, base_tags: List[str], title: str = "", max_tags: int = 30) -> List[str]:
         """
         Optimize video tags for SEO.
 
@@ -296,16 +333,40 @@ class YouTubeSEOOptimizer:
         # 3. Extract keywords from title
         if title:
             # Remove special characters and split
-            title_words = re.sub(r'[^\w\s]', '', title.lower()).split()
-            stop_words = {'the', 'a', 'an', 'is', 'are', 'was', 'were', 'and', 'or',
-                         'but', 'in', 'on', 'at', 'to', 'for', 'of', 'with', 'how',
-                         'what', 'why', 'when', 'where', 'who', 'this', 'that'}
+            title_words = re.sub(r"[^\w\s]", "", title.lower()).split()
+            stop_words = {
+                "the",
+                "a",
+                "an",
+                "is",
+                "are",
+                "was",
+                "were",
+                "and",
+                "or",
+                "but",
+                "in",
+                "on",
+                "at",
+                "to",
+                "for",
+                "of",
+                "with",
+                "how",
+                "what",
+                "why",
+                "when",
+                "where",
+                "who",
+                "this",
+                "that",
+            }
             for word in title_words:
                 if word not in stop_words and len(word) > 3:
                     add_tag(word)
 
         # 4. Add year variations for relevant tags
-        year_relevant = ['guide', 'tutorial', 'tips', 'how to', 'best']
+        year_relevant = ["guide", "tutorial", "tips", "how to", "best"]
         for tag in list(optimized)[:10]:
             tag_lower = tag.lower()
             if any(kw in tag_lower for kw in year_relevant):
@@ -326,12 +387,25 @@ class YouTubeSEOOptimizer:
         if override_category:
             # Map category name to ID
             category_map = {
-                "film": "1", "autos": "2", "music": "10", "pets": "15",
-                "sports": "17", "travel": "19", "gaming": "20", "blogs": "22",
-                "comedy": "23", "entertainment": "24", "news": "25",
-                "howto": "26", "education": "27", "science": "28", "nonprofits": "29"
+                "film": "1",
+                "autos": "2",
+                "music": "10",
+                "pets": "15",
+                "sports": "17",
+                "travel": "19",
+                "gaming": "20",
+                "blogs": "22",
+                "comedy": "23",
+                "entertainment": "24",
+                "news": "25",
+                "howto": "26",
+                "education": "27",
+                "science": "28",
+                "nonprofits": "29",
             }
-            return category_map.get(override_category.lower(), NICHE_CATEGORIES.get(self.niche, "27"))
+            return category_map.get(
+                override_category.lower(), NICHE_CATEGORIES.get(self.niche, "27")
+            )
 
         return NICHE_CATEGORIES.get(self.niche, "27")
 
@@ -359,10 +433,7 @@ class YouTubeSEOOptimizer:
             if not chapters:
                 timestamp = "00:00"
 
-            chapters.append({
-                "timestamp": timestamp,
-                "title": title
-            })
+            chapters.append({"timestamp": timestamp, "title": title})
 
             current_time += section.get("duration_seconds", 30)
 
@@ -428,7 +499,7 @@ class YouTubeUploader:
         chapters: Optional[List[Dict[str, Any]]] = None,
         related_videos: Optional[List[str]] = None,
         channel_name: str = "",
-        hook_text: str = ""
+        hook_text: str = "",
     ) -> UploadResult:
         """
         Upload a video with full YouTube SEO optimization.
@@ -465,7 +536,9 @@ class YouTubeUploader:
 
         # Build hook from title if not provided
         if not hook_text:
-            hook_text = f"Discover the secrets of {title}. Watch until the end for a game-changing insight!"
+            hook_text = (
+                f"Discover the secrets of {title}. Watch until the end for a game-changing insight!"
+            )
 
         # Build SEO-optimized description
         formatted_chapters = seo.format_chapters(chapters) if chapters else None
@@ -474,14 +547,11 @@ class YouTubeUploader:
             main_description=description,
             chapters=formatted_chapters,
             related_videos=related_videos,
-            channel_name=channel_name
+            channel_name=channel_name,
         )
 
         # Optimize tags
-        optimized_tags = seo.optimize_tags(
-            base_tags=tags or [],
-            title=title
-        )
+        optimized_tags = seo.optimize_tags(base_tags=tags or [], title=title)
 
         # Get optimal category
         category_id = seo.get_optimal_category()
@@ -502,7 +572,7 @@ class YouTubeUploader:
             playlist_id=playlist_id,
             publish_at=publish_at,
             made_for_kids=made_for_kids,
-            default_language=default_language
+            default_language=default_language,
         )
 
     def upload_video(
@@ -517,7 +587,7 @@ class YouTubeUploader:
         playlist_id: Optional[str] = None,
         publish_at: Optional[datetime] = None,
         made_for_kids: bool = False,
-        default_language: str = "en"
+        default_language: str = "en",
     ) -> UploadResult:
         """
         Upload a video to YouTube.
@@ -552,7 +622,7 @@ class YouTubeUploader:
             playlist_id=playlist_id,
             publish_at=publish_at,
             made_for_kids=made_for_kids,
-            default_language=default_language
+            default_language=default_language,
         )
 
     def _upload_video_internal(
@@ -567,7 +637,7 @@ class YouTubeUploader:
         playlist_id: Optional[str] = None,
         publish_at: Optional[datetime] = None,
         made_for_kids: bool = False,
-        default_language: str = "en"
+        default_language: str = "en",
     ) -> UploadResult:
         """
         Internal upload method with category_id directly.
@@ -581,7 +651,7 @@ class YouTubeUploader:
                 success=False,
                 video_id=None,
                 video_url=None,
-                error=f"Video file not found: {video_file}"
+                error=f"Video file not found: {video_file}",
             )
 
         logger.info(f"Uploading video: {title}")
@@ -598,7 +668,7 @@ class YouTubeUploader:
             "status": {
                 "privacyStatus": privacy,
                 "selfDeclaredMadeForKids": made_for_kids,
-            }
+            },
         }
 
         # Add scheduled publish time
@@ -608,18 +678,13 @@ class YouTubeUploader:
 
         # Create media upload
         media = MediaFileUpload(
-            video_file,
-            mimetype="video/*",
-            resumable=True,
-            chunksize=1024 * 1024  # 1MB chunks
+            video_file, mimetype="video/*", resumable=True, chunksize=1024 * 1024  # 1MB chunks
         )
 
         # Execute upload with retry logic
         try:
             request = self.youtube.videos().insert(
-                part="snippet,status",
-                body=body,
-                media_body=media
+                part="snippet,status", body=body, media_body=media
             )
 
             video_id = self._resumable_upload(request)
@@ -637,36 +702,20 @@ class YouTubeUploader:
                     self.add_to_playlist(video_id, playlist_id)
 
                 return UploadResult(
-                    success=True,
-                    video_id=video_id,
-                    video_url=video_url,
-                    error=None
+                    success=True, video_id=video_id, video_url=video_url, error=None
                 )
 
         except HttpError as e:
             error_msg = f"HTTP error: {e.resp.status} - {e.content}"
             logger.error(error_msg)
-            return UploadResult(
-                success=False,
-                video_id=None,
-                video_url=None,
-                error=error_msg
-            )
+            return UploadResult(success=False, video_id=None, video_url=None, error=error_msg)
         except Exception as e:
             error_msg = f"Upload failed: {str(e)}"
             logger.error(error_msg)
-            return UploadResult(
-                success=False,
-                video_id=None,
-                video_url=None,
-                error=error_msg
-            )
+            return UploadResult(success=False, video_id=None, video_url=None, error=error_msg)
 
         return UploadResult(
-            success=False,
-            video_id=None,
-            video_url=None,
-            error="Upload failed for unknown reason"
+            success=False, video_id=None, video_url=None, error="Upload failed for unknown reason"
         )
 
     def _resumable_upload(self, request) -> Optional[str]:
@@ -697,7 +746,7 @@ class YouTubeUploader:
                     if retry > self.MAX_RETRIES:
                         raise Exception(f"Max retries exceeded")
 
-                    sleep_seconds = random.random() * (2 ** retry)
+                    sleep_seconds = random.random() * (2**retry)
                     logger.warning(f"Retry {retry}/{self.MAX_RETRIES} in {sleep_seconds:.1f}s")
                     time.sleep(sleep_seconds)
                 else:
@@ -727,10 +776,7 @@ class YouTubeUploader:
         try:
             media = MediaFileUpload(thumbnail_file, mimetype="image/png")
 
-            self.youtube.thumbnails().set(
-                videoId=video_id,
-                media_body=media
-            ).execute()
+            self.youtube.thumbnails().set(videoId=video_id, media_body=media).execute()
 
             logger.success("Thumbnail set successfully")
             return True
@@ -758,12 +804,9 @@ class YouTubeUploader:
                 body={
                     "snippet": {
                         "playlistId": playlist_id,
-                        "resourceId": {
-                            "kind": "youtube#video",
-                            "videoId": video_id
-                        }
+                        "resourceId": {"kind": "youtube#video", "videoId": video_id},
                     }
-                }
+                },
             ).execute()
 
             logger.success("Added to playlist")
@@ -781,10 +824,7 @@ class YouTubeUploader:
             Dict with channel info or None
         """
         try:
-            response = self.youtube.channels().list(
-                part="snippet,statistics",
-                mine=True
-            ).execute()
+            response = self.youtube.channels().list(part="snippet,statistics", mine=True).execute()
 
             if response.get("items"):
                 channel = response["items"][0]
@@ -812,17 +852,12 @@ class YouTubeUploader:
         playlists = []
 
         try:
-            response = self.youtube.playlists().list(
-                part="snippet",
-                mine=True,
-                maxResults=50
-            ).execute()
+            response = (
+                self.youtube.playlists().list(part="snippet", mine=True, maxResults=50).execute()
+            )
 
             for item in response.get("items", []):
-                playlists.append({
-                    "id": item["id"],
-                    "title": item["snippet"]["title"]
-                })
+                playlists.append({"id": item["id"], "title": item["snippet"]["title"]})
 
         except HttpError as e:
             logger.error(f"Failed to get playlists: {e}")
@@ -830,10 +865,7 @@ class YouTubeUploader:
         return playlists
 
     def create_playlist(
-        self,
-        title: str,
-        description: str = "",
-        privacy: str = "unlisted"
+        self, title: str, description: str = "", privacy: str = "unlisted"
     ) -> Optional[str]:
         """
         Create a new playlist.
@@ -849,18 +881,17 @@ class YouTubeUploader:
         logger.info(f"Creating playlist: {title}")
 
         try:
-            response = self.youtube.playlists().insert(
-                part="snippet,status",
-                body={
-                    "snippet": {
-                        "title": title,
-                        "description": description
+            response = (
+                self.youtube.playlists()
+                .insert(
+                    part="snippet,status",
+                    body={
+                        "snippet": {"title": title, "description": description},
+                        "status": {"privacyStatus": privacy},
                     },
-                    "status": {
-                        "privacyStatus": privacy
-                    }
-                }
-            ).execute()
+                )
+                .execute()
+            )
 
             playlist_id = response["id"]
             logger.success(f"Playlist created: {playlist_id}")
@@ -875,9 +906,7 @@ class YouTubeUploader:
     # ============================================================
 
     def get_optimal_upload_time(
-        self,
-        niche: str = "default",
-        target_regions: Optional[List[str]] = None
+        self, niche: str = "default", target_regions: Optional[List[str]] = None
     ) -> Dict[str, Any]:
         """
         Calculate the optimal upload time for maximum algorithm boost.
@@ -899,10 +928,7 @@ class YouTubeUploader:
         """
         if not YOUTUBE_OPTIMIZER_AVAILABLE:
             logger.warning("YouTube optimizer not available")
-            return {
-                "error": "youtube_optimizer module not installed",
-                "recommended_datetime": None
-            }
+            return {"error": "youtube_optimizer module not installed", "recommended_datetime": None}
 
         optimizer = UploadTimingOptimizer()
         result = optimizer.calculate_optimal_time(niche, target_regions)
@@ -913,14 +939,11 @@ class YouTubeUploader:
             "peak_hours_utc": result.peak_hours_utc,
             "confidence_score": result.confidence_score,
             "reasoning": result.reasoning,
-            "alternative_times": [dt.isoformat() for dt in result.alternative_times]
+            "alternative_times": [dt.isoformat() for dt in result.alternative_times],
         }
 
     def schedule_first_hour_actions(
-        self,
-        video_id: str,
-        niche: str = "default",
-        playlist_ids: Optional[List[str]] = None
+        self, video_id: str, niche: str = "default", playlist_ids: Optional[List[str]] = None
     ) -> List[Dict[str, Any]]:
         """
         Schedule engagement actions for the critical first hour after upload.
@@ -948,9 +971,7 @@ class YouTubeUploader:
 
         booster = FirstHourBooster()
         actions = booster.schedule_post_upload_actions(
-            video_id=video_id,
-            niche=niche,
-            playlist_ids=playlist_ids
+            video_id=video_id, niche=niche, playlist_ids=playlist_ids
         )
 
         # Convert to dict format
@@ -960,15 +981,12 @@ class YouTubeUploader:
                 "action_type": a.action_type,
                 "description": a.description,
                 "priority": a.priority,
-                "parameters": a.parameters
+                "parameters": a.parameters,
             }
             for a in actions
         ]
 
-    def execute_first_hour_action(
-        self,
-        action: Dict[str, Any]
-    ) -> bool:
+    def execute_first_hour_action(self, action: Dict[str, Any]) -> bool:
         """
         Execute a single first-hour engagement action.
 
@@ -994,19 +1012,19 @@ class YouTubeUploader:
                 comment_text = action.get("parameters", {}).get("comment_text", "")
                 if comment_text:
                     # Post comment (pinning requires separate API call)
-                    response = self.youtube.commentThreads().insert(
-                        part="snippet",
-                        body={
-                            "snippet": {
-                                "videoId": video_id,
-                                "topLevelComment": {
-                                    "snippet": {
-                                        "textOriginal": comment_text
-                                    }
+                    response = (
+                        self.youtube.commentThreads()
+                        .insert(
+                            part="snippet",
+                            body={
+                                "snippet": {
+                                    "videoId": video_id,
+                                    "topLevelComment": {"snippet": {"textOriginal": comment_text}},
                                 }
-                            }
-                        }
-                    ).execute()
+                            },
+                        )
+                        .execute()
+                    )
                     logger.success(f"Posted engagement comment: {response.get('id', 'unknown')}")
                 return True
 
@@ -1018,11 +1036,7 @@ class YouTubeUploader:
             logger.error(f"Failed to execute action {action_type}: {e}")
             return False
 
-    def analyze_title(
-        self,
-        title: str,
-        niche: str = "default"
-    ) -> Dict[str, Any]:
+    def analyze_title(self, title: str, niche: str = "default") -> Dict[str, Any]:
         """
         Analyze a video title against viral patterns.
 
@@ -1058,7 +1072,7 @@ class YouTubeUploader:
             "has_brackets": result.has_brackets,
             "character_count": result.character_count,
             "pattern_matches": result.pattern_matches,
-            "suggestions": result.suggestions
+            "suggestions": result.suggestions,
         }
 
     def optimize_video_metadata(
@@ -1069,7 +1083,7 @@ class YouTubeUploader:
         niche: str = "default",
         target_keywords: Optional[List[str]] = None,
         script: Optional[Dict[str, Any]] = None,
-        duration_seconds: Optional[int] = None
+        duration_seconds: Optional[int] = None,
     ) -> Dict[str, Any]:
         """
         Fully optimize video metadata for YouTube algorithm.
@@ -1110,7 +1124,7 @@ class YouTubeUploader:
                 "optimized_title": title,
                 "optimized_description": description,
                 "optimized_tags": tags,
-                "error": "youtube_optimizer module not installed"
+                "error": "youtube_optimizer module not installed",
             }
 
         result = {
@@ -1118,7 +1132,7 @@ class YouTubeUploader:
             "original_description": description,
             "optimized_title": title,
             "optimized_description": description,
-            "optimized_tags": list(tags) if tags else []
+            "optimized_tags": list(tags) if tags else [],
         }
 
         # 1. Analyze and potentially improve title
@@ -1132,15 +1146,13 @@ class YouTubeUploader:
 
         if keywords:
             keyword_result = optimize_description_keywords(
-                description,
-                keywords,
-                target_density=0.025
+                description, keywords, target_density=0.025
             )
             result["optimized_description"] = keyword_result.optimized_text
             result["keyword_optimization"] = {
                 "original_density": keyword_result.original_density,
                 "optimized_density": keyword_result.optimized_density,
-                "keywords_added": keyword_result.keywords_added
+                "keywords_added": keyword_result.keywords_added,
             }
 
         # 3. Generate chapters if script provided
@@ -1171,7 +1183,7 @@ class YouTubeUploader:
         privacy: str = "unlisted",
         thumbnail: str = None,
         playlist_id: str = None,
-        schedule_first_hour: bool = True
+        schedule_first_hour: bool = True,
     ) -> Optional["UploadResult"]:
         """
         Upload a video with full YouTube algorithm optimization.
@@ -1215,9 +1227,9 @@ class YouTubeUploader:
         if script:
             # Try to get duration from script
             sections = script.get("sections", [])
-            duration_seconds = sum(
-                s.get("duration_seconds", 30) for s in sections
-            ) if sections else None
+            duration_seconds = (
+                sum(s.get("duration_seconds", 30) for s in sections) if sections else None
+            )
 
         optimized = self.optimize_video_metadata(
             title=title,
@@ -1226,7 +1238,7 @@ class YouTubeUploader:
             niche=niche,
             target_keywords=target_keywords,
             script=script,
-            duration_seconds=duration_seconds
+            duration_seconds=duration_seconds,
         )
 
         # Upload with optimized metadata
@@ -1236,22 +1248,19 @@ class YouTubeUploader:
             description=optimized.get("optimized_description", description),
             tags=optimized.get("optimized_tags", tags),
             privacy=privacy,
-            thumbnail=thumbnail
+            thumbnail=thumbnail,
         )
 
         if result and schedule_first_hour:
             # Schedule first-hour engagement actions
             playlist_ids = [playlist_id] if playlist_id else None
             actions = self.schedule_first_hour_actions(
-                video_id=result.video_id,
-                niche=niche,
-                playlist_ids=playlist_ids
+                video_id=result.video_id, niche=niche, playlist_ids=playlist_ids
             )
             result.scheduled_actions = actions
             logger.info(f"Scheduled {len(actions)} first-hour engagement actions")
 
         return result
-
 
     def upload_with_full_optimization(
         self,
@@ -1268,7 +1277,7 @@ class YouTubeUploader:
         playlist_id: str = None,
         ai_disclosure_enabled: bool = True,
         metadata_optimization_enabled: bool = True,
-        auto_chapters: bool = True
+        auto_chapters: bool = True,
     ) -> UploadResult:
         """
         Upload a video with AI disclosure and full metadata optimization.
@@ -1319,10 +1328,7 @@ class YouTubeUploader:
 
                 # Create complete optimized metadata
                 metadata = optimizer.create_complete_metadata(
-                    topic=title,
-                    keywords=keywords,
-                    script=script,
-                    video_duration=duration_seconds
+                    topic=title, keywords=keywords, script=script, video_duration=duration_seconds
                 )
 
                 optimized_title = metadata.title
@@ -1362,7 +1368,9 @@ class YouTubeUploader:
                     # Append disclosure to description
                     disclaimer = disclosure.get_description_disclaimer()
                     optimized_description += disclaimer
-                    logger.info(f"[Upload] AI disclosure added: {disclosure.disclosure_level.value}")
+                    logger.info(
+                        f"[Upload] AI disclosure added: {disclosure.disclosure_level.value}"
+                    )
 
             except Exception as e:
                 logger.warning(f"[Upload] AI disclosure tracking failed: {e}")
@@ -1384,7 +1392,7 @@ class YouTubeUploader:
             category_id=seo.get_optimal_category(),
             privacy=privacy,
             thumbnail_file=thumbnail,
-            playlist_id=playlist_id
+            playlist_id=playlist_id,
         )
 
     def _format_timestamp(self, seconds: float) -> str:
@@ -1413,9 +1421,9 @@ class YouTubeUploader:
 
 # Example usage
 if __name__ == "__main__":
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print("YOUTUBE UPLOADER TEST")
-    print("="*60 + "\n")
+    print("=" * 60 + "\n")
 
     uploader = YouTubeUploader()
 

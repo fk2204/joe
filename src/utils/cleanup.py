@@ -17,13 +17,12 @@ Features:
     - Auto-delete source files after successful YouTube upload
 """
 
-import os
 import shutil
 import subprocess
 import tempfile
+from datetime import datetime
 from pathlib import Path
-from datetime import datetime, timedelta
-from typing import Optional, Dict, List, Any, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 from loguru import logger
 
@@ -50,7 +49,7 @@ class TieredStorage:
     TIERS = {
         "hot": {"path": "output/", "max_age_days": 7},
         "warm": {"path": "archive/warm/", "max_age_days": 30},
-        "cold": {"path": "archive/cold/", "max_age_days": 90}
+        "cold": {"path": "archive/cold/", "max_age_days": 90},
     }
 
     # File extensions to process
@@ -102,12 +101,7 @@ class TieredStorage:
         else:
             return None  # File should be deleted
 
-    def move_to_tier(
-        self,
-        file_path: Path,
-        age_days: int,
-        dry_run: bool = False
-    ) -> Optional[Path]:
+    def move_to_tier(self, file_path: Path, age_days: int, dry_run: bool = False) -> Optional[Path]:
         """
         Move a file to the appropriate tier based on age.
 
@@ -135,7 +129,11 @@ class TieredStorage:
                 return None
 
         # Determine current tier based on path
-        rel_path = file_path.relative_to(self.project_root) if file_path.is_relative_to(self.project_root) else file_path
+        rel_path = (
+            file_path.relative_to(self.project_root)
+            if file_path.is_relative_to(self.project_root)
+            else file_path
+        )
         current_tier = None
 
         for tier_name, tier_config in self.TIERS.items():
@@ -151,7 +149,7 @@ class TieredStorage:
         if current_tier:
             # Remove tier prefix from path
             tier_prefix = self.TIERS[current_tier]["path"]
-            inner_path = str(rel_path)[len(tier_prefix):]
+            inner_path = str(rel_path)[len(tier_prefix) :]
         else:
             inner_path = str(file_path.name)
 
@@ -175,11 +173,7 @@ class TieredStorage:
             logger.error(f"Failed to move {file_path} to {target_tier}: {e}")
             return file_path
 
-    def run_migration(
-        self,
-        dry_run: bool = False,
-        verbose: bool = True
-    ) -> Dict[str, Any]:
+    def run_migration(self, dry_run: bool = False, verbose: bool = True) -> Dict[str, Any]:
         """
         Run tier migration for all files in output directory.
 
@@ -197,7 +191,7 @@ class TieredStorage:
             "files_deleted": 0,
             "bytes_archived": 0,
             "bytes_deleted": 0,
-            "errors": []
+            "errors": [],
         }
 
         # Process files in hot tier (output/)
@@ -278,7 +272,7 @@ class TieredStorage:
         input_file: Path,
         output_file: Optional[Path] = None,
         crf: int = 28,
-        preset: str = "slow"
+        preset: str = "slow",
     ) -> Optional[Path]:
         """
         Compress a video file using HEVC (H.265) for archival.
@@ -306,21 +300,28 @@ class TieredStorage:
         output_file = Path(output_file)
 
         cmd = [
-            "ffmpeg", "-i", str(input_file),
-            "-c:v", "libx265", "-crf", str(crf), "-preset", preset,
-            "-c:a", "libopus", "-b:a", "64k",
+            "ffmpeg",
+            "-i",
+            str(input_file),
+            "-c:v",
+            "libx265",
+            "-crf",
+            str(crf),
+            "-preset",
+            preset,
+            "-c:a",
+            "libopus",
+            "-b:a",
+            "64k",
             "-y",  # Overwrite output
-            str(output_file)
+            str(output_file),
         ]
 
         logger.info(f"Compressing {input_file.name} with HEVC (CRF {crf})...")
 
         try:
             result = subprocess.run(
-                cmd,
-                capture_output=True,
-                text=True,
-                timeout=3600  # 1 hour timeout
+                cmd, capture_output=True, text=True, timeout=3600  # 1 hour timeout
             )
 
             if result.returncode != 0:
@@ -352,9 +353,7 @@ class TieredStorage:
             return None
 
     def compress_cold_tier(
-        self,
-        dry_run: bool = False,
-        delete_originals: bool = True
+        self, dry_run: bool = False, delete_originals: bool = True
     ) -> Dict[str, Any]:
         """
         Compress all uncompressed videos in cold storage tier.
@@ -366,12 +365,7 @@ class TieredStorage:
         Returns:
             Compression statistics
         """
-        stats = {
-            "files_processed": 0,
-            "files_compressed": 0,
-            "bytes_saved": 0,
-            "errors": []
-        }
+        stats = {"files_processed": 0, "files_compressed": 0, "bytes_saved": 0, "errors": []}
 
         cold_path = self.project_root / self.TIERS["cold"]["path"]
 
@@ -439,9 +433,7 @@ def get_cleanup_directories() -> List[Path]:
 
 
 def cleanup_old_files(
-    max_age_days: int = 30,
-    dry_run: bool = False,
-    verbose: bool = True
+    max_age_days: int = 30, dry_run: bool = False, verbose: bool = True
 ) -> Dict[str, Any]:
     """
     Remove old files to free disk space.
@@ -493,13 +485,13 @@ def cleanup_old_files(
 
                         if verbose:
                             action = "Would delete" if dry_run else "Deleting"
-                            logger.info(f"  {action}: {file} ({format_size(file_size)}, {age_days} days old)")
+                            logger.info(
+                                f"  {action}: {file} ({format_size(file_size)}, {age_days} days old)"
+                            )
 
-                        deleted_files.append({
-                            "path": str(file),
-                            "size": file_size,
-                            "age_days": age_days
-                        })
+                        deleted_files.append(
+                            {"path": str(file), "size": file_size, "age_days": age_days}
+                        )
 
                         if not dry_run:
                             file.unlink()
@@ -524,7 +516,7 @@ def cleanup_old_files(
             files_by_directory[dir_key] = {
                 "files_deleted": dir_files,
                 "space_freed_bytes": dir_freed,
-                "space_freed_gb": dir_freed / (1024**3)
+                "space_freed_gb": dir_freed / (1024**3),
             }
 
     # Clean empty directories after file cleanup
@@ -542,7 +534,7 @@ def cleanup_old_files(
         "errors": errors,
         "files_by_directory": files_by_directory,
         "empty_dirs_removed": empty_dirs_removed,
-        "deleted_files": deleted_files if verbose else []
+        "deleted_files": deleted_files if verbose else [],
     }
 
 
@@ -593,12 +585,14 @@ def get_disk_usage() -> Dict[str, Any]:
     dirs_to_check = get_cleanup_directories()
 
     # Add additional project directories
-    dirs_to_check.extend([
-        PROJECT_ROOT / "output",
-        PROJECT_ROOT / "data",
-        PROJECT_ROOT / "assets",
-        PROJECT_ROOT / "logs",
-    ])
+    dirs_to_check.extend(
+        [
+            PROJECT_ROOT / "output",
+            PROJECT_ROOT / "data",
+            PROJECT_ROOT / "assets",
+            PROJECT_ROOT / "logs",
+        ]
+    )
 
     total_bytes = 0
     directories: Dict[str, Dict[str, Any]] = {}
@@ -645,7 +639,7 @@ def get_disk_usage() -> Dict[str, Any]:
                 "file_count": file_count,
                 "oldest_file": oldest_file.isoformat() if oldest_file else None,
                 "newest_file": newest_file.isoformat() if newest_file else None,
-                "oldest_age_days": (datetime.now() - oldest_file).days if oldest_file else 0
+                "oldest_age_days": (datetime.now() - oldest_file).days if oldest_file else 0,
             }
             total_bytes += dir_size
 
@@ -657,7 +651,7 @@ def get_disk_usage() -> Dict[str, Any]:
         "total_gb": total_bytes / (1024**3),
         "total_formatted": format_size(total_bytes),
         "directories": directories,
-        "system_disk": system_disk
+        "system_disk": system_disk,
     }
 
 
@@ -677,7 +671,7 @@ def get_system_disk_usage() -> Dict[str, Any]:
             "free_bytes": free,
             "free_gb": free / (1024**3),
             "free_formatted": format_size(free),
-            "used_percent": (used / total) * 100
+            "used_percent": (used / total) * 100,
         }
     except Exception as e:
         logger.warning(f"Could not get system disk usage: {e}")
@@ -686,7 +680,7 @@ def get_system_disk_usage() -> Dict[str, Any]:
 
 def format_size(bytes_size: int) -> str:
     """Format bytes to human-readable size."""
-    for unit in ['B', 'KB', 'MB', 'GB', 'TB']:
+    for unit in ["B", "KB", "MB", "GB", "TB"]:
         if abs(bytes_size) < 1024.0:
             return f"{bytes_size:.2f} {unit}"
         bytes_size /= 1024.0
@@ -727,7 +721,9 @@ def print_disk_usage_report():
         print("  System Disk:")
         print("  " + "-" * 30)
         print(f"    Total:  {system_disk.get('total_formatted', 'N/A')}")
-        print(f"    Used:   {system_disk.get('used_formatted', 'N/A')} ({system_disk.get('used_percent', 0):.1f}%)")
+        print(
+            f"    Used:   {system_disk.get('used_formatted', 'N/A')} ({system_disk.get('used_percent', 0):.1f}%)"
+        )
         print(f"    Free:   {system_disk.get('free_formatted', 'N/A')}")
         print()
 
@@ -739,9 +735,7 @@ def print_disk_usage_report():
     if directories:
         # Sort by size descending
         sorted_dirs = sorted(
-            directories.items(),
-            key=lambda x: x[1].get("size_bytes", 0),
-            reverse=True
+            directories.items(), key=lambda x: x[1].get("size_bytes", 0), reverse=True
         )
 
         for dir_path, info in sorted_dirs:
@@ -825,17 +819,11 @@ def run_scheduled_cleanup():
         system_disk = get_system_disk_usage()
         free_gb = system_disk.get("free_gb", 0)
         logger.info(f"Skipping cleanup - sufficient disk space ({free_gb:.1f} GB free)")
-        return {
-            "skipped": True,
-            "reason": "sufficient_disk_space",
-            "free_gb": free_gb
-        }
+        return {"skipped": True, "reason": "sufficient_disk_space", "free_gb": free_gb}
 
     # Run cleanup
     result = cleanup_old_files(
-        max_age_days=30,
-        dry_run=False,
-        verbose=False  # Less verbose for scheduled runs
+        max_age_days=30, dry_run=False, verbose=False  # Less verbose for scheduled runs
     )
 
     logger.info(
@@ -851,7 +839,7 @@ def predictive_cleanup(
     normal_threshold_gb: float = 10.0,
     light_threshold_gb: float = 20.0,
     dry_run: bool = False,
-    verbose: bool = True
+    verbose: bool = True,
 ) -> Dict[str, Any]:
     """
     Smart cleanup based on available disk space.
@@ -874,7 +862,7 @@ def predictive_cleanup(
     """
     # Get current disk space
     system_disk = get_system_disk_usage()
-    free_gb = system_disk.get("free_gb", float('inf'))
+    free_gb = system_disk.get("free_gb", float("inf"))
 
     result = {
         "free_gb_before": free_gb,
@@ -882,7 +870,7 @@ def predictive_cleanup(
         "max_age_days": None,
         "cleanup_result": None,
         "tier_migration": None,
-        "compression_result": None
+        "compression_result": None,
     }
 
     if free_gb < aggressive_threshold_gb:
@@ -898,9 +886,7 @@ def predictive_cleanup(
 
         # Run aggressive cleanup
         result["cleanup_result"] = cleanup_old_files(
-            max_age_days=7,
-            dry_run=dry_run,
-            verbose=verbose
+            max_age_days=7, dry_run=dry_run, verbose=verbose
         )
 
         # Also run tier migration to move files to archives
@@ -922,9 +908,7 @@ def predictive_cleanup(
             )
 
         result["cleanup_result"] = cleanup_old_files(
-            max_age_days=14,
-            dry_run=dry_run,
-            verbose=verbose
+            max_age_days=14, dry_run=dry_run, verbose=verbose
         )
 
         # Run tier migration
@@ -944,9 +928,7 @@ def predictive_cleanup(
             )
 
         result["cleanup_result"] = cleanup_old_files(
-            max_age_days=30,
-            dry_run=dry_run,
-            verbose=verbose
+            max_age_days=30, dry_run=dry_run, verbose=verbose
         )
 
     else:
@@ -987,7 +969,7 @@ class PostUploadCleaner:
         self,
         tracking_file: Optional[Path] = None,
         auto_delete: bool = False,
-        retention_days: int = 3
+        retention_days: int = 3,
     ):
         """
         Initialize post-upload cleaner.
@@ -1012,7 +994,8 @@ class PostUploadCleaner:
         if self.tracking_file.exists():
             try:
                 import json
-                with open(self.tracking_file, 'r', encoding='utf-8') as f:
+
+                with open(self.tracking_file, "r", encoding="utf-8") as f:
                     return json.load(f)
             except (json.JSONDecodeError, IOError) as e:
                 logger.warning(f"Failed to load upload tracking: {e}")
@@ -1022,7 +1005,8 @@ class PostUploadCleaner:
         """Save upload tracking data to file."""
         try:
             import json
-            with open(self.tracking_file, 'w', encoding='utf-8') as f:
+
+            with open(self.tracking_file, "w", encoding="utf-8") as f:
                 json.dump(self.tracking_data, f, indent=2)
         except (IOError, OSError) as e:
             logger.error(f"Failed to save upload tracking: {e}")
@@ -1032,7 +1016,7 @@ class PostUploadCleaner:
         video_path: str,
         youtube_video_id: str,
         youtube_url: str,
-        related_files: Optional[List[str]] = None
+        related_files: Optional[List[str]] = None,
     ) -> None:
         """
         Mark a video as successfully uploaded to YouTube.
@@ -1056,15 +1040,13 @@ class PostUploadCleaner:
             "upload_time": datetime.now().isoformat(),
             "related_files": related_files,
             "deleted": False,
-            "delete_time": None
+            "delete_time": None,
         }
 
         self.tracking_data[youtube_video_id] = entry
         self._save_tracking()
 
-        logger.info(
-            f"Marked as uploaded: {Path(video_path).name} -> {youtube_url}"
-        )
+        logger.info(f"Marked as uploaded: {Path(video_path).name} -> {youtube_url}")
 
         # Auto-delete if enabled
         if self.auto_delete:
@@ -1113,15 +1095,10 @@ class PostUploadCleaner:
     def _schedule_delete(self, youtube_video_id: str) -> None:
         """Schedule deletion after retention period."""
         # This would integrate with a scheduler - for now just log
-        logger.info(
-            f"Scheduled deletion for {youtube_video_id} in {self.retention_days} days"
-        )
+        logger.info(f"Scheduled deletion for {youtube_video_id} in {self.retention_days} days")
 
     def cleanup_uploaded_sources(
-        self,
-        min_age_days: Optional[int] = None,
-        confirm: bool = True,
-        dry_run: bool = False
+        self, min_age_days: Optional[int] = None, confirm: bool = True, dry_run: bool = False
     ) -> Dict[str, Any]:
         """
         Clean up source files for videos that have been uploaded.
@@ -1137,12 +1114,7 @@ class PostUploadCleaner:
         if min_age_days is None:
             min_age_days = self.retention_days
 
-        stats = {
-            "videos_processed": 0,
-            "files_deleted": 0,
-            "bytes_freed": 0,
-            "errors": []
-        }
+        stats = {"videos_processed": 0, "files_deleted": 0, "bytes_freed": 0, "errors": []}
 
         now = datetime.now()
         files_to_delete: List[Tuple[str, str]] = []  # (video_id, file_path)
@@ -1224,10 +1196,7 @@ class PostUploadCleaner:
         return stats
 
     def auto_cleanup_after_upload(
-        self,
-        video_path: str,
-        youtube_video_id: str,
-        youtube_url: str
+        self, video_path: str, youtube_video_id: str, youtube_url: str
     ) -> None:
         """
         One-step method to mark upload and optionally auto-delete.
@@ -1245,11 +1214,7 @@ class PostUploadCleaner:
         if self.auto_delete and self.retention_days == 0:
             # Immediate deletion
             logger.info(f"Auto-deleting source files for {youtube_video_id}")
-            self.cleanup_uploaded_sources(
-                min_age_days=0,
-                confirm=False,
-                dry_run=False
-            )
+            self.cleanup_uploaded_sources(min_age_days=0, confirm=False, dry_run=False)
 
     def get_pending_cleanups(self) -> List[Dict[str, Any]]:
         """Get list of uploaded videos waiting for cleanup."""
@@ -1266,14 +1231,18 @@ class PostUploadCleaner:
                 age_days = (now - upload_time).days
                 video_path = Path(entry.get("video_path", ""))
 
-                pending.append({
-                    "video_id": video_id,
-                    "youtube_url": entry.get("youtube_url"),
-                    "upload_age_days": age_days,
-                    "video_exists": video_path.exists(),
-                    "video_size_mb": video_path.stat().st_size / 1024 / 1024 if video_path.exists() else 0,
-                    "ready_for_cleanup": age_days >= self.retention_days
-                })
+                pending.append(
+                    {
+                        "video_id": video_id,
+                        "youtube_url": entry.get("youtube_url"),
+                        "upload_age_days": age_days,
+                        "video_exists": video_path.exists(),
+                        "video_size_mb": (
+                            video_path.stat().st_size / 1024 / 1024 if video_path.exists() else 0
+                        ),
+                        "ready_for_cleanup": age_days >= self.retention_days,
+                    }
+                )
 
             except (ValueError, KeyError):
                 pass
@@ -1286,7 +1255,7 @@ def delete_source_after_upload(
     youtube_video_id: str,
     youtube_url: str,
     immediate: bool = False,
-    retention_days: int = 3
+    retention_days: int = 3,
 ) -> None:
     """
     Convenience function to handle post-upload cleanup.
@@ -1299,8 +1268,7 @@ def delete_source_after_upload(
         retention_days: Days to keep before deletion (if not immediate)
     """
     cleaner = PostUploadCleaner(
-        auto_delete=immediate,
-        retention_days=0 if immediate else retention_days
+        auto_delete=immediate, retention_days=0 if immediate else retention_days
     )
 
     cleaner.auto_cleanup_after_upload(video_path, youtube_video_id, youtube_url)
@@ -1311,22 +1279,20 @@ if __name__ == "__main__":
     import argparse
 
     parser = argparse.ArgumentParser(description="Disk Cleanup Utility")
-    parser.add_argument("--days", type=int, default=30,
-                        help="Delete files older than N days (default: 30)")
-    parser.add_argument("--dry-run", action="store_true",
-                        help="Preview what would be deleted without deleting")
-    parser.add_argument("--usage", action="store_true",
-                        help="Show disk usage report")
-    parser.add_argument("--quiet", "-q", action="store_true",
-                        help="Less verbose output")
+    parser.add_argument(
+        "--days", type=int, default=30, help="Delete files older than N days (default: 30)"
+    )
+    parser.add_argument(
+        "--dry-run", action="store_true", help="Preview what would be deleted without deleting"
+    )
+    parser.add_argument("--usage", action="store_true", help="Show disk usage report")
+    parser.add_argument("--quiet", "-q", action="store_true", help="Less verbose output")
     args = parser.parse_args()
 
     if args.usage:
         print_disk_usage_report()
     else:
         result = cleanup_old_files(
-            max_age_days=args.days,
-            dry_run=args.dry_run,
-            verbose=not args.quiet
+            max_age_days=args.days, dry_run=args.dry_run, verbose=not args.quiet
         )
         print_cleanup_report(result)

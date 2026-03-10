@@ -37,16 +37,17 @@ Usage:
 import os
 import re
 import time
-from datetime import datetime, timedelta
-from typing import List, Dict, Optional, Any, Tuple
-from dataclasses import dataclass, field, asdict
 from collections import Counter
+from dataclasses import asdict, dataclass, field
+from datetime import datetime
 from pathlib import Path
+from typing import Any, Dict, List, Optional
+
 from loguru import logger
 
 try:
     import praw
-    from praw.models import Submission, Comment
+    from praw.models import Submission
 except ImportError:
     logger.error("PRAW not installed. Run: pip install praw")
     raise ImportError("Please install praw: pip install praw")
@@ -61,9 +62,11 @@ except ImportError:
 # DATA CLASSES
 # ============================================================
 
+
 @dataclass
 class RedditPost:
     """Represents a Reddit post with full metadata."""
+
     id: str
     title: str
     subreddit: str
@@ -84,13 +87,14 @@ class RedditPost:
         """Convert to dictionary."""
         return {
             **asdict(self),
-            'created_utc': self.created_utc.isoformat(),
+            "created_utc": self.created_utc.isoformat(),
         }
 
 
 @dataclass
 class VideoIdea:
     """A potential video idea extracted from Reddit."""
+
     topic: str
     title_suggestion: str
     source_title: str
@@ -110,6 +114,7 @@ class VideoIdea:
 @dataclass
 class SubredditStats:
     """Statistics for a subreddit."""
+
     name: str
     subscribers: int
     active_users: Optional[int]
@@ -126,6 +131,7 @@ class SubredditStats:
 @dataclass
 class RedditResearchReport:
     """Complete research report for a niche."""
+
     niche: str
     timestamp: datetime
     trending_topics: List[str]
@@ -139,15 +145,15 @@ class RedditResearchReport:
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary."""
         return {
-            'niche': self.niche,
-            'timestamp': self.timestamp.isoformat(),
-            'trending_topics': self.trending_topics,
-            'viral_ideas': [i.to_dict() for i in self.viral_ideas],
-            'questions': [q.to_dict() for q in self.questions],
-            'sentiment_summary': self.sentiment_summary,
-            'subreddit_stats': [s.to_dict() for s in self.subreddit_stats],
-            'keyword_frequency': self.keyword_frequency,
-            'recommendations': self.recommendations,
+            "niche": self.niche,
+            "timestamp": self.timestamp.isoformat(),
+            "trending_topics": self.trending_topics,
+            "viral_ideas": [i.to_dict() for i in self.viral_ideas],
+            "questions": [q.to_dict() for q in self.questions],
+            "sentiment_summary": self.sentiment_summary,
+            "subreddit_stats": [s.to_dict() for s in self.subreddit_stats],
+            "keyword_frequency": self.keyword_frequency,
+            "recommendations": self.recommendations,
         }
 
     def summary(self) -> str:
@@ -175,7 +181,7 @@ class RedditResearchReport:
         for rec in self.recommendations:
             lines.append(f"  - {rec}")
 
-        lines.append("="*60)
+        lines.append("=" * 60)
         return "\n".join(lines)
 
 
@@ -256,6 +262,7 @@ DEFAULT_SUBREDDITS = {
 # MAIN RESEARCHER CLASS
 # ============================================================
 
+
 class RedditResearcher:
     """
     Comprehensive Reddit research for YouTube content discovery.
@@ -292,15 +299,43 @@ class RedditResearcher:
 
     # Sentiment keywords
     POSITIVE_KEYWORDS = [
-        "love", "amazing", "great", "excellent", "awesome", "best",
-        "wonderful", "fantastic", "perfect", "brilliant", "incredible",
-        "helpful", "thank", "grateful", "finally", "success", "worked",
+        "love",
+        "amazing",
+        "great",
+        "excellent",
+        "awesome",
+        "best",
+        "wonderful",
+        "fantastic",
+        "perfect",
+        "brilliant",
+        "incredible",
+        "helpful",
+        "thank",
+        "grateful",
+        "finally",
+        "success",
+        "worked",
     ]
 
     NEGATIVE_KEYWORDS = [
-        "hate", "terrible", "awful", "worst", "horrible", "bad",
-        "disappointed", "frustrated", "angry", "annoying", "useless",
-        "scam", "avoid", "warning", "mistake", "regret", "failed",
+        "hate",
+        "terrible",
+        "awful",
+        "worst",
+        "horrible",
+        "bad",
+        "disappointed",
+        "frustrated",
+        "angry",
+        "annoying",
+        "useless",
+        "scam",
+        "avoid",
+        "warning",
+        "mistake",
+        "regret",
+        "failed",
     ]
 
     def __init__(
@@ -308,7 +343,7 @@ class RedditResearcher:
         client_id: Optional[str] = None,
         client_secret: Optional[str] = None,
         user_agent: Optional[str] = None,
-        config_path: Optional[str] = None
+        config_path: Optional[str] = None,
     ):
         """
         Initialize Reddit researcher.
@@ -321,10 +356,7 @@ class RedditResearcher:
         """
         self.client_id = client_id or os.getenv("REDDIT_CLIENT_ID")
         self.client_secret = client_secret or os.getenv("REDDIT_CLIENT_SECRET")
-        self.user_agent = user_agent or os.getenv(
-            "REDDIT_USER_AGENT",
-            "joe-research/1.0"
-        )
+        self.user_agent = user_agent or os.getenv("REDDIT_USER_AGENT", "joe-research/1.0")
 
         # Rate limiting tracking
         self._request_count = 0
@@ -382,7 +414,7 @@ class RedditResearcher:
 
         if config_path and Path(config_path).exists() and yaml:
             try:
-                with open(config_path, 'r') as f:
+                with open(config_path, "r") as f:
                     config = yaml.safe_load(f)
                     logger.info(f"Loaded subreddit config from {config_path}")
                     return config
@@ -438,10 +470,12 @@ class RedditResearcher:
             # Comment engagement bonus
             if post.num_comments > 0:
                 engagement_ratio = min(post.num_comments / max(post.score, 1), 0.5)
-                score *= (1 + engagement_ratio)
+                score *= 1 + engagement_ratio
 
             # Freshness bonus (posts from last 24h get up to 50% boost)
-            age_hours = (datetime.now() - datetime.fromtimestamp(post.created_utc)).total_seconds() / 3600
+            age_hours = (
+                datetime.now() - datetime.fromtimestamp(post.created_utc)
+            ).total_seconds() / 3600
             if age_hours < 24:
                 freshness_bonus = 1 + (0.5 * (1 - age_hours / 24))
                 score *= freshness_bonus
@@ -493,28 +527,137 @@ class RedditResearcher:
     def _extract_keywords(self, texts: List[str], top_n: int = 20) -> Dict[str, int]:
         """Extract most common meaningful keywords from texts."""
         stopwords = {
-            "the", "a", "an", "is", "are", "was", "were", "be", "been", "being",
-            "have", "has", "had", "do", "does", "did", "will", "would", "could",
-            "should", "may", "might", "must", "shall", "can", "need", "to", "of",
-            "in", "for", "on", "with", "at", "by", "from", "as", "into", "through",
-            "during", "before", "after", "above", "below", "between", "under",
-            "again", "further", "then", "once", "here", "there", "when", "where",
-            "why", "how", "all", "each", "few", "more", "most", "other", "some",
-            "such", "no", "nor", "not", "only", "own", "same", "so", "than", "too",
-            "very", "just", "i", "me", "my", "we", "our", "you", "your", "it",
-            "its", "this", "that", "these", "those", "am", "or", "and", "but",
-            "if", "because", "until", "while", "about", "any", "both", "which",
-            "who", "whom", "up", "down", "out", "over", "like", "get", "got",
-            "also", "really", "even", "still", "now", "one", "two", "three",
-            "first", "new", "old", "good", "bad", "right", "wrong", "way",
+            "the",
+            "a",
+            "an",
+            "is",
+            "are",
+            "was",
+            "were",
+            "be",
+            "been",
+            "being",
+            "have",
+            "has",
+            "had",
+            "do",
+            "does",
+            "did",
+            "will",
+            "would",
+            "could",
+            "should",
+            "may",
+            "might",
+            "must",
+            "shall",
+            "can",
+            "need",
+            "to",
+            "of",
+            "in",
+            "for",
+            "on",
+            "with",
+            "at",
+            "by",
+            "from",
+            "as",
+            "into",
+            "through",
+            "during",
+            "before",
+            "after",
+            "above",
+            "below",
+            "between",
+            "under",
+            "again",
+            "further",
+            "then",
+            "once",
+            "here",
+            "there",
+            "when",
+            "where",
+            "why",
+            "how",
+            "all",
+            "each",
+            "few",
+            "more",
+            "most",
+            "other",
+            "some",
+            "such",
+            "no",
+            "nor",
+            "not",
+            "only",
+            "own",
+            "same",
+            "so",
+            "than",
+            "too",
+            "very",
+            "just",
+            "i",
+            "me",
+            "my",
+            "we",
+            "our",
+            "you",
+            "your",
+            "it",
+            "its",
+            "this",
+            "that",
+            "these",
+            "those",
+            "am",
+            "or",
+            "and",
+            "but",
+            "if",
+            "because",
+            "until",
+            "while",
+            "about",
+            "any",
+            "both",
+            "which",
+            "who",
+            "whom",
+            "up",
+            "down",
+            "out",
+            "over",
+            "like",
+            "get",
+            "got",
+            "also",
+            "really",
+            "even",
+            "still",
+            "now",
+            "one",
+            "two",
+            "three",
+            "first",
+            "new",
+            "old",
+            "good",
+            "bad",
+            "right",
+            "wrong",
+            "way",
         }
 
         words = []
         for text in texts:
             # Clean and tokenize
-            text_clean = re.sub(r'[^\w\s]', ' ', text.lower())
-            text_words = [w for w in text_clean.split()
-                         if w not in stopwords and len(w) > 3]
+            text_clean = re.sub(r"[^\w\s]", " ", text.lower())
+            text_words = [w for w in text_clean.split() if w not in stopwords and len(w) > 3]
             words.extend(text_words)
 
         counter = Counter(words)
@@ -546,8 +689,8 @@ class RedditResearcher:
         title = post.title
 
         # Clean up common patterns
-        title = re.sub(r'\[.*?\]', '', title)  # Remove [tags]
-        title = re.sub(r'\(.*?\)', '', title)  # Remove (parentheticals)
+        title = re.sub(r"\[.*?\]", "", title)  # Remove [tags]
+        title = re.sub(r"\(.*?\)", "", title)  # Remove (parentheticals)
         title = title.strip()
 
         # Capitalize properly
@@ -555,7 +698,7 @@ class RedditResearcher:
             title = title[0].upper() + title[1:]
 
         # Remove trailing punctuation for title
-        title_clean = title.rstrip('?!.')
+        title_clean = title.rstrip("?!.")
 
         return VideoIdea(
             topic=title_clean,
@@ -605,10 +748,7 @@ class RedditResearcher:
         return 50  # Default
 
     def get_hot_posts(
-        self,
-        niche: str,
-        limit: int = 50,
-        min_upvotes: Optional[int] = None
+        self, niche: str, limit: int = 50, min_upvotes: Optional[int] = None
     ) -> List[RedditPost]:
         """
         Get hot posts from subreddits in a niche.
@@ -654,11 +794,7 @@ class RedditResearcher:
         logger.info(f"Found {len(posts)} hot posts for {niche}")
         return posts[:limit]
 
-    def get_rising_posts(
-        self,
-        niche: str,
-        limit: int = 30
-    ) -> List[RedditPost]:
+    def get_rising_posts(self, niche: str, limit: int = 30) -> List[RedditPost]:
         """
         Get rising posts (potential viral content).
 
@@ -694,7 +830,7 @@ class RedditResearcher:
         niche: str,
         time_filter: str = "week",
         limit: int = 50,
-        min_upvotes: Optional[int] = None
+        min_upvotes: Optional[int] = None,
     ) -> List[RedditPost]:
         """
         Get top posts from a time period.
@@ -721,7 +857,9 @@ class RedditResearcher:
                 self._rate_limit_wait()
                 subreddit = self.reddit.subreddit(subreddit_name)
 
-                for post in subreddit.top(time_filter=time_filter, limit=limit // len(subreddits) + 5):
+                for post in subreddit.top(
+                    time_filter=time_filter, limit=limit // len(subreddits) + 5
+                ):
                     if post.score >= min_score:
                         posts.append(self._post_to_dataclass(post))
 
@@ -734,11 +872,7 @@ class RedditResearcher:
         logger.info(f"Found {len(posts)} top posts for {niche} ({time_filter})")
         return posts[:limit]
 
-    def get_trending_topics(
-        self,
-        niche: str,
-        limit: int = 20
-    ) -> List[str]:
+    def get_trending_topics(self, niche: str, limit: int = 20) -> List[str]:
         """
         Extract trending topics from hot and rising posts.
 
@@ -760,8 +894,8 @@ class RedditResearcher:
         for post in sorted(all_posts, key=lambda p: p.viral_score, reverse=True):
             # Clean and normalize topic
             topic = post.title
-            topic = re.sub(r'\[.*?\]', '', topic)
-            topic = re.sub(r'\(.*?\)', '', topic)
+            topic = re.sub(r"\[.*?\]", "", topic)
+            topic = re.sub(r"\(.*?\)", "", topic)
             topic = topic.strip()
 
             if topic and topic.lower() not in seen:
@@ -771,12 +905,7 @@ class RedditResearcher:
         logger.success(f"Found {len(topics)} trending topics for {niche}")
         return topics[:limit]
 
-    def get_questions(
-        self,
-        niche: str,
-        limit: int = 50,
-        min_upvotes: int = 10
-    ) -> List[VideoIdea]:
+    def get_questions(self, niche: str, limit: int = 50, min_upvotes: int = 10) -> List[VideoIdea]:
         """
         Extract questions from Reddit for FAQ-style videos.
 
@@ -815,7 +944,7 @@ class RedditResearcher:
 
         for q in questions:
             # Simple dedup by first few words
-            key = ' '.join(q.topic.lower().split()[:5])
+            key = " ".join(q.topic.lower().split()[:5])
             if key not in seen_topics:
                 seen_topics.add(key)
                 unique_questions.append(q)
@@ -824,10 +953,7 @@ class RedditResearcher:
         return unique_questions[:limit]
 
     def find_viral_content(
-        self,
-        niche: str,
-        min_upvotes: Optional[int] = None,
-        limit: int = 20
+        self, niche: str, min_upvotes: Optional[int] = None, limit: int = 20
     ) -> List[VideoIdea]:
         """
         Find viral content ideas with high engagement potential.
@@ -873,7 +999,7 @@ class RedditResearcher:
 
             # Get basic stats
             subscribers = subreddit.subscribers
-            active = getattr(subreddit, 'accounts_active', None)
+            active = getattr(subreddit, "accounts_active", None)
 
             # Analyze recent posts
             posts = list(subreddit.hot(limit=50))
@@ -906,11 +1032,7 @@ class RedditResearcher:
             logger.warning(f"Error analyzing r/{subreddit_name}: {e}")
             return None
 
-    def full_research(
-        self,
-        niche: str,
-        include_sentiment: bool = True
-    ) -> RedditResearchReport:
+    def full_research(self, niche: str, include_sentiment: bool = True) -> RedditResearchReport:
         """
         Perform comprehensive Reddit research for a niche.
 
@@ -969,7 +1091,7 @@ class RedditResearcher:
         niche: str,
         viral_ideas: List[VideoIdea],
         questions: List[VideoIdea],
-        keywords: Dict[str, int]
+        keywords: Dict[str, int],
     ) -> List[str]:
         """Generate content recommendations based on research."""
         recommendations = []
@@ -977,22 +1099,18 @@ class RedditResearcher:
         # Top keyword recommendations
         top_keywords = list(keywords.keys())[:5]
         if top_keywords:
-            recommendations.append(
-                f"Focus on these trending keywords: {', '.join(top_keywords)}"
-            )
+            recommendations.append(f"Focus on these trending keywords: {', '.join(top_keywords)}")
 
         # Question-based content
         if questions:
             top_question = questions[0].topic[:80]
-            recommendations.append(
-                f"Create a tutorial answering: \"{top_question}\""
-            )
+            recommendations.append(f'Create a tutorial answering: "{top_question}"')
 
         # Viral content type
         if viral_ideas:
             top_idea = viral_ideas[0]
             recommendations.append(
-                f"High-viral potential: \"{top_idea.title_suggestion}\" (Score: {top_idea.viral_score:.0f})"
+                f'High-viral potential: "{top_idea.title_suggestion}" (Score: {top_idea.viral_score:.0f})'
             )
 
         # Engagement timing
@@ -1008,9 +1126,7 @@ class RedditResearcher:
                 "Tutorial/FAQ content will perform well."
             )
         else:
-            recommendations.append(
-                "Mix of discussion and Q&A content works best for this niche."
-            )
+            recommendations.append("Mix of discussion and Q&A content works best for this niche.")
 
         return recommendations
 
@@ -1021,7 +1137,7 @@ class RedditResearcher:
         subreddits: Optional[List[str]] = None,
         sort: str = "relevance",
         time_filter: str = "month",
-        limit: int = 30
+        limit: int = 30,
     ) -> List[RedditPost]:
         """
         Search Reddit for specific topics.
@@ -1054,12 +1170,7 @@ class RedditResearcher:
             subreddit_str = "+".join(sub_list)
             subreddit = self.reddit.subreddit(subreddit_str)
 
-            for post in subreddit.search(
-                query,
-                sort=sort,
-                time_filter=time_filter,
-                limit=limit
-            ):
+            for post in subreddit.search(query, sort=sort, time_filter=time_filter, limit=limit):
                 posts.append(self._post_to_dataclass(post))
 
         except Exception as e:

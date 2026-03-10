@@ -19,47 +19,44 @@ Usage:
     result = agent.recommend_topics("finance", count=10)
 """
 
-import os
 import json
+import os
+import random
 import sqlite3
+from dataclasses import asdict, dataclass, field
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Dict, Any, List, Optional
-from dataclasses import dataclass, field, asdict
+from typing import Any, Dict, List, Optional
+
 from loguru import logger
-import random
 
-from ..utils.token_manager import (
-    get_token_manager,
-    get_cost_optimizer,
-    get_prompt_cache
-)
 from ..utils.best_practices import get_best_practices, get_niche_metrics
-
+from ..utils.token_manager import get_cost_optimizer, get_prompt_cache, get_token_manager
 
 # Content type classifications
 CONTENT_TYPES = {
     "evergreen": {
         "description": "Timeless content that remains relevant",
         "keywords": ["how to", "guide", "explained", "basics", "fundamentals", "tips", "mistakes"],
-        "weight": 0.6  # 60% of content should be evergreen
+        "weight": 0.6,  # 60% of content should be evergreen
     },
     "trending": {
         "description": "Timely content on current topics",
         "keywords": ["2026", "new", "latest", "update", "news", "breaking", "just announced"],
-        "weight": 0.25  # 25% trending
+        "weight": 0.25,  # 25% trending
     },
     "viral": {
         "description": "High-risk, high-reward content",
         "keywords": ["secret", "truth", "exposed", "shocking", "nobody", "never", "dark side"],
-        "weight": 0.15  # 15% viral attempts
-    }
+        "weight": 0.15,  # 15% viral attempts
+    },
 }
 
 
 @dataclass
 class ContentPlan:
     """Single content plan item for calendar."""
+
     date: str
     day_of_week: str
     topic: str
@@ -73,6 +70,7 @@ class ContentPlan:
 @dataclass
 class PortfolioBalance:
     """Content portfolio balance metrics."""
+
     evergreen_percent: float = 0.0
     trending_percent: float = 0.0
     viral_percent: float = 0.0
@@ -86,6 +84,7 @@ class PortfolioBalance:
 @dataclass
 class GrowthProjection:
     """Growth projection data."""
+
     period: str
     current_videos: int
     projected_videos: int
@@ -98,6 +97,7 @@ class GrowthProjection:
 @dataclass
 class StrategyResult:
     """Result from content strategy agent operations."""
+
     success: bool
     operation: str
     content_calendar: List[ContentPlan] = field(default_factory=list)
@@ -118,9 +118,7 @@ class StrategyResult:
         result["content_calendar"] = [asdict(p) for p in self.content_calendar]
         if self.portfolio_balance:
             result["portfolio_balance"] = asdict(self.portfolio_balance)
-        result["growth_projections"] = {
-            k: asdict(v) for k, v in self.growth_projections.items()
-        }
+        result["growth_projections"] = {k: asdict(v) for k, v in self.growth_projections.items()}
         return result
 
     def summary(self) -> str:
@@ -130,17 +128,23 @@ class StrategyResult:
             f"=======================",
             "",
             f"Strategy Score: {self.strategy_score}/100",
-            ""
+            "",
         ]
 
         if self.portfolio_balance:
             lines.append("Portfolio Balance:")
-            lines.append(f"  Evergreen: {self.portfolio_balance.evergreen_percent:.0f}% "
-                        f"(target: {self.portfolio_balance.target_evergreen:.0f}%)")
-            lines.append(f"  Trending: {self.portfolio_balance.trending_percent:.0f}% "
-                        f"(target: {self.portfolio_balance.target_trending:.0f}%)")
-            lines.append(f"  Viral: {self.portfolio_balance.viral_percent:.0f}% "
-                        f"(target: {self.portfolio_balance.target_viral:.0f}%)")
+            lines.append(
+                f"  Evergreen: {self.portfolio_balance.evergreen_percent:.0f}% "
+                f"(target: {self.portfolio_balance.target_evergreen:.0f}%)"
+            )
+            lines.append(
+                f"  Trending: {self.portfolio_balance.trending_percent:.0f}% "
+                f"(target: {self.portfolio_balance.target_trending:.0f}%)"
+            )
+            lines.append(
+                f"  Viral: {self.portfolio_balance.viral_percent:.0f}% "
+                f"(target: {self.portfolio_balance.target_viral:.0f}%)"
+            )
             lines.append(f"  Balanced: {'Yes' if self.portfolio_balance.is_balanced else 'No'}")
             lines.append("")
 
@@ -155,8 +159,10 @@ class StrategyResult:
             lines.append("Recommended Topics:")
             for i, topic in enumerate(self.recommended_topics[:5], 1):
                 lines.append(f"  {i}. {topic.get('topic', 'Unknown')}")
-                lines.append(f"     Type: {topic.get('content_type', 'unknown')} | "
-                           f"Risk: {topic.get('risk_level', 'medium')}")
+                lines.append(
+                    f"     Type: {topic.get('content_type', 'unknown')} | "
+                    f"Risk: {topic.get('risk_level', 'medium')}"
+                )
             lines.append("")
 
         if self.insights:
@@ -208,7 +214,7 @@ class ContentStrategyAgent:
     # Posting schedule by channel
     POSTING_SCHEDULES = {
         "money_blueprints": [0, 2, 4],  # Mon, Wed, Fri
-        "mind_unlocked": [1, 3, 5],      # Tue, Thu, Sat
+        "mind_unlocked": [1, 3, 5],  # Tue, Thu, Sat
         "untold_stories": [0, 1, 2, 3, 4, 5, 6],  # Daily
     }
 
@@ -246,7 +252,8 @@ class ContentStrategyAgent:
         self.strategy_db.parent.mkdir(parents=True, exist_ok=True)
 
         with sqlite3.connect(self.strategy_db) as conn:
-            conn.execute("""
+            conn.execute(
+                """
                 CREATE TABLE IF NOT EXISTS content_plans (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     channel TEXT,
@@ -258,9 +265,11 @@ class ContentStrategyAgent:
                     video_id TEXT,
                     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
                 )
-            """)
+            """
+            )
 
-            conn.execute("""
+            conn.execute(
+                """
                 CREATE TABLE IF NOT EXISTS strategy_goals (
                     channel TEXT PRIMARY KEY,
                     weekly_video_target INTEGER DEFAULT 3,
@@ -270,16 +279,21 @@ class ContentStrategyAgent:
                     monthly_view_target INTEGER DEFAULT 10000,
                     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
                 )
-            """)
+            """
+            )
 
-            conn.execute("""
+            conn.execute(
+                """
                 CREATE INDEX IF NOT EXISTS idx_plans_channel
                 ON content_plans(channel)
-            """)
-            conn.execute("""
+            """
+            )
+            conn.execute(
+                """
                 CREATE INDEX IF NOT EXISTS idx_plans_date
                 ON content_plans(date)
-            """)
+            """
+            )
 
     def _classify_content_type(self, title: str, topic: str = None) -> str:
         """
@@ -333,24 +347,29 @@ class ContentStrategyAgent:
             videos = []
             if self.performance_db.exists():
                 with sqlite3.connect(self.performance_db) as conn:
-                    rows = conn.execute("""
+                    rows = conn.execute(
+                        """
                         SELECT title, views, retention, ctr, uploaded_at
                         FROM video_performance
                         WHERE channel = ? AND (uploaded_at >= ? OR uploaded_at IS NULL)
                         ORDER BY uploaded_at DESC
-                    """, (channel, cutoff)).fetchall()
+                    """,
+                        (channel, cutoff),
+                    ).fetchall()
 
                     for row in rows:
                         title, views, retention, ctr, upload_date = row
                         content_type = self._classify_content_type(title)
-                        videos.append({
-                            "title": title,
-                            "views": views or 0,
-                            "retention": retention or 0,
-                            "ctr": ctr or 0,
-                            "content_type": content_type,
-                            "upload_date": upload_date
-                        })
+                        videos.append(
+                            {
+                                "title": title,
+                                "views": views or 0,
+                                "retention": retention or 0,
+                                "ctr": ctr or 0,
+                                "content_type": content_type,
+                                "upload_date": upload_date,
+                            }
+                        )
 
             if not videos:
                 # No data - provide theoretical analysis
@@ -362,15 +381,15 @@ class ContentStrategyAgent:
                         trending_percent=0,
                         viral_percent=0,
                         is_balanced=False,
-                        adjustments_needed=["No video data available. Start uploading content."]
+                        adjustments_needed=["No video data available. Start uploading content."],
                     ),
                     insights=["No video data found for analysis"],
                     recommendations=[
                         f"Start with evergreen content (60% of uploads)",
                         f"Add trending content on current events (25%)",
-                        f"Experiment with viral hooks (15%)"
+                        f"Experiment with viral hooks (15%)",
                     ],
-                    provider="database"
+                    provider="database",
                 )
 
             # Calculate portfolio balance
@@ -391,18 +410,14 @@ class ContentStrategyAgent:
             if viral_pct > 25:
                 adjustments.append(f"Reduce viral attempts: {viral_pct:.0f}% -> 15%")
 
-            is_balanced = (
-                45 <= evergreen_pct <= 75 and
-                10 <= trending_pct <= 40 and
-                viral_pct <= 30
-            )
+            is_balanced = 45 <= evergreen_pct <= 75 and 10 <= trending_pct <= 40 and viral_pct <= 30
 
             portfolio = PortfolioBalance(
                 evergreen_percent=evergreen_pct,
                 trending_percent=trending_pct,
                 viral_percent=viral_pct,
                 is_balanced=is_balanced,
-                adjustments_needed=adjustments
+                adjustments_needed=adjustments,
             )
 
             # Generate insights
@@ -440,26 +455,22 @@ class ContentStrategyAgent:
                 recommendations=recommendations,
                 tokens_used=0,
                 cost=0.0,
-                provider="database"
+                provider="database",
             )
 
-            logger.success(f"[ContentStrategyAgent] Portfolio analysis complete: {strategy_score}/100")
+            logger.success(
+                f"[ContentStrategyAgent] Portfolio analysis complete: {strategy_score}/100"
+            )
             return result
 
         except Exception as e:
             logger.error(f"[ContentStrategyAgent] Error analyzing portfolio: {e}")
             return StrategyResult(
-                success=False,
-                operation=operation,
-                error=str(e),
-                provider="database"
+                success=False, operation=operation, error=str(e), provider="database"
             )
 
     def generate_calendar(
-        self,
-        channel: str,
-        weeks: int = 4,
-        use_ai: bool = False
+        self, channel: str, weeks: int = 4, use_ai: bool = False
     ) -> StrategyResult:
         """
         Generate content calendar suggestions.
@@ -514,10 +525,9 @@ class ContentStrategyAgent:
                 else:
                     weights = [0.6, 0.25, 0.15]
 
-                content_type = random.choices(
-                    ["evergreen", "trending", "viral"],
-                    weights=weights
-                )[0]
+                content_type = random.choices(["evergreen", "trending", "viral"], weights=weights)[
+                    0
+                ]
 
                 type_counts[content_type] += 1
 
@@ -525,17 +535,21 @@ class ContentStrategyAgent:
                 topic = self._generate_topic(niche, content_type, viral_patterns)
 
                 # Set priority based on content type
-                priority = 1 if content_type == "evergreen" else (2 if content_type == "trending" else 3)
+                priority = (
+                    1 if content_type == "evergreen" else (2 if content_type == "trending" else 3)
+                )
 
-                calendar.append(ContentPlan(
-                    date=current_date.strftime("%Y-%m-%d"),
-                    day_of_week=self.DAY_NAMES[day_of_week],
-                    topic=topic,
-                    content_type=content_type,
-                    niche=niche,
-                    priority=priority,
-                    estimated_cpm=niche_metrics.get("cpm_range", (5, 10))[0]
-                ))
+                calendar.append(
+                    ContentPlan(
+                        date=current_date.strftime("%Y-%m-%d"),
+                        day_of_week=self.DAY_NAMES[day_of_week],
+                        topic=topic,
+                        content_type=content_type,
+                        niche=niche,
+                        priority=priority,
+                        estimated_cpm=niche_metrics.get("cpm_range", (5, 10))[0],
+                    )
+                )
 
         # Use AI to enhance topics if requested
         if use_ai and calendar:
@@ -547,7 +561,7 @@ class ContentStrategyAgent:
             evergreen_percent=(type_counts["evergreen"] / total * 100) if total > 0 else 0,
             trending_percent=(type_counts["trending"] / total * 100) if total > 0 else 0,
             viral_percent=(type_counts["viral"] / total * 100) if total > 0 else 0,
-            is_balanced=True
+            is_balanced=True,
         )
 
         # Generate growth projections
@@ -562,26 +576,21 @@ class ContentStrategyAgent:
             insights=[
                 f"Generated {len(calendar)} content items for {weeks} weeks",
                 f"Content mix: {type_counts['evergreen']} evergreen, "
-                f"{type_counts['trending']} trending, {type_counts['viral']} viral"
+                f"{type_counts['trending']} trending, {type_counts['viral']} viral",
             ],
             recommendations=[
                 "Adjust topics based on current trends before production",
-                "Monitor performance and shift ratios as needed"
+                "Monitor performance and shift ratios as needed",
             ],
             tokens_used=0 if not use_ai else 1000,
             cost=0.0,
-            provider="rule_based" if not use_ai else self.provider
+            provider="rule_based" if not use_ai else self.provider,
         )
 
         logger.success(f"[ContentStrategyAgent] Calendar generated: {len(calendar)} items")
         return result
 
-    def _generate_topic(
-        self,
-        niche: str,
-        content_type: str,
-        viral_patterns: List[str]
-    ) -> str:
+    def _generate_topic(self, niche: str, content_type: str, viral_patterns: List[str]) -> str:
         """Generate a topic based on niche and content type."""
         templates = {
             "finance": {
@@ -592,22 +601,22 @@ class ContentStrategyAgent:
                     "Investment Basics Explained Simply",
                     "How to Budget Like a Millionaire",
                     "The Psychology of Saving Money",
-                    "Compound Interest: Your Path to Wealth"
+                    "Compound Interest: Your Path to Wealth",
                 ],
                 "trending": [
                     "The 2026 Stock Market: What's Coming",
                     "New Tax Laws You Need to Know",
                     "Is This the Next Big Investment?",
                     "Breaking: Market Analysis Update",
-                    "2026 Side Hustles That Actually Work"
+                    "2026 Side Hustles That Actually Work",
                 ],
                 "viral": [
                     "The Money Secret They Don't Want You to Know",
                     "Why 90% of People Will Never Be Rich",
                     "The Dark Truth About Financial Advice",
                     "This Investment Trick Changed Everything",
-                    "What Rich People Never Tell You"
-                ]
+                    "What Rich People Never Tell You",
+                ],
             },
             "psychology": {
                 "evergreen": [
@@ -615,39 +624,39 @@ class ContentStrategyAgent:
                     "How to Read Body Language Like a Pro",
                     "The Science of Building Good Habits",
                     "Understanding Cognitive Biases",
-                    "How Your Brain Makes Decisions"
+                    "How Your Brain Makes Decisions",
                 ],
                 "trending": [
                     "The Psychology Behind Social Media in 2026",
                     "New Research on Mental Health",
-                    "Why Everyone is Talking About This Study"
+                    "Why Everyone is Talking About This Study",
                 ],
                 "viral": [
                     "Dark Psychology Tricks Used on You Daily",
                     "Signs Someone is Secretly a Narcissist",
                     "The Manipulation Tactics You Don't See",
-                    "Why Intelligent People Do This"
-                ]
+                    "Why Intelligent People Do This",
+                ],
             },
             "storytelling": {
                 "evergreen": [
                     "The Untold Story of [Company Name]",
                     "How [Person] Built a Billion Dollar Empire",
                     "The Rise and Fall of [Brand]",
-                    "What Really Happened at [Company]"
+                    "What Really Happened at [Company]",
                 ],
                 "trending": [
                     "The 2026 [Industry] Revolution",
                     "Breaking Down the Latest [Event]",
-                    "What's Really Going On With [Topic]"
+                    "What's Really Going On With [Topic]",
                 ],
                 "viral": [
                     "The Dark Side of [Company/Person]",
                     "The Truth They Don't Want You to Know",
                     "This Changed Everything We Knew",
-                    "The Scandal That Shocked Everyone"
-                ]
-            }
+                    "The Scandal That Shocked Everyone",
+                ],
+            },
         }
 
         niche_templates = templates.get(niche, templates["finance"])
@@ -660,13 +669,12 @@ class ContentStrategyAgent:
         return random.choice(type_templates)
 
     def _enhance_calendar_with_ai(
-        self,
-        calendar: List[ContentPlan],
-        niche: str
+        self, calendar: List[ContentPlan], niche: str
     ) -> List[ContentPlan]:
         """Use AI to enhance calendar topics."""
         try:
             from ..content.script_writer import get_provider
+
             ai = get_provider(self.provider, self.api_key)
 
             # Only enhance first few items to save tokens
@@ -698,10 +706,7 @@ Respond with ONLY a JSON array of improved topic strings:
         return calendar
 
     def recommend_topics(
-        self,
-        niche: str = None,
-        channel: str = None,
-        count: int = 10
+        self, niche: str = None, channel: str = None, count: int = 10
     ) -> StrategyResult:
         """
         Generate recommended topics with risk/reward analysis.
@@ -731,41 +736,47 @@ Respond with ONLY a JSON array of improved topic strings:
         evergreen_count = int(count * 0.6)
         for _ in range(evergreen_count):
             topic = self._generate_topic(niche, "evergreen", [])
-            topics.append({
-                "topic": topic,
-                "content_type": "evergreen",
-                "risk_level": "low",
-                "reward_potential": "medium",
-                "recommended_length": niche_metrics.get("optimal_video_length", (8, 15)),
-                "expected_cpm": niche_metrics.get("cpm_range", (5, 10))[0]
-            })
+            topics.append(
+                {
+                    "topic": topic,
+                    "content_type": "evergreen",
+                    "risk_level": "low",
+                    "reward_potential": "medium",
+                    "recommended_length": niche_metrics.get("optimal_video_length", (8, 15)),
+                    "expected_cpm": niche_metrics.get("cpm_range", (5, 10))[0],
+                }
+            )
 
         # 25% trending
         trending_count = int(count * 0.25)
         for _ in range(trending_count):
             topic = self._generate_topic(niche, "trending", [])
-            topics.append({
-                "topic": topic,
-                "content_type": "trending",
-                "risk_level": "medium",
-                "reward_potential": "high",
-                "recommended_length": niche_metrics.get("optimal_video_length", (8, 15)),
-                "expected_cpm": niche_metrics.get("cpm_range", (5, 10))[1]
-            })
+            topics.append(
+                {
+                    "topic": topic,
+                    "content_type": "trending",
+                    "risk_level": "medium",
+                    "reward_potential": "high",
+                    "recommended_length": niche_metrics.get("optimal_video_length", (8, 15)),
+                    "expected_cpm": niche_metrics.get("cpm_range", (5, 10))[1],
+                }
+            )
 
         # 15% viral
         viral_count = count - evergreen_count - trending_count
         viral_patterns = practices.get("viral_title_patterns", [])
         for _ in range(viral_count):
             topic = self._generate_topic(niche, "viral", viral_patterns)
-            topics.append({
-                "topic": topic,
-                "content_type": "viral",
-                "risk_level": "high",
-                "reward_potential": "very high",
-                "recommended_length": niche_metrics.get("optimal_video_length", (8, 15)),
-                "expected_cpm": niche_metrics.get("cpm_range", (5, 10))[1] * 1.2
-            })
+            topics.append(
+                {
+                    "topic": topic,
+                    "content_type": "viral",
+                    "risk_level": "high",
+                    "reward_potential": "very high",
+                    "recommended_length": niche_metrics.get("optimal_video_length", (8, 15)),
+                    "expected_cpm": niche_metrics.get("cpm_range", (5, 10))[1] * 1.2,
+                }
+            )
 
         # Shuffle to mix types
         random.shuffle(topics)
@@ -776,24 +787,21 @@ Respond with ONLY a JSON array of improved topic strings:
             recommended_topics=topics,
             insights=[
                 f"Generated {len(topics)} topics following 60/25/15 content mix",
-                f"Niche CPM range: ${niche_metrics.get('cpm_range', (5, 10))[0]}-${niche_metrics.get('cpm_range', (5, 10))[1]}"
+                f"Niche CPM range: ${niche_metrics.get('cpm_range', (5, 10))[0]}-${niche_metrics.get('cpm_range', (5, 10))[1]}",
             ],
             recommendations=[
                 "Prioritize evergreen content for stable growth",
                 "Use trending content to capture timely opportunities",
-                "Limit viral attempts to avoid burnout"
+                "Limit viral attempts to avoid burnout",
             ],
             tokens_used=0,
             cost=0.0,
-            provider="rule_based"
+            provider="rule_based",
         )
 
         return result
 
-    def track_strategy_execution(
-        self,
-        channel: str
-    ) -> StrategyResult:
+    def track_strategy_execution(self, channel: str) -> StrategyResult:
         """
         Track how well strategy is being executed against goals.
 
@@ -809,22 +817,28 @@ Respond with ONLY a JSON array of improved topic strings:
         try:
             # Get planned content
             with sqlite3.connect(self.strategy_db) as conn:
-                planned = conn.execute("""
+                planned = conn.execute(
+                    """
                     SELECT COUNT(*), status
                     FROM content_plans
                     WHERE channel = ? AND date >= date('now', '-30 days')
                     GROUP BY status
-                """, (channel,)).fetchall()
+                """,
+                    (channel,),
+                ).fetchall()
 
             # Get actual uploads
             actual_uploads = 0
             if self.performance_db.exists():
                 with sqlite3.connect(self.performance_db) as conn:
-                    row = conn.execute("""
+                    row = conn.execute(
+                        """
                         SELECT COUNT(*)
                         FROM video_performance
                         WHERE channel = ? AND uploaded_at >= date('now', '-30 days')
-                    """, (channel,)).fetchone()
+                    """,
+                        (channel,),
+                    ).fetchone()
                     actual_uploads = row[0] if row else 0
 
             # Calculate execution rate
@@ -835,11 +849,14 @@ Respond with ONLY a JSON array of improved topic strings:
 
             # Get goals
             with sqlite3.connect(self.strategy_db) as conn:
-                goals_row = conn.execute("""
+                goals_row = conn.execute(
+                    """
                     SELECT weekly_video_target, monthly_view_target
                     FROM strategy_goals
                     WHERE channel = ?
-                """, (channel,)).fetchone()
+                """,
+                    (channel,),
+                ).fetchone()
 
             weekly_target = goals_row[0] if goals_row else 3
             monthly_view_target = goals_row[1] if goals_row else 10000
@@ -848,7 +865,7 @@ Respond with ONLY a JSON array of improved topic strings:
                 f"Planned content: {total_planned} items",
                 f"Completed: {completed} items ({execution_rate:.0f}%)",
                 f"Actual uploads (30d): {actual_uploads}",
-                f"Weekly target: {weekly_target} videos"
+                f"Weekly target: {weekly_target} videos",
             ]
 
             recommendations = []
@@ -867,7 +884,7 @@ Respond with ONLY a JSON array of improved topic strings:
                 recommendations=recommendations,
                 tokens_used=0,
                 cost=0.0,
-                provider="database"
+                provider="database",
             )
 
             return result
@@ -875,17 +892,10 @@ Respond with ONLY a JSON array of improved topic strings:
         except Exception as e:
             logger.error(f"[ContentStrategyAgent] Error tracking execution: {e}")
             return StrategyResult(
-                success=False,
-                operation=operation,
-                error=str(e),
-                provider="database"
+                success=False, operation=operation, error=str(e), provider="database"
             )
 
-    def _calculate_strategy_score(
-        self,
-        portfolio: PortfolioBalance,
-        videos: List[Dict]
-    ) -> int:
+    def _calculate_strategy_score(self, portfolio: PortfolioBalance, videos: List[Dict]) -> int:
         """Calculate overall strategy score (0-100)."""
         score = 0
 
@@ -935,10 +945,7 @@ Respond with ONLY a JSON array of improved topic strings:
         return min(100, score)
 
     def _generate_portfolio_recommendations(
-        self,
-        portfolio: PortfolioBalance,
-        videos: List[Dict],
-        niche: str
+        self, portfolio: PortfolioBalance, videos: List[Dict], niche: str
     ) -> List[str]:
         """Generate recommendations based on portfolio analysis."""
         recommendations = []
@@ -971,10 +978,7 @@ Respond with ONLY a JSON array of improved topic strings:
         return recommendations
 
     def _generate_growth_projections(
-        self,
-        channel: str,
-        planned_videos: int,
-        weeks: int
+        self, channel: str, planned_videos: int, weeks: int
     ) -> Dict[str, GrowthProjection]:
         """Generate growth projections based on planned content."""
         niche = self.CHANNEL_NICHE_MAP.get(channel, "default")
@@ -996,7 +1000,7 @@ Respond with ONLY a JSON array of improved topic strings:
             current_views=0,
             projected_views=int(weekly_videos * base_views),
             confidence=0.7,
-            assumptions=["Based on niche averages", "Assumes consistent posting"]
+            assumptions=["Based on niche averages", "Assumes consistent posting"],
         )
 
         # Monthly projection
@@ -1008,7 +1012,7 @@ Respond with ONLY a JSON array of improved topic strings:
             current_views=0,
             projected_views=int(monthly_videos * base_views * 1.2),  # Compounding effect
             confidence=0.6,
-            assumptions=["Assumes growing subscriber base", "Based on niche averages"]
+            assumptions=["Assumes growing subscriber base", "Based on niche averages"],
         )
 
         # Quarterly projection
@@ -1020,7 +1024,7 @@ Respond with ONLY a JSON array of improved topic strings:
             current_views=0,
             projected_views=int(quarterly_videos * base_views * 1.5),
             confidence=0.5,
-            assumptions=["High uncertainty", "Depends on algorithm favor"]
+            assumptions=["High uncertainty", "Depends on algorithm favor"],
         )
 
         return projections
@@ -1054,7 +1058,9 @@ Respond with ONLY a JSON array of improved topic strings:
             return self.track_strategy_execution(channel)
 
         if topics:
-            return self.recommend_topics(niche=niche, channel=channel, count=kwargs.get("count", 10))
+            return self.recommend_topics(
+                niche=niche, channel=channel, count=kwargs.get("count", 10)
+            )
 
         # Default: portfolio analysis if channel provided, otherwise recommend topics
         if channel:
@@ -1069,7 +1075,8 @@ def main():
     import sys
 
     if len(sys.argv) < 2:
-        print("""
+        print(
+            """
 Content Strategy Agent - Long-term Content Planning
 
 Usage:
@@ -1095,7 +1102,8 @@ Examples:
     python -m src.agents.content_strategy_agent --channel money_blueprints --portfolio
     python -m src.agents.content_strategy_agent --calendar --channel mind_unlocked --weeks 4
     python -m src.agents.content_strategy_agent --topics --niche psychology --count 15
-        """)
+        """
+        )
         return
 
     # Parse arguments

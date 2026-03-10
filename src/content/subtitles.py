@@ -34,12 +34,12 @@ import re
 import shutil
 import subprocess
 import tempfile
-from pathlib import Path
-from typing import List, Dict, Optional, Tuple, Union
 from dataclasses import dataclass, field
 from enum import Enum
-from loguru import logger
+from pathlib import Path
+from typing import Dict, List, Optional, Union
 
+from loguru import logger
 
 # Check for Whisper availability
 WHISPER_AVAILABLE = False
@@ -48,6 +48,7 @@ WHISPER_TYPE = None
 
 try:
     from faster_whisper import WhisperModel
+
     FASTER_WHISPER_AVAILABLE = True
     WHISPER_TYPE = "faster-whisper"
     logger.debug("faster-whisper is available for speech-to-text")
@@ -57,6 +58,7 @@ except ImportError:
 if not FASTER_WHISPER_AVAILABLE:
     try:
         import whisper
+
         WHISPER_AVAILABLE = True
         WHISPER_TYPE = "openai-whisper"
         logger.debug("openai-whisper is available for speech-to-text")
@@ -66,6 +68,7 @@ if not FASTER_WHISPER_AVAILABLE:
 
 class SubtitlePosition(Enum):
     """Subtitle position on screen."""
+
     TOP = "top"
     CENTER = "center"
     BOTTOM = "bottom"
@@ -74,9 +77,10 @@ class SubtitlePosition(Enum):
 @dataclass
 class SubtitleCue:
     """A single subtitle cue with timing and text."""
+
     index: int
     start_time: float  # seconds
-    end_time: float    # seconds
+    end_time: float  # seconds
     text: str
     words: List[Dict[str, Union[str, float]]] = field(default_factory=list)  # word-level timing
 
@@ -116,17 +120,14 @@ class SubtitleCue:
 @dataclass
 class SubtitleTrack:
     """A collection of subtitle cues."""
+
     cues: List[SubtitleCue] = field(default_factory=list)
     language: str = "en"
 
     def add_cue(self, start: float, end: float, text: str, words: List = None):
         """Add a new cue to the track."""
         cue = SubtitleCue(
-            index=len(self.cues) + 1,
-            start_time=start,
-            end_time=end,
-            text=text,
-            words=words or []
+            index=len(self.cues) + 1, start_time=start, end_time=end, text=text, words=words or []
         )
         self.cues.append(cue)
         return cue
@@ -267,12 +268,12 @@ class SubtitleGenerator:
 
     # Average speaking rates for timing estimation
     WORDS_PER_MINUTE = 150  # Average speaking rate
-    CHARS_PER_SECOND = 15   # Average reading rate
+    CHARS_PER_SECOND = 15  # Average reading rate
 
     # Timing constraints
-    MIN_CUE_DURATION = 0.8   # Minimum subtitle display time
-    MAX_CUE_DURATION = 5.0   # Maximum subtitle display time
-    CUE_GAP = 0.05           # Gap between cues
+    MIN_CUE_DURATION = 0.8  # Minimum subtitle display time
+    MAX_CUE_DURATION = 5.0  # Maximum subtitle display time
+    CUE_GAP = 0.05  # Gap between cues
 
     def __init__(self, whisper_model: str = "base"):
         """
@@ -306,9 +307,7 @@ class SubtitleGenerator:
             try:
                 # Use CPU by default, can be changed to "cuda" for GPU
                 self.whisper = WhisperModel(
-                    self.whisper_model_name,
-                    device="cpu",
-                    compute_type="int8"
+                    self.whisper_model_name, device="cpu", compute_type="int8"
                 )
                 logger.debug(f"Loaded faster-whisper model: {self.whisper_model_name}")
             except Exception as e:
@@ -371,10 +370,13 @@ class SubtitleGenerator:
         try:
             cmd = [
                 self.ffprobe,
-                '-v', 'error',
-                '-show_entries', 'format=duration',
-                '-of', 'default=noprint_wrappers=1:nokey=1',
-                audio_file
+                "-v",
+                "error",
+                "-show_entries",
+                "format=duration",
+                "-of",
+                "default=noprint_wrappers=1:nokey=1",
+                audio_file,
             ]
             result = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
             if result.returncode == 0 and result.stdout.strip():
@@ -392,10 +394,10 @@ class SubtitleGenerator:
         respecting max character limits.
         """
         # Clean text
-        text = re.sub(r'\s+', ' ', text.strip())
+        text = re.sub(r"\s+", " ", text.strip())
 
         # Split on sentence boundaries first
-        sentences = re.split(r'(?<=[.!?])\s+', text)
+        sentences = re.split(r"(?<=[.!?])\s+", text)
 
         phrases = []
         for sentence in sentences:
@@ -403,7 +405,7 @@ class SubtitleGenerator:
                 phrases.append(sentence)
             else:
                 # Split on commas, colons, semicolons
-                parts = re.split(r'(?<=[,;:])\s+', sentence)
+                parts = re.split(r"(?<=[,;:])\s+", sentence)
                 current = ""
 
                 for part in parts:
@@ -437,7 +439,7 @@ class SubtitleGenerator:
         script: str,
         audio_duration: float,
         max_chars: int = 50,
-        words_per_minute: float = None
+        words_per_minute: float = None,
     ) -> SubtitleTrack:
         """
         Generate subtitles from script text, synced to audio duration.
@@ -453,7 +455,9 @@ class SubtitleGenerator:
         Returns:
             SubtitleTrack with timed cues
         """
-        logger.info(f"Generating subtitles from script ({len(script)} chars, {audio_duration:.1f}s)")
+        logger.info(
+            f"Generating subtitles from script ({len(script)} chars, {audio_duration:.1f}s)"
+        )
 
         wpm = words_per_minute or self.WORDS_PER_MINUTE
 
@@ -495,11 +499,7 @@ class SubtitleGenerator:
         logger.info(f"Generated {len(track.cues)} subtitle cues")
         return track
 
-    def generate_subtitles_from_audio(
-        self,
-        audio_path: str,
-        language: str = "en"
-    ) -> SubtitleTrack:
+    def generate_subtitles_from_audio(self, audio_path: str, language: str = "en") -> SubtitleTrack:
         """
         Generate subtitles from audio using speech-to-text.
 
@@ -538,11 +538,7 @@ class SubtitleGenerator:
 
         return track
 
-    def _transcribe_faster_whisper(
-        self,
-        audio_path: str,
-        language: str
-    ) -> SubtitleTrack:
+    def _transcribe_faster_whisper(self, audio_path: str, language: str) -> SubtitleTrack:
         """Transcribe using faster-whisper."""
         track = SubtitleTrack(language=language)
 
@@ -550,43 +546,31 @@ class SubtitleGenerator:
             audio_path,
             language=language,
             word_timestamps=True,
-            vad_filter=True  # Filter out silence
+            vad_filter=True,  # Filter out silence
         )
 
         cue_index = 1
         for segment in segments:
             # Get word-level timing if available
             words_data = []
-            if hasattr(segment, 'words') and segment.words:
+            if hasattr(segment, "words") and segment.words:
                 words_data = [
-                    {"word": w.word, "start": w.start, "end": w.end}
-                    for w in segment.words
+                    {"word": w.word, "start": w.start, "end": w.end} for w in segment.words
                 ]
 
             track.add_cue(
-                start=segment.start,
-                end=segment.end,
-                text=segment.text.strip(),
-                words=words_data
+                start=segment.start, end=segment.end, text=segment.text.strip(), words=words_data
             )
             cue_index += 1
 
         logger.info(f"Transcribed {len(track.cues)} segments")
         return track
 
-    def _transcribe_openai_whisper(
-        self,
-        audio_path: str,
-        language: str
-    ) -> SubtitleTrack:
+    def _transcribe_openai_whisper(self, audio_path: str, language: str) -> SubtitleTrack:
         """Transcribe using openai-whisper."""
         track = SubtitleTrack(language=language)
 
-        result = self.whisper.transcribe(
-            audio_path,
-            language=language,
-            word_timestamps=True
-        )
+        result = self.whisper.transcribe(audio_path, language=language, word_timestamps=True)
 
         for segment in result.get("segments", []):
             words_data = []
@@ -600,17 +584,14 @@ class SubtitleGenerator:
                 start=segment["start"],
                 end=segment["end"],
                 text=segment["text"].strip(),
-                words=words_data
+                words=words_data,
             )
 
         logger.info(f"Transcribed {len(track.cues)} segments")
         return track
 
     def sync_subtitles_with_audio(
-        self,
-        script_text: str,
-        audio_path: str,
-        max_chars: int = 50
+        self, script_text: str, audio_path: str, max_chars: int = 50
     ) -> SubtitleTrack:
         """
         Sync script text with audio, using transcription if available.
@@ -643,11 +624,7 @@ class SubtitleGenerator:
         # Fall back to script-based timing
         return self.generate_subtitles_from_script(script_text, duration, max_chars)
 
-    def create_srt_file(
-        self,
-        subtitle_track: SubtitleTrack,
-        output_path: str
-    ) -> str:
+    def create_srt_file(self, subtitle_track: SubtitleTrack, output_path: str) -> str:
         """
         Create an SRT subtitle file from a track.
 
@@ -662,17 +639,13 @@ class SubtitleGenerator:
 
         srt_content = subtitle_track.to_srt()
 
-        with open(output_path, 'w', encoding='utf-8') as f:
+        with open(output_path, "w", encoding="utf-8") as f:
             f.write(srt_content)
 
         logger.info(f"Created SRT file: {output_path}")
         return output_path
 
-    def create_vtt_file(
-        self,
-        subtitle_track: SubtitleTrack,
-        output_path: str
-    ) -> str:
+    def create_vtt_file(self, subtitle_track: SubtitleTrack, output_path: str) -> str:
         """
         Create a VTT subtitle file from a track.
 
@@ -687,17 +660,13 @@ class SubtitleGenerator:
 
         vtt_content = subtitle_track.to_vtt()
 
-        with open(output_path, 'w', encoding='utf-8') as f:
+        with open(output_path, "w", encoding="utf-8") as f:
             f.write(vtt_content)
 
         logger.info(f"Created VTT file: {output_path}")
         return output_path
 
-    def get_style(
-        self,
-        style_name: str = "regular",
-        niche: str = None
-    ) -> Dict:
+    def get_style(self, style_name: str = "regular", niche: str = None) -> Dict:
         """
         Get subtitle style configuration.
 
@@ -721,11 +690,7 @@ class SubtitleGenerator:
         return style
 
     def _build_subtitle_filter(
-        self,
-        srt_path: str,
-        style: Dict,
-        video_width: int = 1920,
-        video_height: int = 1080
+        self, srt_path: str, style: Dict, video_width: int = 1920, video_height: int = 1080
     ) -> str:
         """
         Build FFmpeg subtitle filter string.
@@ -787,7 +752,7 @@ class SubtitleGenerator:
         subtitle_track: SubtitleTrack,
         output_path: str,
         style: Union[str, Dict] = "regular",
-        niche: str = None
+        niche: str = None,
     ) -> Optional[str]:
         """
         Burn subtitles into a video file using FFmpeg.
@@ -847,21 +812,25 @@ class SubtitleGenerator:
 
             # FFmpeg command to burn subtitles
             cmd = [
-                self.ffmpeg, '-y',
-                '-i', video_path,
-                '-vf', sub_filter,
-                '-c:v', 'libx264',
-                '-preset', 'fast',
-                '-crf', '23',
-                '-c:a', 'copy',
-                output_path
+                self.ffmpeg,
+                "-y",
+                "-i",
+                video_path,
+                "-vf",
+                sub_filter,
+                "-c:v",
+                "libx264",
+                "-preset",
+                "fast",
+                "-crf",
+                "23",
+                "-c:a",
+                "copy",
+                output_path,
             ]
 
             result = subprocess.run(
-                cmd,
-                capture_output=True,
-                text=True,
-                timeout=600  # 10 minute timeout
+                cmd, capture_output=True, text=True, timeout=600  # 10 minute timeout
             )
 
             if result.returncode != 0:
@@ -897,20 +866,21 @@ class SubtitleGenerator:
         try:
             cmd = [
                 self.ffprobe,
-                '-v', 'error',
-                '-select_streams', 'v:0',
-                '-show_entries', 'stream=width,height',
-                '-of', 'csv=p=0',
-                video_path
+                "-v",
+                "error",
+                "-select_streams",
+                "v:0",
+                "-show_entries",
+                "stream=width,height",
+                "-of",
+                "csv=p=0",
+                video_path,
             ]
             result = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
             if result.returncode == 0 and result.stdout.strip():
-                parts = result.stdout.strip().split(',')
+                parts = result.stdout.strip().split(",")
                 if len(parts) >= 2:
-                    return {
-                        "width": int(parts[0]),
-                        "height": int(parts[1])
-                    }
+                    return {"width": int(parts[0]), "height": int(parts[1])}
         except (subprocess.TimeoutExpired, subprocess.SubprocessError, ValueError):
             pass
 
@@ -924,7 +894,7 @@ class SubtitleGenerator:
         audio_path: str = None,
         style: str = "regular",
         niche: str = None,
-        use_transcription: bool = True
+        use_transcription: bool = True,
     ) -> Optional[str]:
         """
         Convenience method to add subtitles to a video from script.
@@ -964,9 +934,9 @@ class SubtitleGenerator:
 
 # Example usage and testing
 if __name__ == "__main__":
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print("SUBTITLE GENERATOR TEST")
-    print("="*60 + "\n")
+    print("=" * 60 + "\n")
 
     generator = SubtitleGenerator()
 

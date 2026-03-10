@@ -6,15 +6,15 @@ Tracks errors, sends alerts, and provides dashboards.
 
 import functools
 import hashlib
+import json
 import os
 import sqlite3
-import json
 import traceback
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Any, Callable
-from pathlib import Path
 from enum import Enum
+from pathlib import Path
+from typing import Any, Callable, Dict, List, Optional
 
 from loguru import logger
 
@@ -41,6 +41,7 @@ class ErrorCategory(Enum):
 @dataclass
 class ErrorEvent:
     """Represents a tracked error event."""
+
     id: str
     message: str
     severity: ErrorSeverity
@@ -108,7 +109,8 @@ class ErrorMonitor:
             cursor = conn.cursor()
 
             # Create errors table
-            cursor.execute("""
+            cursor.execute(
+                """
                 CREATE TABLE IF NOT EXISTS errors (
                     id TEXT PRIMARY KEY,
                     message TEXT NOT NULL,
@@ -122,25 +124,34 @@ class ErrorMonitor:
                     occurrence_count INTEGER DEFAULT 1,
                     error_hash TEXT
                 )
-            """)
+            """
+            )
 
             # Create index for faster queries
-            cursor.execute("""
+            cursor.execute(
+                """
                 CREATE INDEX IF NOT EXISTS idx_errors_timestamp
                 ON errors(timestamp)
-            """)
-            cursor.execute("""
+            """
+            )
+            cursor.execute(
+                """
                 CREATE INDEX IF NOT EXISTS idx_errors_severity
                 ON errors(severity)
-            """)
-            cursor.execute("""
+            """
+            )
+            cursor.execute(
+                """
                 CREATE INDEX IF NOT EXISTS idx_errors_category
                 ON errors(category)
-            """)
-            cursor.execute("""
+            """
+            )
+            cursor.execute(
+                """
                 CREATE INDEX IF NOT EXISTS idx_errors_hash
                 ON errors(error_hash)
-            """)
+            """
+            )
 
             conn.commit()
             logger.debug("Error database initialized")
@@ -161,7 +172,7 @@ class ErrorMonitor:
         error: Exception,
         severity: ErrorSeverity = ErrorSeverity.MEDIUM,
         category: ErrorCategory = ErrorCategory.UNKNOWN,
-        context: Optional[Dict[str, Any]] = None
+        context: Optional[Dict[str, Any]] = None,
     ) -> ErrorEvent:
         """
         Record an error event.
@@ -181,11 +192,13 @@ class ErrorMonitor:
         context = context or {}
 
         # Add common context
-        context.update({
-            "error_type": type(error).__name__,
-            "error_args": [str(arg) for arg in error.args] if error.args else [],
-            "recorded_at": datetime.now().isoformat(),
-        })
+        context.update(
+            {
+                "error_type": type(error).__name__,
+                "error_args": [str(arg) for arg in error.args] if error.args else [],
+                "recorded_at": datetime.now().isoformat(),
+            }
+        )
 
         event = ErrorEvent(
             id=error_id,
@@ -202,44 +215,53 @@ class ErrorMonitor:
 
             # Check for recent duplicate
             one_hour_ago = (datetime.now() - timedelta(hours=1)).isoformat()
-            cursor.execute("""
+            cursor.execute(
+                """
                 SELECT id, occurrence_count FROM errors
                 WHERE error_hash = ? AND timestamp > ? AND resolved = 0
                 ORDER BY timestamp DESC LIMIT 1
-            """, (error_hash, one_hour_ago))
+            """,
+                (error_hash, one_hour_ago),
+            )
 
             existing = cursor.fetchone()
 
             if existing:
                 # Increment occurrence count for existing error
                 existing_id, count = existing
-                cursor.execute("""
+                cursor.execute(
+                    """
                     UPDATE errors SET occurrence_count = ?, timestamp = ?
                     WHERE id = ?
-                """, (count + 1, event.timestamp, existing_id))
+                """,
+                    (count + 1, event.timestamp, existing_id),
+                )
                 event.id = existing_id
                 event.occurrence_count = count + 1
                 logger.debug(f"Incremented error count for {existing_id}: {count + 1}")
             else:
                 # Insert new error
-                cursor.execute("""
+                cursor.execute(
+                    """
                     INSERT INTO errors
                     (id, message, severity, category, stack_trace, context,
                      timestamp, resolved, resolution_notes, occurrence_count, error_hash)
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                """, (
-                    event.id,
-                    event.message,
-                    event.severity.value,
-                    event.category.value,
-                    event.stack_trace,
-                    json.dumps(event.context),
-                    event.timestamp,
-                    0,
-                    "",
-                    1,
-                    error_hash
-                ))
+                """,
+                    (
+                        event.id,
+                        event.message,
+                        event.severity.value,
+                        event.category.value,
+                        event.stack_trace,
+                        json.dumps(event.context),
+                        event.timestamp,
+                        0,
+                        "",
+                        1,
+                        error_hash,
+                    ),
+                )
 
             conn.commit()
 
@@ -251,10 +273,7 @@ class ErrorMonitor:
             ErrorSeverity.CRITICAL: "CRITICAL",
         }.get(severity, "ERROR")
 
-        logger.log(
-            log_level,
-            f"[{category.value.upper()}] {event.message} (ID: {event.id})"
-        )
+        logger.log(log_level, f"[{category.value.upper()}] {event.message} (ID: {event.id})")
 
         # Trigger alert handlers
         self._trigger_alerts(event)
@@ -283,11 +302,14 @@ class ErrorMonitor:
         """Get a specific error by ID."""
         with sqlite3.connect(self.db_path) as conn:
             cursor = conn.cursor()
-            cursor.execute("""
+            cursor.execute(
+                """
                 SELECT id, message, severity, category, stack_trace, context,
                        timestamp, resolved, resolution_notes, occurrence_count
                 FROM errors WHERE id = ?
-            """, (error_id,))
+            """,
+                (error_id,),
+            )
 
             row = cursor.fetchone()
             if row:
@@ -318,10 +340,13 @@ class ErrorMonitor:
         """
         with sqlite3.connect(self.db_path) as conn:
             cursor = conn.cursor()
-            cursor.execute("""
+            cursor.execute(
+                """
                 UPDATE errors SET resolved = 1, resolution_notes = ?
                 WHERE id = ?
-            """, (notes, error_id))
+            """,
+                (notes, error_id),
+            )
             conn.commit()
 
             if cursor.rowcount > 0:
@@ -334,7 +359,7 @@ class ErrorMonitor:
         hours: int = 24,
         severity: Optional[ErrorSeverity] = None,
         category: Optional[ErrorCategory] = None,
-        include_resolved: bool = False
+        include_resolved: bool = False,
     ) -> List[ErrorEvent]:
         """
         Get errors from the last N hours.
@@ -376,18 +401,20 @@ class ErrorMonitor:
             cursor.execute(query, params)
 
             for row in cursor.fetchall():
-                errors.append(ErrorEvent(
-                    id=row[0],
-                    message=row[1],
-                    severity=ErrorSeverity(row[2]),
-                    category=ErrorCategory(row[3]),
-                    stack_trace=row[4],
-                    context=json.loads(row[5]) if row[5] else {},
-                    timestamp=row[6],
-                    resolved=bool(row[7]),
-                    resolution_notes=row[8] or "",
-                    occurrence_count=row[9],
-                ))
+                errors.append(
+                    ErrorEvent(
+                        id=row[0],
+                        message=row[1],
+                        severity=ErrorSeverity(row[2]),
+                        category=ErrorCategory(row[3]),
+                        stack_trace=row[4],
+                        context=json.loads(row[5]) if row[5] else {},
+                        timestamp=row[6],
+                        resolved=bool(row[7]),
+                        resolution_notes=row[8] or "",
+                        occurrence_count=row[9],
+                    )
+                )
 
         return errors
 
@@ -419,40 +446,52 @@ class ErrorMonitor:
             cursor = conn.cursor()
 
             # Get total counts
-            cursor.execute("""
+            cursor.execute(
+                """
                 SELECT COUNT(*), SUM(occurrence_count)
                 FROM errors WHERE timestamp > ?
-            """, (cutoff,))
+            """,
+                (cutoff,),
+            )
             row = cursor.fetchone()
             summary["total_errors"] = row[0] or 0
             summary["total_occurrences"] = row[1] or 0
 
             # Get counts by severity
-            cursor.execute("""
+            cursor.execute(
+                """
                 SELECT severity, COUNT(*), SUM(occurrence_count)
                 FROM errors WHERE timestamp > ?
                 GROUP BY severity
-            """, (cutoff,))
+            """,
+                (cutoff,),
+            )
             for row in cursor.fetchall():
                 if row[0] in summary["by_severity"]:
                     summary["by_severity"][row[0]] = row[2] or row[1]
 
             # Get counts by category
-            cursor.execute("""
+            cursor.execute(
+                """
                 SELECT category, COUNT(*), SUM(occurrence_count)
                 FROM errors WHERE timestamp > ?
                 GROUP BY category
-            """, (cutoff,))
+            """,
+                (cutoff,),
+            )
             for row in cursor.fetchall():
                 if row[0] in summary["by_category"]:
                     summary["by_category"][row[0]] = row[2] or row[1]
 
             # Get resolved/unresolved counts
-            cursor.execute("""
+            cursor.execute(
+                """
                 SELECT resolved, COUNT(*)
                 FROM errors WHERE timestamp > ?
                 GROUP BY resolved
-            """, (cutoff,))
+            """,
+                (cutoff,),
+            )
             for row in cursor.fetchall():
                 if row[0] == 0:
                     summary["unresolved"] = row[1]
@@ -460,36 +499,46 @@ class ErrorMonitor:
                     summary["resolved"] = row[1]
 
             # Get top errors by occurrence
-            cursor.execute("""
+            cursor.execute(
+                """
                 SELECT message, category, severity, SUM(occurrence_count) as total
                 FROM errors WHERE timestamp > ?
                 GROUP BY message, category
                 ORDER BY total DESC
                 LIMIT 5
-            """, (cutoff,))
+            """,
+                (cutoff,),
+            )
             for row in cursor.fetchall():
-                summary["top_errors"].append({
-                    "message": row[0][:100],
-                    "category": row[1],
-                    "severity": row[2],
-                    "occurrences": row[3],
-                })
+                summary["top_errors"].append(
+                    {
+                        "message": row[0][:100],
+                        "category": row[1],
+                        "severity": row[2],
+                        "occurrences": row[3],
+                    }
+                )
 
             # Get recent critical errors
-            cursor.execute("""
+            cursor.execute(
+                """
                 SELECT id, message, timestamp, occurrence_count
                 FROM errors
                 WHERE timestamp > ? AND severity = 'critical' AND resolved = 0
                 ORDER BY timestamp DESC
                 LIMIT 5
-            """, (cutoff,))
+            """,
+                (cutoff,),
+            )
             for row in cursor.fetchall():
-                summary["recent_critical"].append({
-                    "id": row[0],
-                    "message": row[1][:100],
-                    "timestamp": row[2],
-                    "occurrences": row[3],
-                })
+                summary["recent_critical"].append(
+                    {
+                        "id": row[0],
+                        "message": row[1][:100],
+                        "timestamp": row[2],
+                        "occurrences": row[3],
+                    }
+                )
 
         return summary
 
@@ -524,19 +573,25 @@ class ErrorMonitor:
                 end = date.replace(hour=23, minute=59, second=59).isoformat()
 
                 # Get total for the day
-                cursor.execute("""
+                cursor.execute(
+                    """
                     SELECT SUM(occurrence_count) FROM errors
                     WHERE timestamp BETWEEN ? AND ?
-                """, (start, end))
+                """,
+                    (start, end),
+                )
                 total = cursor.fetchone()[0] or 0
                 trends["total"].append(total)
 
                 # Get by severity
                 for severity in ["critical", "high", "medium", "low"]:
-                    cursor.execute("""
+                    cursor.execute(
+                        """
                         SELECT SUM(occurrence_count) FROM errors
                         WHERE timestamp BETWEEN ? AND ? AND severity = ?
-                    """, (start, end, severity))
+                    """,
+                        (start, end, severity),
+                    )
                     count = cursor.fetchone()[0] or 0
                     trends[severity].append(count)
 
@@ -571,7 +626,11 @@ class ErrorMonitor:
         # Check high errors
         high_count = summary["by_severity"].get("high", 0)
         if high_count > 5:
-            health["status"] = min(health["status"], "degraded", key=lambda x: ["healthy", "degraded", "critical"].index(x))
+            health["status"] = min(
+                health["status"],
+                "degraded",
+                key=lambda x: ["healthy", "degraded", "critical"].index(x),
+            )
             health["score"] -= 20
             health["issues"].append(f"{high_count} high severity errors in last hour")
 
@@ -579,7 +638,9 @@ class ErrorMonitor:
         if summary["total_occurrences"] > 50:
             health["status"] = "degraded" if health["status"] == "healthy" else health["status"]
             health["score"] -= 15
-            health["issues"].append(f"High error rate: {summary['total_occurrences']} errors in last hour")
+            health["issues"].append(
+                f"High error rate: {summary['total_occurrences']} errors in last hour"
+            )
             health["recommendations"].append("Review error patterns and consider rate limiting")
 
         # Check unresolved errors
@@ -655,10 +716,10 @@ class AlertManager:
     def __init__(self):
         """Initialize the alert manager."""
         self.thresholds = {
-            ErrorSeverity.CRITICAL: 1,   # Alert on first critical
-            ErrorSeverity.HIGH: 3,       # Alert after 3 high errors
-            ErrorSeverity.MEDIUM: 10,    # Alert after 10 medium errors
-            ErrorSeverity.LOW: 50,       # Alert after 50 low errors
+            ErrorSeverity.CRITICAL: 1,  # Alert on first critical
+            ErrorSeverity.HIGH: 3,  # Alert after 3 high errors
+            ErrorSeverity.MEDIUM: 10,  # Alert after 10 medium errors
+            ErrorSeverity.LOW: 50,  # Alert after 50 low errors
         }
         self._error_counts: Dict[str, int] = {}
         self._last_alert: Dict[str, datetime] = {}
@@ -767,7 +828,9 @@ Stack Trace:
 
         logger.debug(f"Alert written to {alert_file}")
 
-    def create_alert_handler(self, alert_file: Optional[str] = None) -> Callable[[ErrorEvent], None]:
+    def create_alert_handler(
+        self, alert_file: Optional[str] = None
+    ) -> Callable[[ErrorEvent], None]:
         """
         Create an alert handler function.
 
@@ -777,10 +840,13 @@ Stack Trace:
         Returns:
             Alert handler function
         """
+
         def handler(event: ErrorEvent):
             # Check if we should alert based on threshold
             count_key = f"{event.category.value}:{event.severity.value}"
-            self._error_counts[count_key] = self._error_counts.get(count_key, 0) + event.occurrence_count
+            self._error_counts[count_key] = (
+                self._error_counts.get(count_key, 0) + event.occurrence_count
+            )
 
             if self.should_alert(event.severity, self._error_counts[count_key]):
                 # Always send console alert for critical/high
@@ -809,9 +875,7 @@ def get_error_monitor() -> ErrorMonitor:
         _error_monitor = ErrorMonitor()
         # Setup default alert handler
         alert_manager = get_alert_manager()
-        _error_monitor.add_alert_handler(
-            alert_manager.create_alert_handler("logs/alerts.log")
-        )
+        _error_monitor.add_alert_handler(alert_manager.create_alert_handler("logs/alerts.log"))
     return _error_monitor
 
 
@@ -833,6 +897,7 @@ def monitor_errors(category: ErrorCategory = ErrorCategory.UNKNOWN):
     Returns:
         Decorated function that records errors
     """
+
     def decorator(func):
         @functools.wraps(func)
         def wrapper(*args, **kwargs):
@@ -856,10 +921,12 @@ def monitor_errors(category: ErrorCategory = ErrorCategory.UNKNOWN):
                         "module": func.__module__,
                         "args_count": len(args),
                         "kwargs_keys": list(kwargs.keys()),
-                    }
+                    },
                 )
                 raise
+
         return wrapper
+
     return decorator
 
 
@@ -873,6 +940,7 @@ def monitor_errors_async(category: ErrorCategory = ErrorCategory.UNKNOWN):
     Returns:
         Decorated async function that records errors
     """
+
     def decorator(func):
         @functools.wraps(func)
         async def wrapper(*args, **kwargs):
@@ -896,10 +964,12 @@ def monitor_errors_async(category: ErrorCategory = ErrorCategory.UNKNOWN):
                         "module": func.__module__,
                         "args_count": len(args),
                         "kwargs_keys": list(kwargs.keys()),
-                    }
+                    },
                 )
                 raise
+
         return wrapper
+
     return decorator
 
 
@@ -907,7 +977,7 @@ def quick_record_error(
     error: Exception,
     category: str = "unknown",
     severity: str = "medium",
-    context: Optional[Dict[str, Any]] = None
+    context: Optional[Dict[str, Any]] = None,
 ) -> ErrorEvent:
     """
     Quick helper to record an error with string parameters.
@@ -931,12 +1001,7 @@ def quick_record_error(
     except ValueError:
         sev = ErrorSeverity.MEDIUM
 
-    return get_error_monitor().record_error(
-        error,
-        severity=sev,
-        category=cat,
-        context=context
-    )
+    return get_error_monitor().record_error(error, severity=sev, category=cat, context=context)
 
 
 if __name__ == "__main__":

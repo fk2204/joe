@@ -25,14 +25,16 @@ Usage:
 """
 
 import re
-from typing import List, Dict, Any, Optional, Set, Tuple
 from dataclasses import dataclass, field
+from typing import Any, Dict, List, Tuple
+
 from loguru import logger
 
 
 @dataclass
 class ValidationResult:
     """Result of script validation."""
+
     is_valid: bool
     score: int  # 0-100
     issues: List[str] = field(default_factory=list)
@@ -48,16 +50,13 @@ class ValidationResult:
             "issues": self.issues,
             "warnings": self.warnings,
             "suggestions": self.suggestions,
-            "stats": self.stats
+            "stats": self.stats,
         }
 
     def summary(self) -> str:
         """Generate a human-readable summary."""
         status = "VALID" if self.is_valid else "INVALID"
-        lines = [
-            f"Script Validation: {status} (Score: {self.score}/100)",
-            ""
-        ]
+        lines = [f"Script Validation: {status} (Score: {self.score}/100)", ""]
 
         if self.issues:
             lines.append(f"Issues ({len(self.issues)}):")
@@ -100,80 +99,80 @@ class ScriptValidator:
 
     # Timestamp patterns (various formats)
     TIMESTAMP_PATTERNS = [
-        r'\[?\d{1,2}:\d{2}(?::\d{2})?\]?',  # [00:00], 0:00, 00:00:00
-        r'\[\d{1,2}:\d{2}\s*-\s*\d{1,2}:\d{2}\]',  # [00:00-00:15]
-        r'\(\d{1,2}:\d{2}\)',  # (00:00)
-        r'\d{1,2}:\d{2}(?::\d{2})?\s*[-:]\s*',  # 00:00 - or 00:00:
-        r'^\s*\d{1,2}:\d{2}\s+',  # Line starting with timestamp
+        r"\[?\d{1,2}:\d{2}(?::\d{2})?\]?",  # [00:00], 0:00, 00:00:00
+        r"\[\d{1,2}:\d{2}\s*-\s*\d{1,2}:\d{2}\]",  # [00:00-00:15]
+        r"\(\d{1,2}:\d{2}\)",  # (00:00)
+        r"\d{1,2}:\d{2}(?::\d{2})?\s*[-:]\s*",  # 00:00 - or 00:00:
+        r"^\s*\d{1,2}:\d{2}\s+",  # Line starting with timestamp
     ]
 
     # Chapter markers that shouldn't be read
     CHAPTER_MARKER_PATTERNS = [
-        r'^#{1,3}\s*Chapter\s*\d*:?\s*',  # ### Chapter 1:
-        r'^Chapter\s+\d+:?\s*',  # Chapter 1:
-        r'^\*\*Chapter\s+\d+\*\*',  # **Chapter 1**
-        r'^Section\s+\d+:?\s*',  # Section 1:
-        r'^Part\s+\d+:?\s*',  # Part 1:
+        r"^#{1,3}\s*Chapter\s*\d*:?\s*",  # ### Chapter 1:
+        r"^Chapter\s+\d+:?\s*",  # Chapter 1:
+        r"^\*\*Chapter\s+\d+\*\*",  # **Chapter 1**
+        r"^Section\s+\d+:?\s*",  # Section 1:
+        r"^Part\s+\d+:?\s*",  # Part 1:
     ]
 
     # Markdown formatting
     MARKDOWN_PATTERNS = [
-        r'\*\*([^*]+)\*\*',  # **bold** -> text
-        r'\*([^*]+)\*',  # *italic* -> text
-        r'__([^_]+)__',  # __bold__ -> text
-        r'_([^_]+)_',  # _italic_ -> text
-        r'^#{1,6}\s*',  # # Headers
-        r'\[([^\]]+)\]\([^)]+\)',  # [text](url) -> text
-        r'```[^`]*```',  # Code blocks
-        r'`([^`]+)`',  # `inline code` -> text
-        r'^[-*+]\s+',  # Bullet points
-        r'^\d+\.\s+',  # Numbered lists
-        r'^>\s*',  # Block quotes
+        r"\*\*([^*]+)\*\*",  # **bold** -> text
+        r"\*([^*]+)\*",  # *italic* -> text
+        r"__([^_]+)__",  # __bold__ -> text
+        r"_([^_]+)_",  # _italic_ -> text
+        r"^#{1,6}\s*",  # # Headers
+        r"\[([^\]]+)\]\([^)]+\)",  # [text](url) -> text
+        r"```[^`]*```",  # Code blocks
+        r"`([^`]+)`",  # `inline code` -> text
+        r"^[-*+]\s+",  # Bullet points
+        r"^\d+\.\s+",  # Numbered lists
+        r"^>\s*",  # Block quotes
     ]
 
     # Stage directions and production notes
     STAGE_DIRECTION_PATTERNS = [
-        r'\[pause\]',
-        r'\[music\]',
-        r'\[sfx[^\]]*\]',
-        r'\[sound[^\]]*\]',
-        r'\[cut\]',
-        r'\[transition\]',
-        r'\[zoom\]',
-        r'\[pan\]',
-        r'\[fade\]',
-        r'\[b-?roll[^\]]*\]',
-        r'\[broll[^\]]*\]',
-        r'\[text[^\]]*\]',
-        r'\[graphic[^\]]*\]',
-        r'\[visual[^\]]*\]',
-        r'\[animation[^\]]*\]',
-        r'\[screen[^\]]*\]',
-        r'\[show[^\]]*\]',
-        r'\[display[^\]]*\]',
-        r'\[insert[^\]]*\]',
-        r'\[overlay[^\]]*\]',
-        r'\[lower third[^\]]*\]',
-        r'\[title card[^\]]*\]',
-        r'\[on-?screen[^\]]*\]',
-        r'\[end card[^\]]*\]',
-        r'\[subscribe[^\]]*\]',
-        r'\[like[^\]]*\]',
-        r'\[bell[^\]]*\]',
-        r'\[outro[^\]]*\]',
-        r'\[intro[^\]]*\]',
-        r'\[hook[^\]]*\]',
-        r'\[cta[^\]]*\]',
-        r'\[action[^\]]*\]',
-        r'\[note[^\]]*\]',
-        r'\[edit[^\]]*\]',
-        r'\[camera[^\]]*\]',
-        r'\[close-?up[^\]]*\]',
-        r'\[wide shot[^\]]*\]',
-        r'\(pause\)',
-        r'\(beat\)',
-        r'\(silence\)',
-        r'\.\.\.\s*\[',  # ... [something]
+        r"\[pause\]",
+        r"\[music\]",
+        r"\[sfx[^\]]*\]",
+        r"\[sound[^\]]*\]",
+        r"\[cut\]",
+        r"\[transition\]",
+        r"\[zoom\]",
+        r"\[pan\]",
+        r"\[fade\]",
+        r"\[b-?roll[^\]]*\]",
+        r"\[broll[^\]]*\]",
+        r"\[text[^\]]*\]",
+        r"\[graphic[^\]]*\]",
+        r"\[visual[^\]]*\]",
+        r"\[animation[^\]]*\]",
+        r"\[screen[^\]]*\]",
+        r"\[show[^\]]*\]",
+        r"\[display[^\]]*\]",
+        r"\[insert[^\]]*\]",
+        r"\[overlay[^\]]*\]",
+        r"\[lower third[^\]]*\]",
+        r"\[title card[^\]]*\]",
+        r"\[on-?screen[^\]]*\]",
+        r"\[end card[^\]]*\]",
+        r"\[subscribe[^\]]*\]",
+        r"\[like[^\]]*\]",
+        r"\[bell[^\]]*\]",
+        r"\[outro[^\]]*\]",
+        r"\[intro[^\]]*\]",
+        r"\[hook[^\]]*\]",
+        r"\[cta[^\]]*\]",
+        r"\[action[^\]]*\]",
+        r"\[note[^\]]*\]",
+        r"\[edit[^\]]*\]",
+        r"\[camera[^\]]*\]",
+        r"\[close-?up[^\]]*\]",
+        r"\[wide shot[^\]]*\]",
+        r"\(pause\)",
+        r"\(beat\)",
+        r"\(silence\)",
+        r"\.\.\.\s*\[",  # ... [something]
     ]
 
     # Meta-text phrases that shouldn't be spoken
@@ -207,37 +206,37 @@ class ScriptValidator:
 
     # Filler words and phrases
     FILLER_PATTERNS = [
-        r'\b(?:um|uh|uhm|umm|er|erm|ah|ahh)\b',
-        r'\byou know\b',
-        r'\bI mean\b',
-        r'\blike,?\s+(?=\w)',  # "like" as filler, not comparison
-        r'\bbasically\b',
-        r'\bactually,?\s*(?=\w)',  # "actually" at start of sentence
-        r'\bliterally\b',
-        r'\bhonestly\b',
-        r'\bso,?\s+(?=anyway|basically|yeah)',
-        r'\bjust\s+(?=kind of|sort of)',
-        r'\bkind of\b',
-        r'\bsort of\b',
-        r'\bI guess\b',
-        r'\bI think,?\s*(?=I think)',  # repeated "I think"
-        r'\breally,?\s+really\b',  # repeated "really"
-        r'\bvery,?\s+very\b',  # repeated "very"
-        r'\bpretty much\b',
-        r'\bat the end of the day\b',
-        r'\bto be honest\b',
-        r'\bto be fair\b',
-        r'\bin my opinion\b',
-        r'\bif you will\b',
-        r'\bper se\b',
-        r'\bas such\b',
+        r"\b(?:um|uh|uhm|umm|er|erm|ah|ahh)\b",
+        r"\byou know\b",
+        r"\bI mean\b",
+        r"\blike,?\s+(?=\w)",  # "like" as filler, not comparison
+        r"\bbasically\b",
+        r"\bactually,?\s*(?=\w)",  # "actually" at start of sentence
+        r"\bliterally\b",
+        r"\bhonestly\b",
+        r"\bso,?\s+(?=anyway|basically|yeah)",
+        r"\bjust\s+(?=kind of|sort of)",
+        r"\bkind of\b",
+        r"\bsort of\b",
+        r"\bI guess\b",
+        r"\bI think,?\s*(?=I think)",  # repeated "I think"
+        r"\breally,?\s+really\b",  # repeated "really"
+        r"\bvery,?\s+very\b",  # repeated "very"
+        r"\bpretty much\b",
+        r"\bat the end of the day\b",
+        r"\bto be honest\b",
+        r"\bto be fair\b",
+        r"\bin my opinion\b",
+        r"\bif you will\b",
+        r"\bper se\b",
+        r"\bas such\b",
     ]
 
     # URL and link patterns
     URL_PATTERNS = [
         r'https?://[^\s<>"{}|\\^`\[\]]+',
         r'www\.[^\s<>"{}|\\^`\[\]]+',
-        r'[a-zA-Z0-9.-]+\.(com|org|net|io|co|ai|edu|gov|info|biz|me|tv|app|dev|tech|store|shop|blog)(?:/[^\s]*)?',
+        r"[a-zA-Z0-9.-]+\.(com|org|net|io|co|ai|edu|gov|info|biz|me|tv|app|dev|tech|store|shop|blog)(?:/[^\s]*)?",
     ]
 
     # Emoji pattern (matches most emoji)
@@ -255,7 +254,7 @@ class ScriptValidator:
         "\U00002702-\U000027B0"  # Dingbats
         "\U000024C2-\U0001F251"
         "]+",
-        flags=re.UNICODE
+        flags=re.UNICODE,
     )
 
     # ============================================================
@@ -264,24 +263,24 @@ class ScriptValidator:
 
     # Awkward phrases for TTS
     TTS_AWKWARD_PATTERNS = [
-        (r'\b(?:e\.g\.|i\.e\.|etc\.)\b', "Use full phrases instead of abbreviations"),
-        (r'\b(?:vs\.?|versus)\b', "Spell out 'versus' completely"),
-        (r'\b(?:approx\.?|approximately)\b', "Use 'about' or 'around' instead"),
-        (r'\b(?:govt\.?|government)\b', "Avoid abbreviations"),
-        (r'\b(?:dept\.?|department)\b', "Avoid abbreviations"),
-        (r'\b\d+(?:st|nd|rd|th)\b', "Ordinals may be mispronounced"),
-        (r'\$\d+(?:,\d{3})*(?:\.\d{2})?[kKmMbB]?\b', "Currency with K/M/B may be mispronounced"),
-        (r'\b\d+%', "Percentages should be written as 'X percent'"),
-        (r'\b(?:Dr\.|Mr\.|Mrs\.|Ms\.)\b', "Titles may be mispronounced"),
-        (r'\b[A-Z]{2,}\b', "Acronyms may be mispronounced"),
-        (r'[/\\]', "Slashes may cause TTS issues"),
-        (r'\([^)]{50,}\)', "Long parenthetical may cause awkward pauses"),
-        (r';\s*', "Semicolons may cause unnatural pauses"),
-        (r':\s*(?=[a-z])', "Colons before lowercase may be awkward"),
-        (r'—|--', "Em dashes may cause unnatural pauses"),
-        (r'\.{3,}', "Multiple periods (ellipsis) may be read awkwardly"),
-        (r'\?{2,}', "Multiple question marks are unnatural"),
-        (r'!{2,}', "Multiple exclamation marks are unnatural"),
+        (r"\b(?:e\.g\.|i\.e\.|etc\.)\b", "Use full phrases instead of abbreviations"),
+        (r"\b(?:vs\.?|versus)\b", "Spell out 'versus' completely"),
+        (r"\b(?:approx\.?|approximately)\b", "Use 'about' or 'around' instead"),
+        (r"\b(?:govt\.?|government)\b", "Avoid abbreviations"),
+        (r"\b(?:dept\.?|department)\b", "Avoid abbreviations"),
+        (r"\b\d+(?:st|nd|rd|th)\b", "Ordinals may be mispronounced"),
+        (r"\$\d+(?:,\d{3})*(?:\.\d{2})?[kKmMbB]?\b", "Currency with K/M/B may be mispronounced"),
+        (r"\b\d+%", "Percentages should be written as 'X percent'"),
+        (r"\b(?:Dr\.|Mr\.|Mrs\.|Ms\.)\b", "Titles may be mispronounced"),
+        (r"\b[A-Z]{2,}\b", "Acronyms may be mispronounced"),
+        (r"[/\\]", "Slashes may cause TTS issues"),
+        (r"\([^)]{50,}\)", "Long parenthetical may cause awkward pauses"),
+        (r";\s*", "Semicolons may cause unnatural pauses"),
+        (r":\s*(?=[a-z])", "Colons before lowercase may be awkward"),
+        (r"—|--", "Em dashes may cause unnatural pauses"),
+        (r"\.{3,}", "Multiple periods (ellipsis) may be read awkwardly"),
+        (r"\?{2,}", "Multiple question marks are unnatural"),
+        (r"!{2,}", "Multiple exclamation marks are unnatural"),
         (r'["\'][^"\']{100,}["\']', "Very long quotes may be awkward"),
     ]
 
@@ -323,36 +322,36 @@ class ScriptValidator:
     def _compile_patterns(self):
         """Compile all regex patterns for efficiency."""
         # Compile timestamp patterns
-        self._timestamp_regex = [re.compile(p, re.IGNORECASE | re.MULTILINE)
-                                  for p in self.TIMESTAMP_PATTERNS]
+        self._timestamp_regex = [
+            re.compile(p, re.IGNORECASE | re.MULTILINE) for p in self.TIMESTAMP_PATTERNS
+        ]
 
         # Compile chapter marker patterns
-        self._chapter_regex = [re.compile(p, re.IGNORECASE | re.MULTILINE)
-                                for p in self.CHAPTER_MARKER_PATTERNS]
+        self._chapter_regex = [
+            re.compile(p, re.IGNORECASE | re.MULTILINE) for p in self.CHAPTER_MARKER_PATTERNS
+        ]
 
         # Compile markdown patterns
-        self._markdown_regex = [(re.compile(p, re.MULTILINE), r'\1' if '(' in p else '')
-                                 for p in self.MARKDOWN_PATTERNS]
+        self._markdown_regex = [
+            (re.compile(p, re.MULTILINE), r"\1" if "(" in p else "") for p in self.MARKDOWN_PATTERNS
+        ]
 
         # Compile stage direction patterns
-        self._stage_regex = [re.compile(p, re.IGNORECASE)
-                              for p in self.STAGE_DIRECTION_PATTERNS]
+        self._stage_regex = [re.compile(p, re.IGNORECASE) for p in self.STAGE_DIRECTION_PATTERNS]
 
         # Compile meta-text patterns
-        self._meta_regex = [re.compile(p, re.IGNORECASE)
-                             for p in self.META_TEXT_PATTERNS]
+        self._meta_regex = [re.compile(p, re.IGNORECASE) for p in self.META_TEXT_PATTERNS]
 
         # Compile filler patterns
-        self._filler_regex = [re.compile(p, re.IGNORECASE)
-                               for p in self.FILLER_PATTERNS]
+        self._filler_regex = [re.compile(p, re.IGNORECASE) for p in self.FILLER_PATTERNS]
 
         # Compile URL patterns
-        self._url_regex = [re.compile(p, re.IGNORECASE)
-                            for p in self.URL_PATTERNS]
+        self._url_regex = [re.compile(p, re.IGNORECASE) for p in self.URL_PATTERNS]
 
         # Compile TTS awkward patterns
-        self._tts_awkward_regex = [(re.compile(p, re.IGNORECASE), msg)
-                                    for p, msg in self.TTS_AWKWARD_PATTERNS]
+        self._tts_awkward_regex = [
+            (re.compile(p, re.IGNORECASE), msg) for p, msg in self.TTS_AWKWARD_PATTERNS
+        ]
 
     # ============================================================
     # Main Public Methods
@@ -388,7 +387,7 @@ class ScriptValidator:
 
         # Remove chapter markers
         for regex in self._chapter_regex:
-            cleaned = regex.sub('', cleaned)
+            cleaned = regex.sub("", cleaned)
 
         # Clean markdown (replace with captured text where applicable)
         for regex, replacement in self._markdown_regex:
@@ -396,22 +395,22 @@ class ScriptValidator:
 
         # Remove stage directions
         for regex in self._stage_regex:
-            cleaned = regex.sub('', cleaned)
+            cleaned = regex.sub("", cleaned)
 
         # Remove meta-text
         cleaned = self.remove_meta_text(cleaned)
 
         # Remove filler words
         for regex in self._filler_regex:
-            cleaned = regex.sub('', cleaned)
+            cleaned = regex.sub("", cleaned)
 
         # Remove URLs
         for regex in self._url_regex:
-            cleaned = regex.sub('', cleaned)
+            cleaned = regex.sub("", cleaned)
 
         # Remove emoji (unless keeping them)
         if not self.keep_emoji:
-            cleaned = self.EMOJI_PATTERN.sub('', cleaned)
+            cleaned = self.EMOJI_PATTERN.sub("", cleaned)
 
         # Clean up whitespace
         cleaned = self._normalize_whitespace(cleaned)
@@ -422,10 +421,7 @@ class ScriptValidator:
         return cleaned.strip()
 
     def validate_script(
-        self,
-        text: str,
-        niche: str = "default",
-        is_short: bool = False
+        self, text: str, niche: str = "default", is_short: bool = False
     ) -> ValidationResult:
         """
         Validate a script for quality and TTS compatibility.
@@ -494,13 +490,17 @@ class ScriptValidator:
         if long_sentences:
             stats["long_sentences"] = len(long_sentences)
             if len(long_sentences) > 3:
-                issues.append(f"{len(long_sentences)} sentences too long for TTS (max {self.MAX_SENTENCE_LENGTH} words)")
+                issues.append(
+                    f"{len(long_sentences)} sentences too long for TTS (max {self.MAX_SENTENCE_LENGTH} words)"
+                )
                 score -= 10
             else:
                 warnings.append(f"{len(long_sentences)} sentences could be shorter for better TTS")
                 score -= 5
             for sent_num, sent_len, preview in long_sentences[:3]:
-                suggestions.append(f"Sentence {sent_num} ({sent_len} words): Break up '{preview}...'")
+                suggestions.append(
+                    f"Sentence {sent_num} ({sent_len} words): Break up '{preview}...'"
+                )
 
         # Calculate average sentence length
         if sentence_count > 0:
@@ -514,19 +514,31 @@ class ScriptValidator:
         # Hook Validation (first 2 sentences)
         # ============================================================
         if sentence_count >= 2:
-            hook_text = ' '.join(sentences[:2])
+            hook_text = " ".join(sentences[:2])
             hook_words = len(hook_text.split())
             stats["hook_word_count"] = hook_words
 
             # Check for engaging hook elements
             hook_lower = hook_text.lower()
-            has_question = '?' in hook_text
-            has_you = 'you' in hook_lower
-            has_number = bool(re.search(r'\d+', hook_text))
-            has_power_word = any(pw in hook_lower for pw in [
-                'secret', 'shocking', 'truth', 'never', 'always', 'mistake',
-                'wrong', 'hidden', 'revealed', 'proven', 'exactly'
-            ])
+            has_question = "?" in hook_text
+            has_you = "you" in hook_lower
+            has_number = bool(re.search(r"\d+", hook_text))
+            has_power_word = any(
+                pw in hook_lower
+                for pw in [
+                    "secret",
+                    "shocking",
+                    "truth",
+                    "never",
+                    "always",
+                    "mistake",
+                    "wrong",
+                    "hidden",
+                    "revealed",
+                    "proven",
+                    "exactly",
+                ]
+            )
 
             hook_elements = sum([has_question, has_you, has_number, has_power_word])
             stats["hook_elements"] = hook_elements
@@ -538,28 +550,32 @@ class ScriptValidator:
 
             if hook_words > self.HOOK_MAX_WORDS * 2:
                 warnings.append(f"Hook section too long ({hook_words} words)")
-                suggestions.append(f"Keep first 2 sentences under {self.HOOK_MAX_WORDS * 2} words total")
+                suggestions.append(
+                    f"Keep first 2 sentences under {self.HOOK_MAX_WORDS * 2} words total"
+                )
                 score -= 3
 
         # ============================================================
         # CTA Placement Validation
         # ============================================================
         cta_patterns = [
-            r'\b(?:subscribe|like|comment|share|hit|smash|bell)\b',
-            r'\bnotification\b',
-            r'\bfollow\s+(?:us|me)\b'
+            r"\b(?:subscribe|like|comment|share|hit|smash|bell)\b",
+            r"\bnotification\b",
+            r"\bfollow\s+(?:us|me)\b",
         ]
-        cta_regex = re.compile('|'.join(cta_patterns), re.IGNORECASE)
+        cta_regex = re.compile("|".join(cta_patterns), re.IGNORECASE)
 
         # Find first CTA position
         cta_match = cta_regex.search(text)
         if cta_match and word_count > 0:
-            cta_position = len(text[:cta_match.start()].split())
+            cta_position = len(text[: cta_match.start()].split())
             cta_percent = (cta_position / word_count) * 100
             stats["cta_position_percent"] = round(cta_percent, 1)
 
             if cta_percent < self.CTA_MIN_POSITION_PERCENT:
-                issues.append(f"CTA too early at {cta_percent:.0f}% (should be after {self.CTA_MIN_POSITION_PERCENT}%)")
+                issues.append(
+                    f"CTA too early at {cta_percent:.0f}% (should be after {self.CTA_MIN_POSITION_PERCENT}%)"
+                )
                 suggestions.append("Move subscribe/like CTA to after 30% of the script")
                 score -= 10
 
@@ -602,10 +618,10 @@ class ScriptValidator:
         # Check for Remaining Artifacts
         # ============================================================
         artifact_checks = [
-            (r'\[.*?\]', "Square bracket text found (stage directions?)"),
-            (r'\(.*?pause.*?\)', "Pause direction found"),
-            (r'\*\*.*?\*\*', "Bold markdown found"),
-            (r'^#+ ', "Header markdown found"),
+            (r"\[.*?\]", "Square bracket text found (stage directions?)"),
+            (r"\(.*?pause.*?\)", "Pause direction found"),
+            (r"\*\*.*?\*\*", "Bold markdown found"),
+            (r"^#+ ", "Header markdown found"),
         ]
         for pattern, message in artifact_checks:
             if re.search(pattern, text, re.IGNORECASE | re.MULTILINE):
@@ -635,7 +651,7 @@ class ScriptValidator:
             issues=issues,
             warnings=warnings,
             suggestions=suggestions,
-            stats=stats
+            stats=stats,
         )
 
     def improve_script(self, text: str, niche: str = "default") -> str:
@@ -696,7 +712,7 @@ class ScriptValidator:
         """
         cleaned = text
         for regex in self._timestamp_regex:
-            cleaned = regex.sub('', cleaned)
+            cleaned = regex.sub("", cleaned)
         return cleaned
 
     def remove_meta_text(self, text: str) -> str:
@@ -718,7 +734,7 @@ class ScriptValidator:
         """
         cleaned = text
         for regex in self._meta_regex:
-            cleaned = regex.sub('', cleaned)
+            cleaned = regex.sub("", cleaned)
         return cleaned
 
     def check_tts_compatibility(self, text: str) -> List[str]:
@@ -759,29 +775,34 @@ class ScriptValidator:
     def _normalize_whitespace(self, text: str) -> str:
         """Normalize whitespace in text."""
         # Replace multiple spaces with single space
-        text = re.sub(r' +', ' ', text)
+        text = re.sub(r" +", " ", text)
         # Replace multiple newlines with double newline
-        text = re.sub(r'\n{3,}', '\n\n', text)
+        text = re.sub(r"\n{3,}", "\n\n", text)
         # Remove spaces before punctuation
-        text = re.sub(r' +([.,!?;:])', r'\1', text)
+        text = re.sub(r" +([.,!?;:])", r"\1", text)
         # Ensure space after punctuation (except for abbreviations)
-        text = re.sub(r'([.,!?;:])(?=[A-Za-z])', r'\1 ', text)
+        text = re.sub(r"([.,!?;:])(?=[A-Za-z])", r"\1 ", text)
         # Remove leading/trailing whitespace from lines
-        lines = [line.strip() for line in text.split('\n')]
-        return '\n'.join(lines)
+        lines = [line.strip() for line in text.split("\n")]
+        return "\n".join(lines)
 
     def _split_sentences(self, text: str) -> List[str]:
         """Split text into sentences."""
         # Simple sentence splitter
         # Handle abbreviations and decimal numbers
-        text = re.sub(r'(\d)\.(\d)', r'\1<DECIMAL>\2', text)
-        text = re.sub(r'\b(Mr|Mrs|Ms|Dr|Prof|Inc|Ltd|Co|vs|etc|e\.g|i\.e)\.', r'\1<ABBR>', text, flags=re.IGNORECASE)
+        text = re.sub(r"(\d)\.(\d)", r"\1<DECIMAL>\2", text)
+        text = re.sub(
+            r"\b(Mr|Mrs|Ms|Dr|Prof|Inc|Ltd|Co|vs|etc|e\.g|i\.e)\.",
+            r"\1<ABBR>",
+            text,
+            flags=re.IGNORECASE,
+        )
 
         # Split on sentence-ending punctuation
-        sentences = re.split(r'[.!?]+\s+', text)
+        sentences = re.split(r"[.!?]+\s+", text)
 
         # Restore abbreviations and decimals
-        sentences = [s.replace('<DECIMAL>', '.').replace('<ABBR>', '.') for s in sentences]
+        sentences = [s.replace("<DECIMAL>", ".").replace("<ABBR>", ".") for s in sentences]
 
         # Filter out empty sentences
         return [s.strip() for s in sentences if s.strip()]
@@ -798,9 +819,11 @@ class ScriptValidator:
                 unique.append(sentence)
                 seen.add(normalized)
 
-        return '. '.join(unique)
+        return ". ".join(unique)
 
-    def _find_repetitive_phrases(self, text: str, min_length: int = 4, min_count: int = 3) -> List[Tuple[str, int]]:
+    def _find_repetitive_phrases(
+        self, text: str, min_length: int = 4, min_count: int = 3
+    ) -> List[Tuple[str, int]]:
         """Find phrases that repeat too often."""
         words = text.lower().split()
         phrase_counts = {}
@@ -808,7 +831,7 @@ class ScriptValidator:
         # Check n-grams of different lengths
         for n in range(min_length, min_length + 3):
             for i in range(len(words) - n + 1):
-                phrase = ' '.join(words[i:i + n])
+                phrase = " ".join(words[i : i + n])
                 # Skip phrases that are mostly stop words
                 if not self._is_meaningful_phrase(phrase):
                     continue
@@ -822,14 +845,70 @@ class ScriptValidator:
 
     def _is_meaningful_phrase(self, phrase: str) -> bool:
         """Check if phrase is meaningful (not mostly stop words)."""
-        stop_words = {'the', 'a', 'an', 'is', 'are', 'was', 'were', 'be', 'been',
-                      'being', 'have', 'has', 'had', 'do', 'does', 'did', 'will',
-                      'would', 'could', 'should', 'may', 'might', 'must', 'shall',
-                      'can', 'need', 'dare', 'ought', 'used', 'to', 'of', 'in',
-                      'for', 'on', 'with', 'at', 'by', 'from', 'up', 'about',
-                      'into', 'over', 'after', 'and', 'but', 'or', 'as', 'if',
-                      'than', 'because', 'while', 'although', 'though', 'that',
-                      'which', 'who', 'whom', 'this', 'these', 'those', 'it', 'its'}
+        stop_words = {
+            "the",
+            "a",
+            "an",
+            "is",
+            "are",
+            "was",
+            "were",
+            "be",
+            "been",
+            "being",
+            "have",
+            "has",
+            "had",
+            "do",
+            "does",
+            "did",
+            "will",
+            "would",
+            "could",
+            "should",
+            "may",
+            "might",
+            "must",
+            "shall",
+            "can",
+            "need",
+            "dare",
+            "ought",
+            "used",
+            "to",
+            "of",
+            "in",
+            "for",
+            "on",
+            "with",
+            "at",
+            "by",
+            "from",
+            "up",
+            "about",
+            "into",
+            "over",
+            "after",
+            "and",
+            "but",
+            "or",
+            "as",
+            "if",
+            "than",
+            "because",
+            "while",
+            "although",
+            "though",
+            "that",
+            "which",
+            "who",
+            "whom",
+            "this",
+            "these",
+            "those",
+            "it",
+            "its",
+        }
 
         words = phrase.split()
         non_stop = [w for w in words if w not in stop_words]
@@ -849,7 +928,7 @@ class ScriptValidator:
                 broken = self._smart_break_sentence(sentence)
                 result.extend(broken)
 
-        return '. '.join(result)
+        return ". ".join(result)
 
     def _smart_break_sentence(self, sentence: str) -> List[str]:
         """Break a long sentence at natural points."""
@@ -859,10 +938,10 @@ class ScriptValidator:
 
         # Look for break points
         break_points = [
-            r'\s+(?:and|but|or|so|yet|however|therefore|moreover|furthermore|additionally)\s+',
-            r'\s*,\s*(?:which|who|that|where|when)\s+',
-            r'\s*,\s+',
-            r'\s+-\s+',
+            r"\s+(?:and|but|or|so|yet|however|therefore|moreover|furthermore|additionally)\s+",
+            r"\s*,\s*(?:which|who|that|where|when)\s+",
+            r"\s*,\s+",
+            r"\s+-\s+",
         ]
 
         for pattern in break_points:
@@ -876,29 +955,26 @@ class ScriptValidator:
 
         # If no good break point, just split at middle
         mid = len(words) // 2
-        return [
-            ' '.join(words[:mid]),
-            ' '.join(words[mid:])
-        ]
+        return [" ".join(words[:mid]), " ".join(words[mid:])]
 
     def _fix_tts_patterns(self, text: str) -> str:
         """Fix patterns that cause TTS issues."""
         # Replace abbreviations
         replacements = [
-            (r'\be\.g\.\b', 'for example'),
-            (r'\bi\.e\.\b', 'that is'),
-            (r'\betc\.\b', 'and so on'),
-            (r'\bvs\.?\b', 'versus'),
-            (r'\bapprox\.?\b', 'approximately'),
-            (r'(\d+)%', r'\1 percent'),
-            (r'\$(\d+)k\b', r'$\1 thousand', re.IGNORECASE),
-            (r'\$(\d+)m\b', r'$\1 million', re.IGNORECASE),
-            (r'\$(\d+)b\b', r'$\1 billion', re.IGNORECASE),
-            (r'\.{3,}', '.'),  # Multiple periods to single
-            (r'\?{2,}', '?'),  # Multiple question marks
-            (r'!{2,}', '!'),  # Multiple exclamation marks
-            (r'—', ', '),  # Em dash to comma
-            (r'--', ', '),  # Double dash to comma
+            (r"\be\.g\.\b", "for example"),
+            (r"\bi\.e\.\b", "that is"),
+            (r"\betc\.\b", "and so on"),
+            (r"\bvs\.?\b", "versus"),
+            (r"\bapprox\.?\b", "approximately"),
+            (r"(\d+)%", r"\1 percent"),
+            (r"\$(\d+)k\b", r"$\1 thousand", re.IGNORECASE),
+            (r"\$(\d+)m\b", r"$\1 million", re.IGNORECASE),
+            (r"\$(\d+)b\b", r"$\1 billion", re.IGNORECASE),
+            (r"\.{3,}", "."),  # Multiple periods to single
+            (r"\?{2,}", "?"),  # Multiple question marks
+            (r"!{2,}", "!"),  # Multiple exclamation marks
+            (r"—", ", "),  # Em dash to comma
+            (r"--", ", "),  # Double dash to comma
         ]
 
         fixed = text
@@ -912,25 +988,25 @@ class ScriptValidator:
         """Add natural pauses for better TTS delivery."""
         # Add commas after introductory phrases
         introductory_phrases = [
-            r'^(However)\s+',
-            r'^(Therefore)\s+',
-            r'^(Furthermore)\s+',
-            r'^(Moreover)\s+',
-            r'^(In fact)\s+',
-            r'^(Actually)\s+',
-            r'^(Surprisingly)\s+',
-            r'^(Interestingly)\s+',
-            r'^(First)\s+(?=[A-Z])',
-            r'^(Second)\s+(?=[A-Z])',
-            r'^(Third)\s+(?=[A-Z])',
-            r'^(Finally)\s+(?=[A-Z])',
-            r'^(Now)\s+(?=[A-Z])',
-            r'^(So)\s+(?=[A-Z])',
+            r"^(However)\s+",
+            r"^(Therefore)\s+",
+            r"^(Furthermore)\s+",
+            r"^(Moreover)\s+",
+            r"^(In fact)\s+",
+            r"^(Actually)\s+",
+            r"^(Surprisingly)\s+",
+            r"^(Interestingly)\s+",
+            r"^(First)\s+(?=[A-Z])",
+            r"^(Second)\s+(?=[A-Z])",
+            r"^(Third)\s+(?=[A-Z])",
+            r"^(Finally)\s+(?=[A-Z])",
+            r"^(Now)\s+(?=[A-Z])",
+            r"^(So)\s+(?=[A-Z])",
         ]
 
         result = text
         for pattern in introductory_phrases:
-            result = re.sub(pattern, r'\1, ', result, flags=re.MULTILINE)
+            result = re.sub(pattern, r"\1, ", result, flags=re.MULTILINE)
 
         return result
 
@@ -938,6 +1014,7 @@ class ScriptValidator:
 # ============================================================
 # Convenience Functions
 # ============================================================
+
 
 def clean_script(text: str, keep_emoji: bool = False) -> str:
     """
@@ -990,11 +1067,12 @@ def improve_script(text: str, niche: str = "default") -> str:
 # ============================================================
 
 if __name__ == "__main__":
-    import sys
     import json
+    import sys
 
     if len(sys.argv) < 2:
-        print("""
+        print(
+            """
 Script Validator - Clean and validate YouTube scripts
 
 Usage:
@@ -1012,7 +1090,8 @@ Examples:
     python -m src.content.script_validator script.txt --clean
     python -m src.content.script_validator script.txt --validate --niche finance
     python -m src.content.script_validator script.txt --improve
-        """)
+        """
+        )
         sys.exit(0)
 
     script_file = sys.argv[1]
@@ -1034,7 +1113,7 @@ Examples:
         do_validate = True
 
     try:
-        with open(script_file, 'r', encoding='utf-8') as f:
+        with open(script_file, "r", encoding="utf-8") as f:
             script_text = f.read()
     except FileNotFoundError:
         print(f"Error: File not found: {script_file}")

@@ -18,7 +18,6 @@ Usage:
     jobs = agent.check_stuck_jobs()
 """
 
-import os
 import json
 import shutil
 import sqlite3
@@ -26,14 +25,16 @@ import sqlite3
 # psutil is optional - provides system resource monitoring
 try:
     import psutil
+
     PSUTIL_AVAILABLE = True
 except ImportError:
     PSUTIL_AVAILABLE = False
+from dataclasses import asdict, dataclass, field
 from datetime import datetime, timedelta
-from pathlib import Path
-from typing import Dict, Any, List, Optional
-from dataclasses import dataclass, field, asdict
 from enum import Enum
+from pathlib import Path
+from typing import Any, Dict, List
+
 from loguru import logger
 
 # Import canonical BaseAgent
@@ -42,6 +43,7 @@ from src.agents.base_agent import BaseAgent
 
 class HealthStatus(Enum):
     """System health status levels."""
+
     HEALTHY = "healthy"
     WARNING = "warning"
     CRITICAL = "critical"
@@ -49,6 +51,7 @@ class HealthStatus(Enum):
 
 class AlertSeverity(Enum):
     """Alert severity levels."""
+
     INFO = "info"
     WARNING = "warning"
     CRITICAL = "critical"
@@ -57,6 +60,7 @@ class AlertSeverity(Enum):
 @dataclass
 class HealthAlert:
     """Represents a health alert."""
+
     severity: str
     category: str
     message: str
@@ -70,6 +74,7 @@ class HealthAlert:
 @dataclass
 class APIStatus:
     """API rate limit and usage status."""
+
     provider: str
     daily_limit: int
     used_today: int
@@ -93,6 +98,7 @@ class APIStatus:
 @dataclass
 class ResourceUsage:
     """System resource usage."""
+
     disk_total_gb: float
     disk_free_gb: float
     disk_used_percent: float
@@ -110,6 +116,7 @@ class ResourceUsage:
 @dataclass
 class HealthResult:
     """Result from health monitoring."""
+
     status: str  # healthy, warning, critical
     api_status: Dict[str, Dict[str, Any]]
     resource_usage: Dict[str, Any]
@@ -139,28 +146,28 @@ class MonitorAgent(BaseAgent):
         "youtube": {
             "daily_limit": 10000,  # YouTube Data API quota units
             "warning_threshold": 0.8,
-            "description": "YouTube Data API"
+            "description": "YouTube Data API",
         },
         "groq": {
             "daily_limit": 14400,  # Free tier: 30 requests/min * 60 * 8 hours
             "warning_threshold": 0.9,
-            "description": "Groq API (free tier)"
+            "description": "Groq API (free tier)",
         },
         "pexels": {
             "daily_limit": 200,  # Requests per hour * 24
             "warning_threshold": 0.8,
-            "description": "Pexels Stock Footage"
+            "description": "Pexels Stock Footage",
         },
         "pixabay": {
             "daily_limit": 5000,
             "warning_threshold": 0.8,
-            "description": "Pixabay Stock Footage"
+            "description": "Pixabay Stock Footage",
         },
         "fish_audio": {
             "daily_limit": 1000,  # Estimated based on typical usage
             "warning_threshold": 0.9,
-            "description": "Fish Audio TTS"
-        }
+            "description": "Fish Audio TTS",
+        },
     }
 
     # Resource thresholds
@@ -213,7 +220,9 @@ class MonitorAgent(BaseAgent):
         if overall_status == HealthStatus.HEALTHY.value:
             summary_parts.append("All systems operational")
         else:
-            critical_count = sum(1 for a in self.alerts if a.severity == AlertSeverity.CRITICAL.value)
+            critical_count = sum(
+                1 for a in self.alerts if a.severity == AlertSeverity.CRITICAL.value
+            )
             warning_count = sum(1 for a in self.alerts if a.severity == AlertSeverity.WARNING.value)
             if critical_count:
                 summary_parts.append(f"{critical_count} critical issues")
@@ -235,7 +244,7 @@ class MonitorAgent(BaseAgent):
             alerts=[a.to_dict() for a in self.alerts],
             stuck_jobs=stuck_jobs,
             token_usage=token_usage,
-            summary=summary
+            summary=summary,
         )
 
         logger.info(f"[{self.name}] Health check complete: {overall_status}")
@@ -265,20 +274,24 @@ class MonitorAgent(BaseAgent):
             usage_percent = usage_today / daily_limit if daily_limit > 0 else 0
             if usage_percent >= 1.0:
                 status = HealthStatus.CRITICAL.value
-                self.alerts.append(HealthAlert(
-                    severity=AlertSeverity.CRITICAL.value,
-                    category="api_limit",
-                    message=f"{provider} API limit exhausted",
-                    details={"provider": provider, "used": usage_today, "limit": daily_limit}
-                ))
+                self.alerts.append(
+                    HealthAlert(
+                        severity=AlertSeverity.CRITICAL.value,
+                        category="api_limit",
+                        message=f"{provider} API limit exhausted",
+                        details={"provider": provider, "used": usage_today, "limit": daily_limit},
+                    )
+                )
             elif usage_percent >= warning_threshold:
                 status = HealthStatus.WARNING.value
-                self.alerts.append(HealthAlert(
-                    severity=AlertSeverity.WARNING.value,
-                    category="api_limit",
-                    message=f"{provider} API at {usage_percent*100:.0f}% of daily limit",
-                    details={"provider": provider, "used": usage_today, "limit": daily_limit}
-                ))
+                self.alerts.append(
+                    HealthAlert(
+                        severity=AlertSeverity.WARNING.value,
+                        category="api_limit",
+                        message=f"{provider} API at {usage_percent*100:.0f}% of daily limit",
+                        details={"provider": provider, "used": usage_today, "limit": daily_limit},
+                    )
+                )
             else:
                 status = HealthStatus.HEALTHY.value
 
@@ -295,7 +308,7 @@ class MonitorAgent(BaseAgent):
                 remaining=remaining,
                 reset_time=reset_time,
                 status=status,
-                warning_threshold=warning_threshold
+                warning_threshold=warning_threshold,
             )
 
         return results
@@ -351,50 +364,66 @@ class MonitorAgent(BaseAgent):
         # Disk space checks
         if disk_free_gb < self.DISK_CRITICAL_GB:
             status = HealthStatus.CRITICAL.value
-            self.alerts.append(HealthAlert(
-                severity=AlertSeverity.CRITICAL.value,
-                category="disk_space",
-                message=f"Critical: Only {disk_free_gb:.1f} GB disk space remaining",
-                details={"free_gb": disk_free_gb, "threshold_gb": self.DISK_CRITICAL_GB}
-            ))
+            self.alerts.append(
+                HealthAlert(
+                    severity=AlertSeverity.CRITICAL.value,
+                    category="disk_space",
+                    message=f"Critical: Only {disk_free_gb:.1f} GB disk space remaining",
+                    details={"free_gb": disk_free_gb, "threshold_gb": self.DISK_CRITICAL_GB},
+                )
+            )
         elif disk_free_gb < self.DISK_WARNING_GB:
             if status != HealthStatus.CRITICAL.value:
                 status = HealthStatus.WARNING.value
-            self.alerts.append(HealthAlert(
-                severity=AlertSeverity.WARNING.value,
-                category="disk_space",
-                message=f"Low disk space: {disk_free_gb:.1f} GB remaining",
-                details={"free_gb": disk_free_gb, "threshold_gb": self.DISK_WARNING_GB}
-            ))
+            self.alerts.append(
+                HealthAlert(
+                    severity=AlertSeverity.WARNING.value,
+                    category="disk_space",
+                    message=f"Low disk space: {disk_free_gb:.1f} GB remaining",
+                    details={"free_gb": disk_free_gb, "threshold_gb": self.DISK_WARNING_GB},
+                )
+            )
 
         # Memory checks (only if psutil is available)
         if PSUTIL_AVAILABLE:
             if memory_used_percent > self.MEMORY_CRITICAL_PERCENT:
                 status = HealthStatus.CRITICAL.value
-                self.alerts.append(HealthAlert(
-                    severity=AlertSeverity.CRITICAL.value,
-                    category="memory",
-                    message=f"Critical: Memory usage at {memory_used_percent:.0f}%",
-                    details={"used_percent": memory_used_percent, "available_gb": memory_available_gb}
-                ))
+                self.alerts.append(
+                    HealthAlert(
+                        severity=AlertSeverity.CRITICAL.value,
+                        category="memory",
+                        message=f"Critical: Memory usage at {memory_used_percent:.0f}%",
+                        details={
+                            "used_percent": memory_used_percent,
+                            "available_gb": memory_available_gb,
+                        },
+                    )
+                )
             elif memory_used_percent > self.MEMORY_WARNING_PERCENT:
                 if status != HealthStatus.CRITICAL.value:
                     status = HealthStatus.WARNING.value
-                self.alerts.append(HealthAlert(
-                    severity=AlertSeverity.WARNING.value,
-                    category="memory",
-                    message=f"High memory usage: {memory_used_percent:.0f}%",
-                    details={"used_percent": memory_used_percent, "available_gb": memory_available_gb}
-                ))
+                self.alerts.append(
+                    HealthAlert(
+                        severity=AlertSeverity.WARNING.value,
+                        category="memory",
+                        message=f"High memory usage: {memory_used_percent:.0f}%",
+                        details={
+                            "used_percent": memory_used_percent,
+                            "available_gb": memory_available_gb,
+                        },
+                    )
+                )
 
         # Output directory size check
         if output_size_gb > self.OUTPUT_DIR_WARNING_GB:
-            self.alerts.append(HealthAlert(
-                severity=AlertSeverity.WARNING.value,
-                category="storage",
-                message=f"Output directory is {output_size_gb:.1f} GB (recommend cleanup)",
-                details={"size_gb": output_size_gb, "threshold_gb": self.OUTPUT_DIR_WARNING_GB}
-            ))
+            self.alerts.append(
+                HealthAlert(
+                    severity=AlertSeverity.WARNING.value,
+                    category="storage",
+                    message=f"Output directory is {output_size_gb:.1f} GB (recommend cleanup)",
+                    details={"size_gb": output_size_gb, "threshold_gb": self.OUTPUT_DIR_WARNING_GB},
+                )
+            )
 
         return ResourceUsage(
             disk_total_gb=disk_total_gb,
@@ -405,7 +434,7 @@ class MonitorAgent(BaseAgent):
             memory_used_percent=memory_used_percent,
             output_dir_size_gb=output_size_gb,
             data_dir_size_gb=data_size_gb,
-            status=status
+            status=status,
         )
 
     def check_token_usage(self) -> Dict[str, Any]:
@@ -427,25 +456,29 @@ class MonitorAgent(BaseAgent):
 
             # Generate alerts for budget
             if budget["exceeded"]:
-                self.alerts.append(HealthAlert(
-                    severity=AlertSeverity.CRITICAL.value,
-                    category="budget",
-                    message=f"Daily budget exceeded: ${budget['spent_today']:.2f} of ${budget['daily_budget']:.2f}",
-                    details=budget
-                ))
+                self.alerts.append(
+                    HealthAlert(
+                        severity=AlertSeverity.CRITICAL.value,
+                        category="budget",
+                        message=f"Daily budget exceeded: ${budget['spent_today']:.2f} of ${budget['daily_budget']:.2f}",
+                        details=budget,
+                    )
+                )
             elif budget["warning"]:
-                self.alerts.append(HealthAlert(
-                    severity=AlertSeverity.WARNING.value,
-                    category="budget",
-                    message=f"Budget at {budget['usage_percent']:.0f}%: ${budget['spent_today']:.2f} of ${budget['daily_budget']:.2f}",
-                    details=budget
-                ))
+                self.alerts.append(
+                    HealthAlert(
+                        severity=AlertSeverity.WARNING.value,
+                        category="budget",
+                        message=f"Budget at {budget['usage_percent']:.0f}%: ${budget['spent_today']:.2f} of ${budget['daily_budget']:.2f}",
+                        details=budget,
+                    )
+                )
 
             return {
                 "daily": daily,
                 "weekly": weekly,
                 "budget": budget,
-                "cost_per_video": tracker.get_cost_per_video()
+                "cost_per_video": tracker.get_cost_per_video(),
             }
 
         except Exception as e:
@@ -471,7 +504,9 @@ class MonitorAgent(BaseAgent):
                         state = json.load(f)
 
                     if state.get("status") == "running":
-                        updated_at = datetime.fromisoformat(state.get("updated_at", state.get("created_at")))
+                        updated_at = datetime.fromisoformat(
+                            state.get("updated_at", state.get("created_at"))
+                        )
                         minutes_running = (datetime.now() - updated_at).total_seconds() / 60
 
                         if minutes_running > self.STUCK_JOB_THRESHOLD_MINUTES:
@@ -481,16 +516,18 @@ class MonitorAgent(BaseAgent):
                                 "topic": state.get("topic"),
                                 "current_step": state.get("current_step"),
                                 "minutes_running": round(minutes_running, 1),
-                                "started_at": state.get("created_at")
+                                "started_at": state.get("created_at"),
                             }
                             stuck_jobs.append(stuck_job)
 
-                            self.alerts.append(HealthAlert(
-                                severity=AlertSeverity.WARNING.value,
-                                category="stuck_job",
-                                message=f"Workflow {state.get('workflow_id')} stuck at {state.get('current_step')} for {minutes_running:.0f} minutes",
-                                details=stuck_job
-                            ))
+                            self.alerts.append(
+                                HealthAlert(
+                                    severity=AlertSeverity.WARNING.value,
+                                    category="stuck_job",
+                                    message=f"Workflow {state.get('workflow_id')} stuck at {state.get('current_step')} for {minutes_running:.0f} minutes",
+                                    details=stuck_job,
+                                )
+                            )
 
                 except Exception as e:
                     logger.warning(f"Failed to check workflow {filepath}: {e}")
@@ -500,11 +537,13 @@ class MonitorAgent(BaseAgent):
             db_path = self.state_dir / "scheduler_jobs.db"
             if db_path.exists():
                 with sqlite3.connect(db_path) as conn:
-                    rows = conn.execute("""
+                    rows = conn.execute(
+                        """
                         SELECT job_id, channel_id, job_type, started_at, status
                         FROM scheduled_jobs
                         WHERE status = 'running'
-                    """).fetchall()
+                    """
+                    ).fetchall()
 
                     for row in rows:
                         job_id, channel_id, job_type, started_at, status = row
@@ -517,7 +556,7 @@ class MonitorAgent(BaseAgent):
                                 "channel_id": channel_id,
                                 "job_type": job_type,
                                 "minutes_running": round(minutes_running, 1),
-                                "started_at": started_at
+                                "started_at": started_at,
                             }
                             stuck_jobs.append(stuck_job)
 
@@ -552,7 +591,7 @@ class MonitorAgent(BaseAgent):
             try:
                 with open(self.api_usage_file) as f:
                     return json.load(f)
-            except:
+            except Exception:
                 pass
         return {}
 
@@ -569,7 +608,7 @@ class MonitorAgent(BaseAgent):
             try:
                 with open(self.alerts_file) as f:
                     existing = json.load(f)
-            except:
+            except Exception:
                 pass
 
         # Add new alerts
@@ -590,7 +629,7 @@ class MonitorAgent(BaseAgent):
                 if entry.is_file():
                     try:
                         total += entry.stat().st_size
-                    except:
+                    except Exception:
                         pass
         return total
 
@@ -619,7 +658,7 @@ class MonitorAgent(BaseAgent):
                     timestamp = datetime.fromisoformat(alert.get("timestamp", ""))
                     if timestamp > cutoff:
                         recent.append(alert)
-                except:
+                except Exception:
                     pass
 
             return recent
@@ -651,13 +690,19 @@ if __name__ == "__main__":
             api_status = agent.check_api_limits()
             print("API Status:\n")
             for provider, status in api_status.items():
-                print(f"  {provider}: {status.used_today}/{status.daily_limit} ({status.usage_percent:.0f}%) - {status.status}")
+                print(
+                    f"  {provider}: {status.used_today}/{status.daily_limit} ({status.usage_percent:.0f}%) - {status.status}"
+                )
 
         elif command == "resources":
             resources = agent.check_resources()
             print("Resource Usage:\n")
-            print(f"  Disk: {resources.disk_free_gb:.1f} GB free ({resources.disk_used_percent:.0f}% used)")
-            print(f"  Memory: {resources.memory_available_gb:.1f} GB available ({resources.memory_used_percent:.0f}% used)")
+            print(
+                f"  Disk: {resources.disk_free_gb:.1f} GB free ({resources.disk_used_percent:.0f}% used)"
+            )
+            print(
+                f"  Memory: {resources.memory_available_gb:.1f} GB available ({resources.memory_used_percent:.0f}% used)"
+            )
             print(f"  Output dir: {resources.output_dir_size_gb:.2f} GB")
 
         elif command == "alerts":
@@ -670,7 +715,9 @@ if __name__ == "__main__":
             stuck = agent.check_stuck_jobs()
             print(f"Stuck Jobs: {len(stuck)}\n")
             for job in stuck:
-                print(f"  {job.get('workflow_id', job.get('job_id'))}: {job.get('minutes_running', 0):.0f} min")
+                print(
+                    f"  {job.get('workflow_id', job.get('job_id'))}: {job.get('minutes_running', 0):.0f} min"
+                )
 
     else:
         result = agent.run()

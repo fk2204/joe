@@ -64,27 +64,16 @@ Environment Variables Required:
         - FACEBOOK_PAGE_ID
 """
 
-from .social_poster import (
-    # Enums
-    Platform,
-
-    # Data classes
-    SocialPost,
-
-    # Base class
-    SocialPlatform,
-
-    # Platform implementations
-    TwitterPoster,
-    RedditPoster,
+from .social_poster import (  # Enums; Data classes; Base class; Platform implementations; Main manager; Convenience functions
     DiscordPoster,
-    LinkedInPoster,
     FacebookPoster,
-
-    # Main manager
+    LinkedInPoster,
+    Platform,
+    RedditPoster,
     SocialMediaManager,
-
-    # Convenience functions
+    SocialPlatform,
+    SocialPost,
+    TwitterPoster,
     post_video_to_social,
     schedule_first_hour_boost,
 )
@@ -92,23 +81,18 @@ from .social_poster import (
 __all__ = [
     # Enums
     "Platform",
-
     # Data classes
     "SocialPost",
-
     # Base class
     "SocialPlatform",
-
     # Platform implementations
     "TwitterPoster",
     "RedditPoster",
     "DiscordPoster",
     "LinkedInPoster",
     "FacebookPoster",
-
     # Main manager
     "SocialMediaManager",
-
     # Convenience functions
     "post_video_to_social",
     "schedule_first_hour_boost",

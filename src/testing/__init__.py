@@ -1,13 +1,13 @@
 # Testing module for A/B testing and experimentation
 
 from src.testing.ab_testing import (
-    ABTestManager,
     ABTest,
-    Variant,
+    ABTestManager,
     TestStatus,
     TestType,
-    TitleVariantGenerator,
     ThumbnailVariantGenerator,
+    TitleVariantGenerator,
+    Variant,
 )
 
 __all__ = [

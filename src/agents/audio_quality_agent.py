@@ -27,15 +27,16 @@ Example:
     -14.2
 """
 
-import os
-import subprocess
-import shutil
 import json
+import os
+import shutil
+import subprocess
 from dataclasses import dataclass, field
-from typing import List, Dict, Any, Optional
+from typing import Any, Dict, List, Optional
+
 from loguru import logger
 
-from .base_agent import BaseAgent, AgentResult
+from .base_agent import AgentResult, BaseAgent
 
 
 @dataclass
@@ -55,6 +56,7 @@ class AudioQualityResult:
         warnings: Non-critical warnings
         recommendations: Suggested improvements
     """
+
     passed: bool
     lufs_level: Optional[float] = None
     peak_level: Optional[float] = None
@@ -78,7 +80,7 @@ class AudioQualityResult:
             "duration": self.duration,
             "issues": self.issues,
             "warnings": self.warnings,
-            "recommendations": self.recommendations
+            "recommendations": self.recommendations,
         }
 
 
@@ -98,13 +100,13 @@ class AudioQualityAgent(BaseAgent):
     """
 
     # YouTube recommended audio specs
-    TARGET_LUFS = -14.0          # YouTube's Stable Volume target
-    LUFS_TOLERANCE = 2.0         # +/- 2 LUFS acceptable
-    MAX_TRUE_PEAK = -1.0         # True peak limit (prevents clipping)
-    MAX_NOISE_FLOOR = -50.0      # Maximum acceptable noise floor
-    TARGET_SAMPLE_RATE = 48000   # YouTube's preferred sample rate
-    MIN_SAMPLE_RATE = 44100      # Minimum acceptable sample rate
-    TARGET_LOUDNESS_RANGE = 11.0 # EBU R128 recommended LRA
+    TARGET_LUFS = -14.0  # YouTube's Stable Volume target
+    LUFS_TOLERANCE = 2.0  # +/- 2 LUFS acceptable
+    MAX_TRUE_PEAK = -1.0  # True peak limit (prevents clipping)
+    MAX_NOISE_FLOOR = -50.0  # Maximum acceptable noise floor
+    TARGET_SAMPLE_RATE = 48000  # YouTube's preferred sample rate
+    MIN_SAMPLE_RATE = 44100  # Minimum acceptable sample rate
+    TARGET_LOUDNESS_RANGE = 11.0  # EBU R128 recommended LRA
 
     def __init__(self, provider: str = "ffmpeg", api_key: str = None):
         """
@@ -169,12 +171,7 @@ class AudioQualityAgent(BaseAgent):
 
         return None
 
-    def run(
-        self,
-        audio_file: str = "",
-        check_voice_clarity: bool = True,
-        **kwargs
-    ) -> AgentResult:
+    def run(self, audio_file: str = "", check_voice_clarity: bool = True, **kwargs) -> AgentResult:
         """
         Analyze audio file quality for YouTube.
 
@@ -199,14 +196,14 @@ class AudioQualityAgent(BaseAgent):
             return AgentResult(
                 success=False,
                 data=AudioQualityResult(passed=False, issues=["No audio file provided"]).to_dict(),
-                error="No audio file provided"
+                error="No audio file provided",
             )
 
         if not os.path.exists(audio_file):
             return AgentResult(
                 success=False,
                 data=AudioQualityResult(passed=False, issues=["Audio file not found"]).to_dict(),
-                error=f"Audio file not found: {audio_file}"
+                error=f"Audio file not found: {audio_file}",
             )
 
         quality_result = AudioQualityResult(passed=True)
@@ -216,9 +213,7 @@ class AudioQualityAgent(BaseAgent):
             quality_result.issues.append("FFmpeg not available for detailed analysis")
             quality_result.passed = False
             return AgentResult(
-                success=False,
-                data=quality_result.to_dict(),
-                error="FFmpeg not found"
+                success=False, data=quality_result.to_dict(), error="FFmpeg not found"
             )
 
         # Run all quality checks
@@ -256,10 +251,13 @@ class AudioQualityAgent(BaseAgent):
             metadata={
                 "audio_file": audio_file,
                 "checks_performed": [
-                    "loudness", "clipping", "noise_floor", "audio_info",
-                    "voice_clarity" if check_voice_clarity else None
-                ]
-            }
+                    "loudness",
+                    "clipping",
+                    "noise_floor",
+                    "audio_info",
+                    "voice_clarity" if check_voice_clarity else None,
+                ],
+            },
         )
 
     def _analyze_loudness(self, audio_file: str, result: AudioQualityResult):
@@ -267,31 +265,29 @@ class AudioQualityAgent(BaseAgent):
         try:
             cmd = [
                 self.ffmpeg,
-                '-i', audio_file,
-                '-af', f'loudnorm=I={self.TARGET_LUFS}:TP={self.MAX_TRUE_PEAK}:LRA={self.TARGET_LOUDNESS_RANGE}:print_format=json',
-                '-f', 'null',
-                '-'
+                "-i",
+                audio_file,
+                "-af",
+                f"loudnorm=I={self.TARGET_LUFS}:TP={self.MAX_TRUE_PEAK}:LRA={self.TARGET_LOUDNESS_RANGE}:print_format=json",
+                "-f",
+                "null",
+                "-",
             ]
 
-            proc_result = subprocess.run(
-                cmd,
-                capture_output=True,
-                text=True,
-                timeout=120
-            )
+            proc_result = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
 
             # Parse loudnorm output from stderr
             output = proc_result.stderr
 
             # Extract values
-            for line in output.split('\n'):
+            for line in output.split("\n"):
                 line = line.strip()
                 if '"input_i"' in line:
-                    result.lufs_level = float(line.split(':')[1].strip().strip('",'))
+                    result.lufs_level = float(line.split(":")[1].strip().strip('",'))
                 elif '"input_tp"' in line:
-                    result.peak_level = float(line.split(':')[1].strip().strip('",'))
+                    result.peak_level = float(line.split(":")[1].strip().strip('",'))
                 elif '"input_lra"' in line:
-                    result.loudness_range = float(line.split(':')[1].strip().strip('",'))
+                    result.loudness_range = float(line.split(":")[1].strip().strip('",'))
 
             # Validate LUFS level
             if result.lufs_level is not None:
@@ -345,27 +341,25 @@ class AudioQualityAgent(BaseAgent):
             # Use volumedetect to get min volume (rough noise floor estimate)
             cmd = [
                 self.ffmpeg,
-                '-i', audio_file,
-                '-af', 'volumedetect',
-                '-f', 'null',
-                '-y',
-                'NUL' if os.name == 'nt' else '/dev/null'
+                "-i",
+                audio_file,
+                "-af",
+                "volumedetect",
+                "-f",
+                "null",
+                "-y",
+                "NUL" if os.name == "nt" else "/dev/null",
             ]
 
-            proc_result = subprocess.run(
-                cmd,
-                capture_output=True,
-                text=True,
-                timeout=120
-            )
+            proc_result = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
 
             # Parse output
-            for line in proc_result.stderr.split('\n'):
-                if 'mean_volume:' in line:
-                    parts = line.split('mean_volume:')[1].split()
+            for line in proc_result.stderr.split("\n"):
+                if "mean_volume:" in line:
+                    parts = line.split("mean_volume:")[1].split()
                     mean_volume = float(parts[0])
-                elif 'max_volume:' in line:
-                    parts = line.split('max_volume:')[1].split()
+                elif "max_volume:" in line:
+                    parts = line.split("max_volume:")[1].split()
                     max_volume = float(parts[0])
 
             # Estimate noise floor (very rough)
@@ -385,34 +379,34 @@ class AudioQualityAgent(BaseAgent):
         try:
             cmd = [
                 self.ffprobe,
-                '-v', 'error',
-                '-select_streams', 'a:0',
-                '-show_entries', 'stream=sample_rate,duration',
-                '-show_entries', 'format=duration',
-                '-of', 'json',
-                audio_file
+                "-v",
+                "error",
+                "-select_streams",
+                "a:0",
+                "-show_entries",
+                "stream=sample_rate,duration",
+                "-show_entries",
+                "format=duration",
+                "-of",
+                "json",
+                audio_file,
             ]
 
-            proc_result = subprocess.run(
-                cmd,
-                capture_output=True,
-                text=True,
-                timeout=30
-            )
+            proc_result = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
 
             if proc_result.returncode == 0:
                 data = json.loads(proc_result.stdout)
 
                 # Get sample rate
-                if 'streams' in data and data['streams']:
-                    stream = data['streams'][0]
-                    result.sample_rate = int(stream.get('sample_rate', 0))
+                if "streams" in data and data["streams"]:
+                    stream = data["streams"][0]
+                    result.sample_rate = int(stream.get("sample_rate", 0))
 
                 # Get duration
-                if 'format' in data:
-                    result.duration = float(data['format'].get('duration', 0))
-                elif 'streams' in data and data['streams']:
-                    result.duration = float(data['streams'][0].get('duration', 0))
+                if "format" in data:
+                    result.duration = float(data["format"].get("duration", 0))
+                elif "streams" in data and data["streams"]:
+                    result.duration = float(data["streams"][0].get("duration", 0))
 
                 # Validate sample rate
                 if result.sample_rate:
@@ -452,9 +446,7 @@ class AudioQualityAgent(BaseAgent):
                     "Consider applying compression."
                 )
             elif result.loudness_range < 4:
-                result.warnings.append(
-                    "Low dynamic range may indicate over-compression."
-                )
+                result.warnings.append("Low dynamic range may indicate over-compression.")
 
     def _generate_recommendations(self, result: AudioQualityResult):
         """Generate actionable recommendations based on analysis."""
@@ -464,9 +456,7 @@ class AudioQualityAgent(BaseAgent):
                     f"Normalize audio to {self.TARGET_LUFS} LUFS using loudnorm filter"
                 )
             elif result.lufs_level > self.TARGET_LUFS + self.LUFS_TOLERANCE:
-                result.recommendations.append(
-                    f"Reduce audio level to {self.TARGET_LUFS} LUFS"
-                )
+                result.recommendations.append(f"Reduce audio level to {self.TARGET_LUFS} LUFS")
 
         if result.peak_level is not None and result.peak_level > self.MAX_TRUE_PEAK:
             result.recommendations.append(
@@ -479,9 +469,7 @@ class AudioQualityAgent(BaseAgent):
             )
 
         if not result.recommendations and not result.issues:
-            result.recommendations.append(
-                "Audio quality meets YouTube recommendations"
-            )
+            result.recommendations.append("Audio quality meets YouTube recommendations")
 
     def quick_check(self, audio_file: str) -> Dict[str, Any]:
         """
@@ -500,7 +488,7 @@ class AudioQualityAgent(BaseAgent):
             "passed": data["passed"],
             "lufs": data["lufs_level"],
             "peak": data["peak_level"],
-            "issues_count": len(data["issues"])
+            "issues_count": len(data["issues"]),
         }
 
 
@@ -510,7 +498,8 @@ def main():
     import sys
 
     if len(sys.argv) < 2:
-        print("""
+        print(
+            """
 Audio Quality Agent - Audio Quality Validation for YouTube
 
 Usage:
@@ -530,7 +519,8 @@ Targets:
     - LUFS Level: -14 LUFS (+/- 2 LUFS tolerance)
     - True Peak: < -1 dBTP (no clipping)
     - Sample Rate: 48000 Hz (recommended)
-        """)
+        """
+        )
         return
 
     # Parse arguments
@@ -548,7 +538,9 @@ Targets:
             print(json.dumps(result, indent=2))
         else:
             status = "PASS" if result["passed"] else "FAIL"
-            print(f"{status} | LUFS: {result['lufs']} | Peak: {result['peak']} | Issues: {result['issues_count']}")
+            print(
+                f"{status} | LUFS: {result['lufs']} | Peak: {result['peak']} | Issues: {result['issues_count']}"
+            )
     else:
         result = agent.run(audio_file=audio_file, check_voice_clarity=check_clarity)
 
@@ -563,11 +555,27 @@ Targets:
             status = "PASSED" if data["passed"] else "FAILED"
             print(f"Status: {status}")
             print(f"\nMetrics:")
-            print(f"  LUFS Level: {data['lufs_level']:.1f} (target: -14)" if data['lufs_level'] else "  LUFS Level: N/A")
-            print(f"  True Peak: {data['peak_level']:.1f} dBTP (max: -1)" if data['peak_level'] else "  True Peak: N/A")
-            print(f"  Loudness Range: {data['loudness_range']:.1f} LU" if data['loudness_range'] else "  Loudness Range: N/A")
-            print(f"  Sample Rate: {data['sample_rate']} Hz" if data['sample_rate'] else "  Sample Rate: N/A")
-            print(f"  Duration: {data['duration']:.1f}s" if data['duration'] else "  Duration: N/A")
+            print(
+                f"  LUFS Level: {data['lufs_level']:.1f} (target: -14)"
+                if data["lufs_level"]
+                else "  LUFS Level: N/A"
+            )
+            print(
+                f"  True Peak: {data['peak_level']:.1f} dBTP (max: -1)"
+                if data["peak_level"]
+                else "  True Peak: N/A"
+            )
+            print(
+                f"  Loudness Range: {data['loudness_range']:.1f} LU"
+                if data["loudness_range"]
+                else "  Loudness Range: N/A"
+            )
+            print(
+                f"  Sample Rate: {data['sample_rate']} Hz"
+                if data["sample_rate"]
+                else "  Sample Rate: N/A"
+            )
+            print(f"  Duration: {data['duration']:.1f}s" if data["duration"] else "  Duration: N/A")
 
             if data["issues"]:
                 print(f"\nIssues ({len(data['issues'])}):")

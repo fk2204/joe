@@ -33,54 +33,54 @@ CLI:
 """
 
 import os
-import re
 import random
+import re
+from dataclasses import asdict, dataclass, field
 from pathlib import Path
-from typing import Dict, Any, List, Optional, Tuple
-from dataclasses import dataclass, field, asdict
+from typing import Any, Dict, List, Optional, Tuple
+
 from loguru import logger
 
-from .base_agent import BaseAgent, AgentResult
-
+from .base_agent import AgentResult, BaseAgent
 
 # Niche-specific color schemes for high CTR
 NICHE_COLOR_SCHEMES = {
     "finance": {
-        "primary": "#1a5f1a",    # Deep green (money)
+        "primary": "#1a5f1a",  # Deep green (money)
         "secondary": "#FFD700",  # Gold (wealth)
-        "accent": "#2E8B57",     # Sea green
+        "accent": "#2E8B57",  # Sea green
         "background": "#0a1f0a",  # Dark green
-        "text": "#FFFFFF",       # White text
+        "text": "#FFFFFF",  # White text
         "highlight": "#00FF00",  # Bright green
         "ctr_boost_colors": ["#FFD700", "#00FF00", "#32CD32"],
     },
     "psychology": {
-        "primary": "#4B0082",    # Indigo (deep/mysterious)
+        "primary": "#4B0082",  # Indigo (deep/mysterious)
         "secondary": "#9B59B6",  # Purple (psychology)
-        "accent": "#E040FB",     # Pink/magenta
-        "background": "#0f0f1a", # Dark blue-black
-        "text": "#FFFFFF",       # White text
+        "accent": "#E040FB",  # Pink/magenta
+        "background": "#0f0f1a",  # Dark blue-black
+        "text": "#FFFFFF",  # White text
         "highlight": "#00BFFF",  # Deep sky blue
         "ctr_boost_colors": ["#9B59B6", "#E040FB", "#FF69B4"],
     },
     "storytelling": {
-        "primary": "#8B0000",    # Dark red (dramatic)
+        "primary": "#8B0000",  # Dark red (dramatic)
         "secondary": "#FF4500",  # Orange-red
-        "accent": "#DC143C",     # Crimson
-        "background": "#0d0d0d", # Near black
-        "text": "#FFFFFF",       # White text
+        "accent": "#DC143C",  # Crimson
+        "background": "#0d0d0d",  # Near black
+        "text": "#FFFFFF",  # White text
         "highlight": "#FF6347",  # Tomato red
         "ctr_boost_colors": ["#FF4500", "#DC143C", "#FF0000"],
     },
     "default": {
-        "primary": "#1E90FF",    # Dodger blue
+        "primary": "#1E90FF",  # Dodger blue
         "secondary": "#FFFFFF",  # White
-        "accent": "#FFD700",     # Gold
-        "background": "#0a0a1a", # Dark
-        "text": "#FFFFFF",       # White text
+        "accent": "#FFD700",  # Gold
+        "background": "#0a0a1a",  # Dark
+        "text": "#FFFFFF",  # White text
         "highlight": "#00FFFF",  # Cyan
         "ctr_boost_colors": ["#FFD700", "#00FFFF", "#FF69B4"],
-    }
+    },
 }
 
 # High CTR text patterns for thumbnails
@@ -140,6 +140,7 @@ class ThumbnailResult:
         niche: Content niche
         mobile_optimized: Whether thumbnail is mobile-optimized
     """
+
     thumbnail_file: str
     variants: List[str] = field(default_factory=list)
     predicted_ctr: float = 0.0
@@ -176,7 +177,7 @@ class ThumbnailAgent(BaseAgent):
     THUMBNAIL_WIDTH = 1280
     THUMBNAIL_HEIGHT = 720
     MAX_FILE_SIZE_KB = 2048  # 2MB max for YouTube
-    MIN_FILE_SIZE_KB = 50    # Sanity check
+    MIN_FILE_SIZE_KB = 50  # Sanity check
 
     # CTR prediction weights
     CTR_WEIGHTS = {
@@ -223,6 +224,7 @@ class ThumbnailAgent(BaseAgent):
         if self._ai_generator is None:
             try:
                 from ..content.thumbnail_ai import AIThumbnailGenerator
+
                 self._ai_generator = AIThumbnailGenerator(output_dir=str(self.output_dir))
             except ImportError as e:
                 logger.warning(f"Could not import AIThumbnailGenerator: {e}")
@@ -233,6 +235,7 @@ class ThumbnailAgent(BaseAgent):
         if self._basic_generator is None:
             try:
                 from ..content.thumbnail_generator import ThumbnailGenerator
+
                 self._basic_generator = ThumbnailGenerator(output_dir=str(self.output_dir))
             except ImportError as e:
                 logger.warning(f"Could not import ThumbnailGenerator: {e}")
@@ -248,7 +251,7 @@ class ThumbnailAgent(BaseAgent):
         emotion: str = None,
         face_position: str = "right",
         output_path: str = None,
-        **kwargs
+        **kwargs,
     ) -> AgentResult:
         """
         Generate a thumbnail with optional variants for A/B testing.
@@ -268,7 +271,9 @@ class ThumbnailAgent(BaseAgent):
             AgentResult containing ThumbnailResult data
         """
         logger.info(f"[ThumbnailAgent] Generating thumbnail for: {title}")
-        logger.info(f"[ThumbnailAgent] Niche: {niche}, AI Face: {use_ai_face}, Variants: {variant_count if generate_variants else 0}")
+        logger.info(
+            f"[ThumbnailAgent] Niche: {niche}, AI Face: {use_ai_face}, Variants: {variant_count if generate_variants else 0}"
+        )
 
         warnings = []
         thumbnail_file = None
@@ -305,10 +310,12 @@ class ThumbnailAgent(BaseAgent):
                             niche=niche,
                             emotion=emotion,
                             output_path=output_path,
-                            face_position=face_position
+                            face_position=face_position,
                         )
                         ai_face_used = True
-                        logger.success(f"[ThumbnailAgent] AI face thumbnail generated: {thumbnail_file}")
+                        logger.success(
+                            f"[ThumbnailAgent] AI face thumbnail generated: {thumbnail_file}"
+                        )
                     except Exception as e:
                         logger.warning(f"[ThumbnailAgent] AI face generation failed: {e}")
                         warnings.append(f"AI face generation failed: {str(e)[:50]}")
@@ -318,17 +325,14 @@ class ThumbnailAgent(BaseAgent):
                 basic_gen = self._get_basic_generator()
                 if basic_gen:
                     thumbnail_file = basic_gen.generate(
-                        title=title,
-                        niche=niche,
-                        output_path=output_path,
-                        text_position="center"
+                        title=title, niche=niche, output_path=output_path, text_position="center"
                     )
                     logger.info(f"[ThumbnailAgent] Basic thumbnail generated: {thumbnail_file}")
                 else:
                     return AgentResult(
                         success=False,
                         error="No thumbnail generator available",
-                        data={"title": title, "niche": niche}
+                        data={"title": title, "niche": niche},
                     )
 
             # Generate A/B test variants
@@ -337,7 +341,7 @@ class ThumbnailAgent(BaseAgent):
                     title=title,
                     niche=niche,
                     count=variant_count,
-                    use_ai_face=use_ai_face and self.replicate_available
+                    use_ai_face=use_ai_face and self.replicate_available,
                 )
                 logger.info(f"[ThumbnailAgent] Generated {len(variants)} variants")
 
@@ -347,7 +351,7 @@ class ThumbnailAgent(BaseAgent):
                 niche=niche,
                 has_ai_face=ai_face_used,
                 text_overlay=text_overlay,
-                emotion=used_emotion
+                emotion=used_emotion,
             )
 
             # Get file info
@@ -357,9 +361,10 @@ class ThumbnailAgent(BaseAgent):
                 file_size_kb = os.path.getsize(thumbnail_file) / 1024
                 try:
                     from PIL import Image
+
                     with Image.open(thumbnail_file) as img:
                         dimensions = img.size
-                except:
+                except Exception:
                     pass
 
             # Check file size constraints
@@ -380,7 +385,7 @@ class ThumbnailAgent(BaseAgent):
                 file_size_kb=file_size_kb,
                 dimensions=dimensions,
                 niche=niche,
-                mobile_optimized=dimensions == (1280, 720)
+                mobile_optimized=dimensions == (1280, 720),
             )
 
             # Log operation
@@ -391,20 +396,12 @@ class ThumbnailAgent(BaseAgent):
                 data=thumb_result.to_dict(),
                 tokens_used=0,
                 cost=0.0,
-                metadata={
-                    "title": title,
-                    "niche": niche,
-                    "warnings": warnings
-                }
+                metadata={"title": title, "niche": niche, "warnings": warnings},
             )
 
         except Exception as e:
             logger.error(f"[ThumbnailAgent] Thumbnail generation failed: {e}")
-            return AgentResult(
-                success=False,
-                error=str(e),
-                data={"title": title, "niche": niche}
-            )
+            return AgentResult(success=False, error=str(e), data={"title": title, "niche": niche})
 
     def _extract_thumbnail_text(self, title: str, niche: str) -> str:
         """
@@ -421,15 +418,57 @@ class ThumbnailAgent(BaseAgent):
         """
         # Filter words to remove
         filter_words = {
-            "the", "a", "an", "is", "are", "was", "were", "be", "been", "being",
-            "have", "has", "had", "do", "does", "did", "will", "would", "could",
-            "should", "may", "might", "must", "shall", "can", "to", "of", "in",
-            "for", "on", "with", "at", "by", "from", "as", "into", "through",
-            "and", "but", "or", "if", "this", "that", "these", "those", "i", "you"
+            "the",
+            "a",
+            "an",
+            "is",
+            "are",
+            "was",
+            "were",
+            "be",
+            "been",
+            "being",
+            "have",
+            "has",
+            "had",
+            "do",
+            "does",
+            "did",
+            "will",
+            "would",
+            "could",
+            "should",
+            "may",
+            "might",
+            "must",
+            "shall",
+            "can",
+            "to",
+            "of",
+            "in",
+            "for",
+            "on",
+            "with",
+            "at",
+            "by",
+            "from",
+            "as",
+            "into",
+            "through",
+            "and",
+            "but",
+            "or",
+            "if",
+            "this",
+            "that",
+            "these",
+            "those",
+            "i",
+            "you",
         }
 
         # Extract words
-        words = re.sub(r'[^\w\s$]', '', title).split()
+        words = re.sub(r"[^\w\s$]", "", title).split()
         key_words = []
 
         for word in words:
@@ -437,12 +476,12 @@ class ThumbnailAgent(BaseAgent):
             if word_lower not in filter_words and len(word) > 2:
                 # Score priority
                 score = 0
-                if '$' in word or word.replace(',', '').isdigit():
+                if "$" in word or word.replace(",", "").isdigit():
                     score = 100  # Money/numbers highest priority
                 elif any(c.isdigit() for c in word):
-                    score = 50   # Numbers
+                    score = 50  # Numbers
                 elif word_lower in ["secret", "truth", "hidden", "shocking", "real", "dark"]:
-                    score = 40   # Power words
+                    score = 40  # Power words
                 else:
                     score = 10
 
@@ -458,20 +497,16 @@ class ThumbnailAgent(BaseAgent):
         # Apply high-CTR pattern if available
         patterns = HIGH_CTR_PATTERNS.get(niche, HIGH_CTR_PATTERNS.get("default", ["{keyword}"]))
         if patterns and selected:
-            keyword = ' '.join(selected[:2])
+            keyword = " ".join(selected[:2])
             pattern = random.choice(patterns)
             text = pattern.replace("{keyword}", keyword)
         else:
-            text = ' '.join(selected)
+            text = " ".join(selected)
 
         return text.upper()[:30]  # Limit length
 
     def _generate_variants(
-        self,
-        title: str,
-        niche: str,
-        count: int,
-        use_ai_face: bool
+        self, title: str, niche: str, count: int, use_ai_face: bool
     ) -> List[str]:
         """
         Generate A/B test thumbnail variants.
@@ -502,9 +537,7 @@ class ThumbnailAgent(BaseAgent):
                 try:
                     # Use built-in variant generation
                     variants = ai_gen.generate_ab_test_variants(
-                        title=title,
-                        niche=niche,
-                        count=min(count, 3)
+                        title=title, niche=niche, count=min(count, 3)
                     )
                     return variants
                 except Exception as e:
@@ -515,9 +548,7 @@ class ThumbnailAgent(BaseAgent):
         if basic_gen:
             try:
                 variants = basic_gen.generate_variants(
-                    title=title,
-                    niche=niche,
-                    count=min(count, 3)
+                    title=title, niche=niche, count=min(count, 3)
                 )
             except Exception as e:
                 logger.warning(f"Basic variant generation failed: {e}")
@@ -525,12 +556,7 @@ class ThumbnailAgent(BaseAgent):
         return variants
 
     def _predict_ctr(
-        self,
-        title: str,
-        niche: str,
-        has_ai_face: bool,
-        text_overlay: str,
-        emotion: str
+        self, title: str, niche: str, has_ai_face: bool, text_overlay: str, emotion: str
     ) -> float:
         """
         Predict click-through rate based on thumbnail elements.
@@ -564,7 +590,16 @@ class ThumbnailAgent(BaseAgent):
             score += self.CTR_WEIGHTS["has_numbers"]
 
         # Power words
-        power_words = ["secret", "truth", "hidden", "shocking", "exposed", "revealed", "dark", "stop"]
+        power_words = [
+            "secret",
+            "truth",
+            "hidden",
+            "shocking",
+            "exposed",
+            "revealed",
+            "dark",
+            "stop",
+        ]
         if any(word.lower() in text_overlay.lower() for word in power_words):
             score += self.CTR_WEIGHTS["has_power_words"]
 
@@ -583,17 +618,14 @@ class ThumbnailAgent(BaseAgent):
 
         # Add some randomness for realism (CTR varies)
         import random
+
         variance = random.uniform(-0.02, 0.02)
         score += variance
 
         # Clamp to realistic CTR range (3% to 15%)
         return max(0.03, min(0.15, score))
 
-    def generate_for_video(
-        self,
-        video_data: Dict[str, Any],
-        variant_count: int = 2
-    ) -> AgentResult:
+    def generate_for_video(self, video_data: Dict[str, Any], variant_count: int = 2) -> AgentResult:
         """
         Convenience method to generate thumbnails from video data dict.
 
@@ -611,18 +643,19 @@ class ThumbnailAgent(BaseAgent):
             title=title,
             niche=niche,
             generate_variants=variant_count > 1,
-            variant_count=variant_count
+            variant_count=variant_count,
         )
 
 
 # CLI entry point
 def main():
     """CLI entry point for thumbnail agent."""
-    import sys
     import argparse
+    import sys
 
     if len(sys.argv) < 2:
-        print("""
+        print(
+            """
 Thumbnail Agent - High CTR Thumbnail Generation
 
 Usage:
@@ -640,7 +673,8 @@ Options:
     --emotion <emotion> Specific emotion for AI face
     --output <path>     Custom output path
     --position <pos>    Face position (right, left)
-        """)
+        """
+        )
         return
 
     parser = argparse.ArgumentParser(description="Generate YouTube thumbnails")
@@ -664,7 +698,7 @@ Options:
         variant_count=args.variants,
         emotion=args.emotion,
         face_position=args.position,
-        output_path=args.output
+        output_path=args.output,
     )
 
     # Print result
@@ -682,7 +716,7 @@ Options:
         print(f"File Size: {data.get('file_size_kb', 0):.0f} KB")
         print(f"Dimensions: {data.get('dimensions')}")
 
-        variants = data.get('variants', [])
+        variants = data.get("variants", [])
         if variants:
             print(f"\nVariants ({len(variants)}):")
             for v in variants:

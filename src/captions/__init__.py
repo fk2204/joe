@@ -11,9 +11,7 @@ Integrated (2026-01-20) into:
 - run.py 'caption' command for standalone usage
 """
 
-from .whisper_generator import (
-    WhisperCaptionGenerator,
-)
+from .whisper_generator import WhisperCaptionGenerator
 
 __all__ = [
     "WhisperCaptionGenerator",

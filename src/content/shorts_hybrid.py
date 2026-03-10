@@ -21,17 +21,18 @@ Usage:
     )
 """
 
-import os
 import asyncio
+import os
 import random
 import shutil
 import subprocess
 import tempfile
-from pathlib import Path
-from typing import List, Dict, Optional, Tuple
 from dataclasses import dataclass
-from loguru import logger
+from pathlib import Path
+from typing import List, Optional
+
 from dotenv import load_dotenv
+from loguru import logger
 
 # Load environment variables
 _env_paths = [
@@ -47,6 +48,7 @@ for _env_path in _env_paths:
 @dataclass
 class HybridShortResult:
     """Result from hybrid short generation."""
+
     success: bool
     output_path: Optional[str] = None
     duration: Optional[float] = None
@@ -92,7 +94,7 @@ class HybridShortsGenerator:
                 "Upward trending arrow made of light, motivational ending",
                 "Golden sunrise over city, new beginnings, hope",
                 "Loop-friendly: coins starting to fall (connects to intro)",
-            ]
+            ],
         },
         "psychology": {
             "intro": [
@@ -108,7 +110,7 @@ class HybridShortsGenerator:
                 "Neural pathways forming connections, learning visualization",
                 "Peaceful meditation scene, inner peace achieved",
                 "Loop-friendly: eye opening (connects to intro eye shot)",
-            ]
+            ],
         },
         "storytelling": {
             "intro": [
@@ -136,7 +138,7 @@ class HybridShortsGenerator:
                 "Gavel striking with dramatic slow motion, verdict delivered",
                 "Candle flame flickering then extinguishing, story ends, vertical format",
                 "Loop-friendly: shadowy figure beginning to appear (connects to intro)",
-            ]
+            ],
         },
         "default": {
             "intro": [
@@ -148,8 +150,8 @@ class HybridShortsGenerator:
                 "Satisfying visual conclusion, subscribe hint",
                 "Uplifting ending shot, positive energy",
                 "Loop-friendly seamless transition back to start",
-            ]
-        }
+            ],
+        },
     }
 
     def __init__(self):
@@ -161,6 +163,7 @@ class HybridShortsGenerator:
         # Initialize Pika
         try:
             from .video_pika import PikaVideoGenerator
+
             self.pika = PikaVideoGenerator()
             if self.pika.api_key:
                 logger.info("HybridShortsGenerator: Pika Labs ready")
@@ -175,11 +178,13 @@ class HybridShortsGenerator:
         # Initialize stock footage
         try:
             from .stock_footage import StockFootageProvider
+
             self.stock = StockFootageProvider()
             logger.info("HybridShortsGenerator: Stock footage ready")
         except ImportError:
             try:
                 from .multi_stock import MultiStockProvider
+
                 self.stock = MultiStockProvider()
                 logger.info("HybridShortsGenerator: Multi-stock footage ready")
             except ImportError:
@@ -227,10 +232,7 @@ class HybridShortsGenerator:
         return base_prompt
 
     async def generate_pika_intro(
-        self,
-        niche: str,
-        topic: str = "",
-        custom_prompt: Optional[str] = None
+        self, niche: str, topic: str = "", custom_prompt: Optional[str] = None
     ) -> Optional[str]:
         """Generate an AI intro clip with Pika Labs."""
         if not self.pika:
@@ -247,7 +249,7 @@ class HybridShortsGenerator:
                 prompt=prompt,
                 output_file=output_path,
                 duration=self.INTRO_DURATION,
-                aspect_ratio="9:16"
+                aspect_ratio="9:16",
             )
 
             if result.success and result.local_path:
@@ -262,10 +264,7 @@ class HybridShortsGenerator:
             return None
 
     async def generate_pika_outro(
-        self,
-        niche: str,
-        topic: str = "",
-        custom_prompt: Optional[str] = None
+        self, niche: str, topic: str = "", custom_prompt: Optional[str] = None
     ) -> Optional[str]:
         """Generate an AI outro clip with Pika Labs."""
         if not self.pika:
@@ -282,7 +281,7 @@ class HybridShortsGenerator:
                 prompt=prompt,
                 output_file=output_path,
                 duration=self.OUTRO_DURATION,
-                aspect_ratio="9:16"
+                aspect_ratio="9:16",
             )
 
             if result.success and result.local_path:
@@ -304,17 +303,23 @@ class HybridShortsGenerator:
         try:
             ffprobe = self.ffmpeg.replace("ffmpeg", "ffprobe")
             cmd = [
-                ffprobe, "-v", "error",
-                "-show_entries", "format=duration",
-                "-of", "default=noprint_wrappers=1:nokey=1",
-                audio_file
+                ffprobe,
+                "-v",
+                "error",
+                "-show_entries",
+                "format=duration",
+                "-of",
+                "default=noprint_wrappers=1:nokey=1",
+                audio_file,
             ]
             result = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
             return float(result.stdout.strip())
         except Exception:
             return 30.0
 
-    def _convert_to_vertical(self, input_path: str, output_path: str, duration: float) -> Optional[str]:
+    def _convert_to_vertical(
+        self, input_path: str, output_path: str, duration: float
+    ) -> Optional[str]:
         """Convert a clip to vertical 9:16 format with Ken Burns effect."""
         if not self.ffmpeg:
             return None
@@ -325,21 +330,28 @@ class HybridShortsGenerator:
             zoom_end = random.uniform(1.1, 1.25)
 
             cmd = [
-                self.ffmpeg, "-y",
-                "-i", input_path,
-                "-t", str(duration),
-                "-vf", (
+                self.ffmpeg,
+                "-y",
+                "-i",
+                input_path,
+                "-t",
+                str(duration),
+                "-vf",
+                (
                     f"scale=-2:2160,"
                     f"zoompan=z='if(lte(zoom,{zoom_start}),{zoom_start},max({zoom_end},zoom-0.001))':"
                     f"x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':"
                     f"d={int(duration * self.FPS)}:s={self.WIDTH}x{self.HEIGHT}:fps={self.FPS},"
                     f"setsar=1"
                 ),
-                "-c:v", "libx264",
-                "-preset", "fast",
-                "-crf", "23",
+                "-c:v",
+                "libx264",
+                "-preset",
+                "fast",
+                "-crf",
+                "23",
                 "-an",  # No audio for segments
-                output_path
+                output_path,
             ]
 
             result = subprocess.run(cmd, capture_output=True, timeout=120)
@@ -369,15 +381,23 @@ class HybridShortsGenerator:
 
         try:
             cmd = [
-                self.ffmpeg, "-y",
-                "-f", "lavfi",
-                "-i", f"color=c=#{c1}:s={self.WIDTH}x{self.HEIGHT}:d={duration}",
-                "-vf", f"format=rgb24,geq=r='r(X,Y)*({self.HEIGHT}-Y)/{self.HEIGHT}+128*Y/{self.HEIGHT}':g='g(X,Y)*({self.HEIGHT}-Y)/{self.HEIGHT}+64*Y/{self.HEIGHT}':b='b(X,Y)*({self.HEIGHT}-Y)/{self.HEIGHT}+180*Y/{self.HEIGHT}'",
-                "-c:v", "libx264",
-                "-preset", "fast",
-                "-crf", "23",
-                "-t", str(duration),
-                output_path
+                self.ffmpeg,
+                "-y",
+                "-f",
+                "lavfi",
+                "-i",
+                f"color=c=#{c1}:s={self.WIDTH}x{self.HEIGHT}:d={duration}",
+                "-vf",
+                f"format=rgb24,geq=r='r(X,Y)*({self.HEIGHT}-Y)/{self.HEIGHT}+128*Y/{self.HEIGHT}':g='g(X,Y)*({self.HEIGHT}-Y)/{self.HEIGHT}+64*Y/{self.HEIGHT}':b='b(X,Y)*({self.HEIGHT}-Y)/{self.HEIGHT}+180*Y/{self.HEIGHT}'",
+                "-c:v",
+                "libx264",
+                "-preset",
+                "fast",
+                "-crf",
+                "23",
+                "-t",
+                str(duration),
+                output_path,
             ]
 
             result = subprocess.run(cmd, capture_output=True, timeout=60)
@@ -399,7 +419,7 @@ class HybridShortsGenerator:
         script=None,
         intro_prompt: Optional[str] = None,
         outro_prompt: Optional[str] = None,
-        skip_pika_on_error: bool = True
+        skip_pika_on_error: bool = True,
     ) -> HybridShortResult:
         """
         Create a hybrid YouTube Short with Pika intro/outro and stock middle.
@@ -428,7 +448,7 @@ class HybridShortsGenerator:
 
         # Get topic from script if not provided
         if not topic and script:
-            topic = getattr(script, 'title', str(script)[:50])
+            topic = getattr(script, "title", str(script)[:50])
 
         # Get audio duration
         audio_duration = self.get_audio_duration(audio_file)
@@ -489,7 +509,9 @@ class HybridShortsGenerator:
                 if not outro_path and skip_pika_on_error:
                     logger.warning("Pika outro failed, using gradient fallback")
                     fallback_outro = str(self.temp_dir / "fallback_outro.mp4")
-                    outro_path = self._create_gradient_clip(fallback_outro, self.OUTRO_DURATION, niche)
+                    outro_path = self._create_gradient_clip(
+                        fallback_outro, self.OUTRO_DURATION, niche
+                    )
                     if outro_path:
                         segment_files.append(outro_path)
 
@@ -517,7 +539,7 @@ class HybridShortsGenerator:
                 duration=audio_duration,
                 pika_cost=pika_cost,
                 intro_path=intro_path if intro_path else None,
-                outro_path=outro_path if use_outro and outro_path else None
+                outro_path=outro_path if use_outro and outro_path else None,
             )
 
         except Exception as e:
@@ -529,11 +551,7 @@ class HybridShortsGenerator:
             self._cleanup_temp_files(segment_files)
 
     async def _create_middle_content(
-        self,
-        topic: str,
-        niche: str,
-        duration: float,
-        script=None
+        self, topic: str, niche: str, duration: float, script=None
     ) -> List[str]:
         """Create middle content from stock footage."""
         segment_files = []
@@ -549,18 +567,18 @@ class HybridShortsGenerator:
                 search_terms = [topic] if topic else ["abstract", "cinematic"]
 
                 if script:
-                    sections = getattr(script, 'sections', [])
+                    sections = getattr(script, "sections", [])
                     for s in sections[:3]:
-                        if hasattr(s, 'keywords') and s.keywords:
+                        if hasattr(s, "keywords") and s.keywords:
                             search_terms.extend(s.keywords[:2])
 
                 # Search and download
-                if hasattr(self.stock, 'get_clips_for_topic'):
+                if hasattr(self.stock, "get_clips_for_topic"):
                     clips = self.stock.get_clips_for_topic(
                         topic=topic,
                         niche=niche,
                         count=num_segments + 2,
-                        min_total_duration=int(duration * 1.5)
+                        min_total_duration=int(duration * 1.5),
                     )
                     for clip in clips:
                         path = self.stock.download_clip(clip)
@@ -569,10 +587,10 @@ class HybridShortsGenerator:
                 else:
                     # Basic search
                     for term in search_terms[:3]:
-                        if hasattr(self.stock, 'search_videos'):
+                        if hasattr(self.stock, "search_videos"):
                             found = self.stock.search_videos(term, count=3)
                             for clip in found:
-                                if hasattr(self.stock, 'download_video'):
+                                if hasattr(self.stock, "download_video"):
                                     path = self.temp_dir / f"stock_{len(downloaded_clips)}.mp4"
                                     result = self.stock.download_video(clip, str(path))
                                     if result:
@@ -600,9 +618,7 @@ class HybridShortsGenerator:
             if clip_index < len(downloaded_clips):
                 # Convert stock clip to vertical format
                 result = self._convert_to_vertical(
-                    downloaded_clips[clip_index],
-                    segment_path,
-                    seg_dur
+                    downloaded_clips[clip_index], segment_path, seg_dur
                 )
                 clip_index += 1
 
@@ -639,16 +655,24 @@ class HybridShortsGenerator:
                     f.write(f"file '{clip}'\n")
 
             cmd = [
-                self.ffmpeg, "-y",
-                "-f", "concat",
-                "-safe", "0",
-                "-i", str(concat_file),
-                "-c:v", "libx264",
-                "-preset", "fast",
-                "-crf", "23",
-                "-pix_fmt", "yuv420p",
+                self.ffmpeg,
+                "-y",
+                "-f",
+                "concat",
+                "-safe",
+                "0",
+                "-i",
+                str(concat_file),
+                "-c:v",
+                "libx264",
+                "-preset",
+                "fast",
+                "-crf",
+                "23",
+                "-pix_fmt",
+                "yuv420p",
                 "-an",
-                output_path
+                output_path,
             ]
 
             result = subprocess.run(cmd, capture_output=True, timeout=300)
@@ -663,14 +687,20 @@ class HybridShortsGenerator:
         """Add audio to video."""
         try:
             cmd = [
-                self.ffmpeg, "-y",
-                "-i", video_path,
-                "-i", audio_path,
-                "-c:v", "copy",
-                "-c:a", "aac",
-                "-b:a", "192k",
+                self.ffmpeg,
+                "-y",
+                "-i",
+                video_path,
+                "-i",
+                audio_path,
+                "-c:v",
+                "copy",
+                "-c:a",
+                "aac",
+                "-b:a",
+                "192k",
                 "-shortest",
-                output_path
+                output_path,
             ]
 
             result = subprocess.run(cmd, capture_output=True, timeout=120)
@@ -693,23 +723,18 @@ class HybridShortsGenerator:
 
 # Convenience function
 async def create_hybrid_short(
-    audio_file: str,
-    output_file: str,
-    niche: str = "default",
-    topic: str = ""
+    audio_file: str, output_file: str, niche: str = "default", topic: str = ""
 ) -> HybridShortResult:
     """Quick function to create a hybrid short."""
     generator = HybridShortsGenerator()
     return await generator.create_hybrid_short(
-        audio_file=audio_file,
-        output_file=output_file,
-        niche=niche,
-        topic=topic
+        audio_file=audio_file, output_file=output_file, niche=niche, topic=topic
     )
 
 
 # Test
 if __name__ == "__main__":
+
     async def test():
         print("=" * 50)
         print("HYBRID SHORTS GENERATOR TEST")

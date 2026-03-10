@@ -33,16 +33,17 @@ Usage:
     asyncio.run(main())
 """
 
-import os
 import asyncio
-import tempfile
+import os
 import shutil
-from pathlib import Path
-from typing import Optional, Dict, Any, List, Literal
+import tempfile
 from dataclasses import dataclass
 from enum import Enum
-from loguru import logger
+from pathlib import Path
+from typing import Any, Dict, List, Optional
+
 from dotenv import load_dotenv
+from loguru import logger
 
 # Load environment variables from relative paths (portable)
 _env_paths = [
@@ -57,6 +58,7 @@ for _env_path in _env_paths:
 # Try to import fal_client
 try:
     import fal_client
+
     FAL_CLIENT_AVAILABLE = True
 except ImportError:
     FAL_CLIENT_AVAILABLE = False
@@ -65,11 +67,13 @@ except ImportError:
 # Try to import httpx for downloading
 try:
     import httpx
+
     HTTPX_AVAILABLE = True
 except ImportError:
     HTTPX_AVAILABLE = False
     try:
-        import aiohttp
+        pass
+
         AIOHTTP_AVAILABLE = True
     except ImportError:
         AIOHTTP_AVAILABLE = False
@@ -77,12 +81,14 @@ except ImportError:
 
 class PikaResolution(str, Enum):
     """Available resolution options for Pika video generation."""
+
     HD_720 = "720p"
     FHD_1080 = "1080p"
 
 
 class PikaAspectRatio(str, Enum):
     """Available aspect ratios for Pika video generation."""
+
     LANDSCAPE_16_9 = "16:9"
     PORTRAIT_9_16 = "9:16"
     SQUARE_1_1 = "1:1"
@@ -91,6 +97,7 @@ class PikaAspectRatio(str, Enum):
 @dataclass
 class PikaVideoResult:
     """Result from Pika video generation."""
+
     success: bool
     video_url: Optional[str] = None
     local_path: Optional[str] = None
@@ -147,8 +154,7 @@ class PikaVideoGenerator:
 
         if not FAL_CLIENT_AVAILABLE:
             logger.error(
-                "fal-client package not installed. "
-                "Install with: pip install fal-client"
+                "fal-client package not installed. " "Install with: pip install fal-client"
             )
             raise ImportError("fal-client package required for Pika video generation")
 
@@ -170,17 +176,12 @@ class PikaVideoGenerator:
         """Check if API key is configured."""
         if not self.api_key:
             logger.error(
-                "Pika API key not configured. "
-                "Set PIKA_API_KEY or FAL_KEY environment variable."
+                "Pika API key not configured. " "Set PIKA_API_KEY or FAL_KEY environment variable."
             )
             return False
         return True
 
-    def _estimate_cost(
-        self,
-        duration: int,
-        resolution: str
-    ) -> float:
+    def _estimate_cost(self, duration: int, resolution: str) -> float:
         """
         Estimate cost for video generation.
 
@@ -196,11 +197,7 @@ class PikaVideoGenerator:
         cost = base_price * (duration / 5)
         return round(cost, 2)
 
-    async def _download_video(
-        self,
-        url: str,
-        output_path: str
-    ) -> Optional[str]:
+    async def _download_video(self, url: str, output_path: str) -> Optional[str]:
         """
         Download video from URL to local file.
 
@@ -228,8 +225,11 @@ class PikaVideoGenerator:
 
             elif AIOHTTP_AVAILABLE:
                 import aiohttp
+
                 async with aiohttp.ClientSession() as session:
-                    async with session.get(url, timeout=aiohttp.ClientTimeout(total=120)) as response:
+                    async with session.get(
+                        url, timeout=aiohttp.ClientTimeout(total=120)
+                    ) as response:
                         response.raise_for_status()
                         content = await response.read()
 
@@ -241,6 +241,7 @@ class PikaVideoGenerator:
             else:
                 # Fallback to synchronous download
                 import urllib.request
+
                 urllib.request.urlretrieve(url, str(output_path))
                 logger.info(f"Downloaded video to: {output_path}")
                 return str(output_path)
@@ -257,7 +258,7 @@ class PikaVideoGenerator:
         resolution: str = "720p",
         aspect_ratio: str = "16:9",
         negative_prompt: Optional[str] = None,
-        seed: Optional[int] = None
+        seed: Optional[int] = None,
     ) -> PikaVideoResult:
         """
         Generate video from text prompt.
@@ -278,10 +279,7 @@ class PikaVideoGenerator:
             PikaVideoResult with video URL and local path
         """
         if not self._validate_api_key():
-            return PikaVideoResult(
-                success=False,
-                error="API key not configured"
-            )
+            return PikaVideoResult(success=False, error="API key not configured")
 
         # Validate parameters
         duration = max(5, min(10, duration))  # Clamp to 5-10 seconds
@@ -317,7 +315,7 @@ class PikaVideoGenerator:
                 self.TEXT_TO_VIDEO_MODEL,
                 arguments=arguments,
                 with_logs=True,
-                on_queue_update=self._on_queue_update
+                on_queue_update=self._on_queue_update,
             )
 
             # Extract video URL from result
@@ -332,10 +330,7 @@ class PikaVideoGenerator:
 
             if not video_url:
                 logger.error(f"No video URL in response: {result}")
-                return PikaVideoResult(
-                    success=False,
-                    error="No video URL in API response"
-                )
+                return PikaVideoResult(success=False, error="No video URL in API response")
 
             logger.success(f"Video generated: {video_url}")
 
@@ -352,15 +347,12 @@ class PikaVideoGenerator:
                 duration=duration,
                 resolution=resolution,
                 cost_estimate=cost_estimate,
-                request_id=result.get("request_id") if isinstance(result, dict) else None
+                request_id=result.get("request_id") if isinstance(result, dict) else None,
             )
 
         except Exception as e:
             logger.error(f"Pika text-to-video failed: {e}")
-            return PikaVideoResult(
-                success=False,
-                error=str(e)
-            )
+            return PikaVideoResult(success=False, error=str(e))
 
     async def generate_from_image(
         self,
@@ -371,7 +363,7 @@ class PikaVideoGenerator:
         resolution: str = "720p",
         use_turbo: bool = False,
         negative_prompt: Optional[str] = None,
-        seed: Optional[int] = None
+        seed: Optional[int] = None,
     ) -> PikaVideoResult:
         """
         Generate video from an image (animate the image).
@@ -391,17 +383,11 @@ class PikaVideoGenerator:
             PikaVideoResult with video URL and local path
         """
         if not self._validate_api_key():
-            return PikaVideoResult(
-                success=False,
-                error="API key not configured"
-            )
+            return PikaVideoResult(success=False, error="API key not configured")
 
         if not os.path.exists(image_path):
             logger.error(f"Image file not found: {image_path}")
-            return PikaVideoResult(
-                success=False,
-                error=f"Image file not found: {image_path}"
-            )
+            return PikaVideoResult(success=False, error=f"Image file not found: {image_path}")
 
         # Validate parameters
         duration = max(5, min(10, duration))
@@ -445,7 +431,7 @@ class PikaVideoGenerator:
                 model,
                 arguments=arguments,
                 with_logs=True,
-                on_queue_update=self._on_queue_update
+                on_queue_update=self._on_queue_update,
             )
 
             # Extract video URL
@@ -460,10 +446,7 @@ class PikaVideoGenerator:
 
             if not video_url:
                 logger.error(f"No video URL in response: {result}")
-                return PikaVideoResult(
-                    success=False,
-                    error="No video URL in API response"
-                )
+                return PikaVideoResult(success=False, error="No video URL in API response")
 
             logger.success(f"Video generated: {video_url}")
 
@@ -480,15 +463,12 @@ class PikaVideoGenerator:
                 duration=duration,
                 resolution=resolution,
                 cost_estimate=cost_estimate,
-                request_id=result.get("request_id") if isinstance(result, dict) else None
+                request_id=result.get("request_id") if isinstance(result, dict) else None,
             )
 
         except Exception as e:
             logger.error(f"Pika image-to-video failed: {e}")
-            return PikaVideoResult(
-                success=False,
-                error=str(e)
-            )
+            return PikaVideoResult(success=False, error=str(e))
 
     def _on_queue_update(self, update: Any) -> None:
         """Handle queue status updates from fal.ai."""
@@ -513,7 +493,7 @@ class PikaVideoGenerator:
         prompt: str,
         output_file: Optional[str] = None,
         duration: int = 5,
-        aspect_ratio: str = "9:16"
+        aspect_ratio: str = "9:16",
     ) -> PikaVideoResult:
         """
         Generate a vertical clip optimized for YouTube Shorts.
@@ -528,14 +508,16 @@ class PikaVideoGenerator:
             PikaVideoResult
         """
         # Optimize prompt for Shorts
-        enhanced_prompt = f"{prompt}, vertical format, mobile-friendly composition, centered subject"
+        enhanced_prompt = (
+            f"{prompt}, vertical format, mobile-friendly composition, centered subject"
+        )
 
         return await self.generate_from_text(
             prompt=enhanced_prompt,
             output_file=output_file,
             duration=duration,
             resolution="720p",  # Use 720p for cost efficiency
-            aspect_ratio=aspect_ratio
+            aspect_ratio=aspect_ratio,
         )
 
     async def generate_broll_clip(
@@ -543,7 +525,7 @@ class PikaVideoGenerator:
         topic: str,
         output_file: Optional[str] = None,
         style: str = "cinematic",
-        duration: int = 5
+        duration: int = 5,
     ) -> PikaVideoResult:
         """
         Generate a B-roll clip for long-form videos.
@@ -573,7 +555,7 @@ class PikaVideoGenerator:
             output_file=output_file,
             duration=duration,
             resolution="720p",
-            aspect_ratio="16:9"
+            aspect_ratio="16:9",
         )
 
     async def generate_multiple_clips(
@@ -582,7 +564,7 @@ class PikaVideoGenerator:
         output_dir: str,
         duration: int = 5,
         resolution: str = "720p",
-        max_concurrent: int = 3
+        max_concurrent: int = 3,
     ) -> List[PikaVideoResult]:
         """
         Generate multiple video clips concurrently.
@@ -607,16 +589,10 @@ class PikaVideoGenerator:
             async with semaphore:
                 output_file = str(output_path / f"clip_{idx:03d}.mp4")
                 return await self.generate_from_text(
-                    prompt=prompt,
-                    output_file=output_file,
-                    duration=duration,
-                    resolution=resolution
+                    prompt=prompt, output_file=output_file, duration=duration, resolution=resolution
                 )
 
-        tasks = [
-            generate_with_limit(i, prompt)
-            for i, prompt in enumerate(prompts)
-        ]
+        tasks = [generate_with_limit(i, prompt) for i, prompt in enumerate(prompts)]
 
         results = await asyncio.gather(*tasks, return_exceptions=True)
 
@@ -624,10 +600,7 @@ class PikaVideoGenerator:
         processed_results = []
         for i, result in enumerate(results):
             if isinstance(result, Exception):
-                processed_results.append(PikaVideoResult(
-                    success=False,
-                    error=str(result)
-                ))
+                processed_results.append(PikaVideoResult(success=False, error=str(result)))
             else:
                 processed_results.append(result)
 
@@ -669,6 +642,7 @@ def get_pika_generator(api_key: Optional[str] = None) -> Optional[PikaVideoGener
 
 # Example usage and testing
 if __name__ == "__main__":
+
     async def test_pika():
         print("\n" + "=" * 60)
         print("PIKA LABS VIDEO GENERATOR TEST")
@@ -690,7 +664,7 @@ if __name__ == "__main__":
             result = await generator.generate_from_text(
                 prompt="A serene forest scene with sunlight filtering through trees, peaceful atmosphere",
                 duration=5,
-                resolution="720p"
+                resolution="720p",
             )
 
             if result.success:

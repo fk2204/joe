@@ -27,10 +27,10 @@ import shutil
 import subprocess
 import tempfile
 from pathlib import Path
-from typing import List, Dict, Optional, Tuple
-from dataclasses import dataclass
-from loguru import logger
+from typing import Dict, List, Optional, Tuple
+
 from dotenv import load_dotenv
+from loguru import logger
 
 # Load environment variables from relative paths (portable)
 _env_paths = [
@@ -43,13 +43,14 @@ for _env_path in _env_paths:
         break
 
 try:
-    from PIL import Image, ImageDraw, ImageFont, ImageFilter, ImageEnhance
+    from PIL import Image, ImageDraw, ImageFont
 except ImportError:
     raise ImportError("Please install pillow: pip install pillow")
 
 # Import subtitle generator
 try:
-    from .subtitles import SubtitleGenerator, SubtitleTrack, SUBTITLE_STYLES
+    from .subtitles import SubtitleGenerator
+
     SUBTITLES_AVAILABLE = True
 except ImportError:
     SUBTITLES_AVAILABLE = False
@@ -57,7 +58,8 @@ except ImportError:
 
 # Import hook generator for catchy intros
 try:
-    from .video_hooks import VideoHookGenerator, HookValidationResult
+    from .video_hooks import VideoHookGenerator
+
     HOOKS_AVAILABLE = True
 except ImportError:
     HOOKS_AVAILABLE = False
@@ -65,6 +67,7 @@ except ImportError:
 
 # Import shared video utilities
 from .video_utils import find_ffmpeg as _find_ffmpeg_shared
+
 
 # GPU encoder detection (removed with long-form video support)
 # Use CPU encoding with fallback settings
@@ -75,12 +78,14 @@ def get_video_encoder(ffmpeg_path: str):
         "preset": "fast",
         "extra_args": ["-crf", "23", "-b:v", "8M"],
         "is_gpu": False,
-        "gpu_type": "cpu"
+        "gpu_type": "cpu",
     }
+
 
 def get_encoder_args(encoder_info: dict):
     """Fallback encoder args generation."""
     return ["-c:v", encoder_info.get("encoder", "libx264")] + encoder_info.get("extra_args", [])
+
 
 GPU_ENCODER_AVAILABLE = False
 logger.debug("GPU encoder detection not available - using CPU encoding")
@@ -123,10 +128,10 @@ class ShortsVideoGenerator:
     # Safe zones to avoid YouTube UI elements (research-backed)
     # These areas are covered by YouTube UI on mobile
     SAFE_ZONE = {
-        "top": 288,      # Status bar, back button
-        "bottom": 672,   # Like/comment/share buttons, description
-        "left": 48,      # Small margin
-        "right": 192,    # Follow button area
+        "top": 288,  # Status bar, back button
+        "bottom": 672,  # Like/comment/share buttons, description
+        "left": 48,  # Small margin
+        "right": 192,  # Follow button area
     }
 
     # Text settings (research: 40-56px optimal, min 24px)
@@ -145,17 +150,59 @@ class ShortsVideoGenerator:
         # More dramatic zoom out
         {"start_scale": 1.25, "end_scale": 1.0, "start_x": 0, "end_x": 0, "start_y": 0, "end_y": 0},
         # Faster pan right with zoom
-        {"start_scale": 1.15, "end_scale": 1.2, "start_x": -80, "end_x": 80, "start_y": 0, "end_y": 0},
+        {
+            "start_scale": 1.15,
+            "end_scale": 1.2,
+            "start_x": -80,
+            "end_x": 80,
+            "start_y": 0,
+            "end_y": 0,
+        },
         # Faster pan left with zoom
-        {"start_scale": 1.2, "end_scale": 1.15, "start_x": 80, "end_x": -80, "start_y": 0, "end_y": 0},
+        {
+            "start_scale": 1.2,
+            "end_scale": 1.15,
+            "start_x": 80,
+            "end_x": -80,
+            "start_y": 0,
+            "end_y": 0,
+        },
         # Dramatic zoom + pan combination
-        {"start_scale": 1.0, "end_scale": 1.3, "start_x": -50, "end_x": 50, "start_y": -30, "end_y": 30},
+        {
+            "start_scale": 1.0,
+            "end_scale": 1.3,
+            "start_x": -50,
+            "end_x": 50,
+            "start_y": -30,
+            "end_y": 30,
+        },
         # Pull back reveal
-        {"start_scale": 1.35, "end_scale": 1.0, "start_x": 40, "end_x": -40, "start_y": 30, "end_y": -30},
+        {
+            "start_scale": 1.35,
+            "end_scale": 1.0,
+            "start_x": 40,
+            "end_x": -40,
+            "start_y": 30,
+            "end_y": -30,
+        },
         # Vertical pan (good for vertical format)
-        {"start_scale": 1.2, "end_scale": 1.2, "start_x": 0, "end_x": 0, "start_y": -60, "end_y": 60},
+        {
+            "start_scale": 1.2,
+            "end_scale": 1.2,
+            "start_x": 0,
+            "end_x": 0,
+            "start_y": -60,
+            "end_y": 60,
+        },
         # Diagonal sweep
-        {"start_scale": 1.1, "end_scale": 1.25, "start_x": -40, "end_x": 40, "start_y": -40, "end_y": 40},
+        {
+            "start_scale": 1.1,
+            "end_scale": 1.25,
+            "start_x": -40,
+            "end_x": 40,
+            "start_y": -40,
+            "end_y": 40,
+        },
     ]
 
     # Niche-specific visual styles (adapted for vertical format)
@@ -171,7 +218,7 @@ class ShortsVideoGenerator:
             "contrast": 1.15,
             "vignette": True,
             "color_grade": "teal_orange",
-            "font_style": "bold"
+            "font_style": "bold",
         },
         "psychology": {
             "primary_color": "#9b59b6",
@@ -184,7 +231,7 @@ class ShortsVideoGenerator:
             "contrast": 1.25,
             "vignette": True,
             "color_grade": "cool_dark",
-            "font_style": "bold"
+            "font_style": "bold",
         },
         "storytelling": {
             "primary_color": "#e74c3c",
@@ -197,7 +244,7 @@ class ShortsVideoGenerator:
             "contrast": 1.35,
             "vignette": True,
             "color_grade": "cinematic_dark",
-            "font_style": "bold"
+            "font_style": "bold",
         },
         "default": {
             "primary_color": "#3498db",
@@ -210,15 +257,11 @@ class ShortsVideoGenerator:
             "contrast": 1.1,
             "vignette": True,
             "color_grade": "neutral",
-            "font_style": "bold"
-        }
+            "font_style": "bold",
+        },
     }
 
-    def __init__(
-        self,
-        resolution: Tuple[int, int] = None,
-        fps: int = 30
-    ):
+    def __init__(self, resolution: Tuple[int, int] = None, fps: int = 30):
         """
         Initialize the Shorts video generator.
 
@@ -240,11 +283,13 @@ class ShortsVideoGenerator:
         # Initialize stock provider
         try:
             from .multi_stock import MultiStockProvider
+
             self.stock = MultiStockProvider()
         except ImportError as e:
             logger.warning(f"Multi-stock provider unavailable: {e}")
             try:
                 from .stock_footage import StockFootage
+
                 self.stock = StockFootage()
             except ImportError as e:
                 logger.warning(f"Stock footage provider unavailable: {e}")
@@ -254,6 +299,7 @@ class ShortsVideoGenerator:
         self.pika = None
         try:
             from .video_pika import PikaVideoGenerator
+
             self.pika = PikaVideoGenerator()
             if self.pika.api_key:
                 logger.info("Pika Labs AI video generation available")
@@ -286,9 +332,7 @@ class ShortsVideoGenerator:
         if HOOKS_AVAILABLE:
             try:
                 self.hook_generator = VideoHookGenerator(
-                    resolution=self.resolution,
-                    fps=self.fps,
-                    is_shorts=True
+                    resolution=self.resolution, fps=self.fps, is_shorts=True
                 )
                 logger.debug("VideoHookGenerator initialized for catchy intros")
             except Exception as e:
@@ -298,7 +342,9 @@ class ShortsVideoGenerator:
         if GPU_ENCODER_AVAILABLE:
             self.encoder_info = get_video_encoder(self.ffmpeg)
             if self.encoder_info["is_gpu"]:
-                logger.info(f"GPU acceleration enabled: {self.encoder_info['gpu_type'].upper()} ({self.encoder_info['encoder']})")
+                logger.info(
+                    f"GPU acceleration enabled: {self.encoder_info['gpu_type'].upper()} ({self.encoder_info['encoder']})"
+                )
             else:
                 logger.info("Using CPU encoding (libx264)")
         else:
@@ -308,10 +354,12 @@ class ShortsVideoGenerator:
                 "preset": "fast",
                 "extra_args": ["-crf", "23", "-b:v", "8M"],
                 "is_gpu": False,
-                "gpu_type": "cpu"
+                "gpu_type": "cpu",
             }
 
-        logger.info(f"ShortsVideoGenerator initialized ({self.width}x{self.height} @ {self.fps}fps)")
+        logger.info(
+            f"ShortsVideoGenerator initialized ({self.width}x{self.height} @ {self.fps}fps)"
+        )
 
     def _find_ffmpeg(self) -> Optional[str]:
         """Find FFmpeg executable."""
@@ -368,9 +416,18 @@ class ShortsVideoGenerator:
         """Load available fonts."""
         fonts = {}
         font_paths = {
-            "bold": ["C:\\Windows\\Fonts\\arialbd.ttf", "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"],
-            "regular": ["C:\\Windows\\Fonts\\arial.ttf", "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"],
-            "impact": ["C:\\Windows\\Fonts\\impact.ttf", "/usr/share/fonts/truetype/msttcorefonts/Impact.ttf"],
+            "bold": [
+                "C:\\Windows\\Fonts\\arialbd.ttf",
+                "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
+            ],
+            "regular": [
+                "C:\\Windows\\Fonts\\arial.ttf",
+                "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+            ],
+            "impact": [
+                "C:\\Windows\\Fonts\\impact.ttf",
+                "/usr/share/fonts/truetype/msttcorefonts/Impact.ttf",
+            ],
         }
 
         for name, paths in font_paths.items():
@@ -389,10 +446,14 @@ class ShortsVideoGenerator:
 
         try:
             cmd = [
-                self.ffprobe, '-v', 'error',
-                '-show_entries', 'format=duration',
-                '-of', 'default=noprint_wrappers=1:nokey=1',
-                audio_file
+                self.ffprobe,
+                "-v",
+                "error",
+                "-show_entries",
+                "format=duration",
+                "-of",
+                "default=noprint_wrappers=1:nokey=1",
+                audio_file,
             ]
             result = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
             if result.returncode == 0 and result.stdout.strip():
@@ -402,12 +463,7 @@ class ShortsVideoGenerator:
 
         return os.path.getsize(audio_file) / 16000
 
-    def crop_to_vertical(
-        self,
-        input_path: str,
-        output_path: str,
-        duration: float
-    ) -> Optional[str]:
+    def crop_to_vertical(self, input_path: str, output_path: str, duration: float) -> Optional[str]:
         """
         Crop horizontal footage to vertical format (center crop).
 
@@ -423,7 +479,7 @@ class ShortsVideoGenerator:
             return None
 
         try:
-            is_image = input_path.lower().endswith(('.jpg', '.jpeg', '.png', '.webp'))
+            is_image = input_path.lower().endswith((".jpg", ".jpeg", ".png", ".webp"))
 
             # Center crop filter for vertical format
             # Crop to 9:16 aspect ratio from center
@@ -433,28 +489,28 @@ class ShortsVideoGenerator:
             encoder_args = self._get_encoder_args(use_fast_preset=True)
 
             if is_image:
-                cmd = [
-                    self.ffmpeg, '-y',
-                    '-loop', '1',
-                    '-i', input_path,
-                    '-t', str(duration),
-                    '-vf', crop_filter
-                ] + encoder_args + [
-                    '-pix_fmt', 'yuv420p',
-                    '-an',
-                    output_path
-                ]
+                cmd = (
+                    [
+                        self.ffmpeg,
+                        "-y",
+                        "-loop",
+                        "1",
+                        "-i",
+                        input_path,
+                        "-t",
+                        str(duration),
+                        "-vf",
+                        crop_filter,
+                    ]
+                    + encoder_args
+                    + ["-pix_fmt", "yuv420p", "-an", output_path]
+                )
             else:
-                cmd = [
-                    self.ffmpeg, '-y',
-                    '-i', input_path,
-                    '-t', str(duration),
-                    '-vf', crop_filter
-                ] + encoder_args + [
-                    '-pix_fmt', 'yuv420p',
-                    '-an',
-                    output_path
-                ]
+                cmd = (
+                    [self.ffmpeg, "-y", "-i", input_path, "-t", str(duration), "-vf", crop_filter]
+                    + encoder_args
+                    + ["-pix_fmt", "yuv420p", "-an", output_path]
+                )
 
             subprocess.run(cmd, capture_output=True, timeout=120)
 
@@ -472,7 +528,7 @@ class ShortsVideoGenerator:
         output_path: str,
         duration: float,
         effect_preset: Dict = None,
-        style: Dict = None
+        style: Dict = None,
     ) -> Optional[str]:
         """
         Create a clip with aggressive Ken Burns effect for Shorts.
@@ -495,7 +551,7 @@ class ShortsVideoGenerator:
             effect = effect_preset or random.choice(self.KEN_BURNS_EFFECTS)
             style = style or self.NICHE_STYLES["default"]
 
-            is_image = input_path.lower().endswith(('.jpg', '.jpeg', '.png', '.webp'))
+            is_image = input_path.lower().endswith((".jpg", ".jpeg", ".png", ".webp"))
 
             start_scale = effect["start_scale"]
             end_scale = effect["end_scale"]
@@ -547,7 +603,9 @@ class ShortsVideoGenerator:
             # Faster fade in/out for Shorts
             fade_frames = int(self.TRANSITION_DURATION * self.fps)
             filters.append(f"fade=in:0:{fade_frames}")
-            filters.append(f"fade=out:st={duration - self.TRANSITION_DURATION}:d={self.TRANSITION_DURATION}")
+            filters.append(
+                f"fade=out:st={duration - self.TRANSITION_DURATION}:d={self.TRANSITION_DURATION}"
+            )
 
             filter_str = ",".join(filters)
 
@@ -555,32 +613,41 @@ class ShortsVideoGenerator:
             encoder_args = self._get_encoder_args(use_fast_preset=True)
 
             if is_image:
-                cmd = [
-                    self.ffmpeg, '-y',
-                    '-loop', '1',
-                    '-i', input_path,
-                    '-t', str(duration),
-                    '-vf', filter_str
-                ] + encoder_args + [
-                    '-pix_fmt', 'yuv420p',
-                    '-an',
-                    output_path
-                ]
+                cmd = (
+                    [
+                        self.ffmpeg,
+                        "-y",
+                        "-loop",
+                        "1",
+                        "-i",
+                        input_path,
+                        "-t",
+                        str(duration),
+                        "-vf",
+                        filter_str,
+                    ]
+                    + encoder_args
+                    + ["-pix_fmt", "yuv420p", "-an", output_path]
+                )
             else:
                 # For video, use simpler crop approach
-                cmd = [
-                    self.ffmpeg, '-y',
-                    '-i', input_path,
-                    '-t', str(duration),
-                    '-vf', f"scale=-1:{int(self.height*1.5)},"
-                           f"crop={self.width}:{self.height},"
-                           f"eq=saturation={sat}:contrast={con}:brightness=-{overlay_opacity * 0.35},"
-                           f"fade=in:0:{fade_frames},fade=out:st={duration - self.TRANSITION_DURATION}:d={self.TRANSITION_DURATION}"
-                ] + encoder_args + [
-                    '-pix_fmt', 'yuv420p',
-                    '-an',
-                    output_path
-                ]
+                cmd = (
+                    [
+                        self.ffmpeg,
+                        "-y",
+                        "-i",
+                        input_path,
+                        "-t",
+                        str(duration),
+                        "-vf",
+                        f"scale=-1:{int(self.height*1.5)},"
+                        f"crop={self.width}:{self.height},"
+                        f"eq=saturation={sat}:contrast={con}:brightness=-{overlay_opacity * 0.35},"
+                        f"fade=in:0:{fade_frames},fade=out:st={duration - self.TRANSITION_DURATION}:d={self.TRANSITION_DURATION}",
+                    ]
+                    + encoder_args
+                    + ["-pix_fmt", "yuv420p", "-an", output_path]
+                )
 
             result = subprocess.run(cmd, capture_output=True, timeout=120)
 
@@ -596,15 +663,11 @@ class ShortsVideoGenerator:
             return None
 
     def _create_simple_clip(
-        self,
-        input_path: str,
-        output_path: str,
-        duration: float,
-        style: Dict
+        self, input_path: str, output_path: str, duration: float, style: Dict
     ) -> Optional[str]:
         """Create a simple cropped clip (fallback)."""
         try:
-            is_image = input_path.lower().endswith(('.jpg', '.jpeg', '.png', '.webp'))
+            is_image = input_path.lower().endswith((".jpg", ".jpeg", ".png", ".webp"))
 
             # Center crop for vertical format
             filters = [
@@ -621,7 +684,9 @@ class ShortsVideoGenerator:
             # Faster fade for Shorts
             fade_frames = int(self.TRANSITION_DURATION * self.fps)
             filters.append(f"fade=in:0:{fade_frames}")
-            filters.append(f"fade=out:st={duration - self.TRANSITION_DURATION}:d={self.TRANSITION_DURATION}")
+            filters.append(
+                f"fade=out:st={duration - self.TRANSITION_DURATION}:d={self.TRANSITION_DURATION}"
+            )
 
             filter_str = ",".join(filters)
 
@@ -629,19 +694,39 @@ class ShortsVideoGenerator:
             encoder_args = self._get_encoder_args(use_fast_preset=True)
 
             if is_image:
-                cmd = [
-                    self.ffmpeg, '-y',
-                    '-loop', '1', '-i', input_path,
-                    '-t', str(duration),
-                    '-vf', filter_str
-                ] + encoder_args + ['-pix_fmt', 'yuv420p', '-an', output_path]
+                cmd = (
+                    [
+                        self.ffmpeg,
+                        "-y",
+                        "-loop",
+                        "1",
+                        "-i",
+                        input_path,
+                        "-t",
+                        str(duration),
+                        "-vf",
+                        filter_str,
+                    ]
+                    + encoder_args
+                    + ["-pix_fmt", "yuv420p", "-an", output_path]
+                )
             else:
-                cmd = [
-                    self.ffmpeg, '-y',
-                    '-stream_loop', '-1', '-i', input_path,
-                    '-t', str(duration),
-                    '-vf', filter_str
-                ] + encoder_args + ['-pix_fmt', 'yuv420p', '-an', output_path]
+                cmd = (
+                    [
+                        self.ffmpeg,
+                        "-y",
+                        "-stream_loop",
+                        "-1",
+                        "-i",
+                        input_path,
+                        "-t",
+                        str(duration),
+                        "-vf",
+                        filter_str,
+                    ]
+                    + encoder_args
+                    + ["-pix_fmt", "yuv420p", "-an", output_path]
+                )
 
             subprocess.run(cmd, capture_output=True, timeout=120)
             return output_path if os.path.exists(output_path) else None
@@ -651,11 +736,7 @@ class ShortsVideoGenerator:
             return None
 
     def create_title_card(
-        self,
-        title: str,
-        output_path: str,
-        style: Dict,
-        subtitle: str = None
+        self, title: str, output_path: str, style: Dict, subtitle: str = None
     ) -> Optional[str]:
         """
         Create a clean, professional title card optimized for vertical Shorts format.
@@ -669,13 +750,13 @@ class ShortsVideoGenerator:
         - High contrast for text readability
         """
         try:
-            primary = style.get("primary_color", "#3498db").lstrip('#')
-            primary_rgb = tuple(int(primary[i:i+2], 16) for i in (0, 2, 4))
-            secondary = style.get("secondary_color", "#0a0a14").lstrip('#')
-            secondary_rgb = tuple(int(secondary[i:i+2], 16) for i in (0, 2, 4))
+            primary = style.get("primary_color", "#3498db").lstrip("#")
+            primary_rgb = tuple(int(primary[i : i + 2], 16) for i in (0, 2, 4))
+            secondary = style.get("secondary_color", "#0a0a14").lstrip("#")
+            secondary_rgb = tuple(int(secondary[i : i + 2], 16) for i in (0, 2, 4))
 
             # Create base image
-            img = Image.new('RGB', self.resolution, secondary_rgb)
+            img = Image.new("RGB", self.resolution, secondary_rgb)
             draw = ImageDraw.Draw(img)
 
             # Draw clean vertical gradient (subtle, dark to slightly lighter)
@@ -698,13 +779,15 @@ class ShortsVideoGenerator:
                 intensity = int(255 * (1 - (r / max_radius) ** 1.8))
                 draw.ellipse(
                     [center_x - r, center_y - int(r * 1.8), center_x + r, center_y + int(r * 1.8)],
-                    outline=(intensity, intensity, intensity)
+                    outline=(intensity, intensity, intensity),
                 )
 
             # Load fonts (larger for mobile Shorts viewing)
             try:
                 title_font = ImageFont.truetype(self.fonts.get("bold", ""), self.TITLE_FONT_SIZE)
-                sub_font = ImageFont.truetype(self.fonts.get("regular", ""), self.SUBTITLE_FONT_SIZE)
+                sub_font = ImageFont.truetype(
+                    self.fonts.get("regular", ""), self.SUBTITLE_FONT_SIZE
+                )
             except (OSError, IOError) as e:
                 logger.debug(f"Font loading failed, using default: {e}")
                 title_font = ImageFont.load_default()
@@ -751,7 +834,9 @@ class ShortsVideoGenerator:
 
                 # Soft shadow for depth
                 shadow_offset = 4
-                draw.text((x + shadow_offset, y + shadow_offset), line, font=title_font, fill=(0, 0, 0))
+                draw.text(
+                    (x + shadow_offset, y + shadow_offset), line, font=title_font, fill=(0, 0, 0)
+                )
 
                 # Main title in white for maximum readability on mobile
                 draw.text((x, y), line, font=title_font, fill=(255, 255, 255))
@@ -776,9 +861,9 @@ class ShortsVideoGenerator:
                     (self.width - line_width) // 2,
                     accent_y,
                     (self.width + line_width) // 2,
-                    accent_y + line_thickness
+                    accent_y + line_thickness,
                 ],
-                fill=primary_rgb
+                fill=primary_rgb,
             )
 
             img.save(output_path)
@@ -793,7 +878,7 @@ class ShortsVideoGenerator:
         text: str,
         output_path: str,
         style: Dict,
-        position: str = "center"  # center, top, bottom
+        position: str = "center",  # center, top, bottom
     ) -> Optional[str]:
         """
         Create a text overlay image for Shorts with safe zone awareness.
@@ -805,11 +890,11 @@ class ShortsVideoGenerator:
         """
         try:
             # Create transparent image
-            img = Image.new('RGBA', self.resolution, (0, 0, 0, 0))
+            img = Image.new("RGBA", self.resolution, (0, 0, 0, 0))
             draw = ImageDraw.Draw(img)
 
-            primary = style.get("primary_color", "#3498db").lstrip('#')
-            primary_rgb = tuple(int(primary[i:i+2], 16) for i in (0, 2, 4))
+            primary = style.get("primary_color", "#3498db").lstrip("#")
+            primary_rgb = tuple(int(primary[i : i + 2], 16) for i in (0, 2, 4))
 
             # Load font (research: 40-56px optimal)
             try:
@@ -861,10 +946,7 @@ class ShortsVideoGenerator:
             bg_right = safe_right - 20
             bg_top = start_y - padding
             bg_bottom = start_y + total_height + padding
-            draw.rectangle(
-                [bg_left, bg_top, bg_right, bg_bottom],
-                fill=(0, 0, 0, 180)
-            )
+            draw.rectangle([bg_left, bg_top, bg_right, bg_bottom], fill=(0, 0, 0, 180))
 
             # Draw text with high contrast (research: white + black stroke)
             for i, line in enumerate(lines[:4]):  # Max 4 lines for readability
@@ -891,19 +973,16 @@ class ShortsVideoGenerator:
             return None
 
     def create_gradient_background(
-        self,
-        output_path: str,
-        style: Dict,
-        duration: float
+        self, output_path: str, style: Dict, duration: float
     ) -> Optional[str]:
         """Create a gradient background clip for Shorts."""
         try:
-            secondary = style.get("secondary_color", "#0a0a14").lstrip('#')
-            secondary_rgb = tuple(int(secondary[i:i+2], 16) for i in (0, 2, 4))
-            primary = style.get("primary_color", "#3498db").lstrip('#')
-            primary_rgb = tuple(int(primary[i:i+2], 16) for i in (0, 2, 4))
+            secondary = style.get("secondary_color", "#0a0a14").lstrip("#")
+            secondary_rgb = tuple(int(secondary[i : i + 2], 16) for i in (0, 2, 4))
+            primary = style.get("primary_color", "#3498db").lstrip("#")
+            primary_rgb = tuple(int(primary[i : i + 2], 16) for i in (0, 2, 4))
 
-            img = Image.new('RGB', self.resolution, secondary_rgb)
+            img = Image.new("RGB", self.resolution, secondary_rgb)
             draw = ImageDraw.Draw(img)
 
             # Radial gradient (centered for vertical)
@@ -916,23 +995,32 @@ class ShortsVideoGenerator:
                     for i in range(3)
                 )
                 draw.ellipse(
-                    [center_x - r, center_y - r, center_x + r, center_y + r],
-                    outline=color
+                    [center_x - r, center_y - r, center_x + r, center_y + r], outline=color
                 )
 
             # Save frame
-            frame_path = str(Path(output_path).with_suffix('.png'))
+            frame_path = str(Path(output_path).with_suffix(".png"))
             img.save(frame_path)
 
             # Create video from frame with GPU-accelerated encoding
             fade_frames = int(self.TRANSITION_DURATION * self.fps)
             encoder_args = self._get_encoder_args(use_fast_preset=True)
-            cmd = [
-                self.ffmpeg, '-y',
-                '-loop', '1', '-i', frame_path,
-                '-t', str(duration),
-                '-vf', f"fade=in:0:{fade_frames},fade=out:st={duration - 0.3}:d=0.3"
-            ] + encoder_args + ['-pix_fmt', 'yuv420p', '-an', output_path]
+            cmd = (
+                [
+                    self.ffmpeg,
+                    "-y",
+                    "-loop",
+                    "1",
+                    "-i",
+                    frame_path,
+                    "-t",
+                    str(duration),
+                    "-vf",
+                    f"fade=in:0:{fade_frames},fade=out:st={duration - 0.3}:d=0.3",
+                ]
+                + encoder_args
+                + ["-pix_fmt", "yuv420p", "-an", output_path]
+            )
             subprocess.run(cmd, capture_output=True, timeout=60)
 
             # Cleanup
@@ -946,10 +1034,7 @@ class ShortsVideoGenerator:
             return None
 
     async def generate_pika_clip(
-        self,
-        prompt: str,
-        output_path: str,
-        duration: int = 5
+        self, prompt: str, output_path: str, duration: int = 5
     ) -> Optional[str]:
         """
         Generate an AI video clip using Pika Labs for Shorts.
@@ -967,12 +1052,13 @@ class ShortsVideoGenerator:
             return None
 
         try:
-            import asyncio
+            pass
+
             result = await self.pika.generate_short_clip(
                 prompt=prompt,
                 output_file=output_path,
                 duration=duration,
-                aspect_ratio="9:16"  # Vertical for Shorts
+                aspect_ratio="9:16",  # Vertical for Shorts
             )
 
             if result.success and result.local_path:
@@ -997,7 +1083,7 @@ class ShortsVideoGenerator:
         use_pika: bool = False,
         pika_prompts: List[str] = None,
         subtitles_enabled: bool = False,
-        script_text: Optional[str] = None
+        script_text: Optional[str] = None,
     ) -> Optional[str]:
         """
         Create a YouTube Short from audio and script.
@@ -1038,23 +1124,29 @@ class ShortsVideoGenerator:
 
             # Validate duration for Shorts
             if audio_duration > self.MAX_DURATION:
-                logger.warning(f"Audio duration ({audio_duration:.1f}s) exceeds Shorts max ({self.MAX_DURATION}s). Trimming.")
+                logger.warning(
+                    f"Audio duration ({audio_duration:.1f}s) exceeds Shorts max ({self.MAX_DURATION}s). Trimming."
+                )
                 audio_duration = self.MAX_DURATION
             elif audio_duration < self.MIN_DURATION:
-                logger.warning(f"Audio duration ({audio_duration:.1f}s) is below Shorts min ({self.MIN_DURATION}s).")
+                logger.warning(
+                    f"Audio duration ({audio_duration:.1f}s) is below Shorts min ({self.MIN_DURATION}s)."
+                )
 
             # Research: 20-35 seconds is optimal for engagement
             if audio_duration > self.OPTIMAL_DURATION:
-                logger.info(f"Tip: Research shows {self.OPTIMAL_DURATION}s is optimal for Shorts engagement. "
-                           f"Current: {audio_duration:.1f}s")
+                logger.info(
+                    f"Tip: Research shows {self.OPTIMAL_DURATION}s is optimal for Shorts engagement. "
+                    f"Current: {audio_duration:.1f}s"
+                )
 
             # Calculate number of visual segments (faster pacing for Shorts: 2-3 seconds)
             num_segments = int(audio_duration / self.SEGMENT_DURATION) + 1
             logger.info(f"Creating {num_segments} visual segments (fast pacing)")
 
             # Get script info
-            title = getattr(script, 'title', str(script)) if script else "Short"
-            sections = getattr(script, 'sections', []) if script else []
+            title = getattr(script, "title", str(script)) if script else "Short"
+            sections = getattr(script, "sections", []) if script else []
 
             # Fetch stock footage
             downloaded_paths = []
@@ -1064,20 +1156,20 @@ class ShortsVideoGenerator:
                 search_terms = [title]
                 if sections:
                     for s in sections[:3]:
-                        if hasattr(s, 'keywords') and s.keywords:
+                        if hasattr(s, "keywords") and s.keywords:
                             search_terms.extend(s.keywords[:2])
-                        elif hasattr(s, 'title') and s.title:
+                        elif hasattr(s, "title") and s.title:
                             search_terms.append(s.title)
 
                 logger.info("Fetching stock footage for Shorts...")
 
                 # Use multi-stock provider if available
-                if hasattr(self.stock, 'get_clips_for_topic'):
+                if hasattr(self.stock, "get_clips_for_topic"):
                     clips = self.stock.get_clips_for_topic(
                         topic=title,
                         niche=niche,
                         count=num_segments + 3,
-                        min_total_duration=int(audio_duration * 1.2)
+                        min_total_duration=int(audio_duration * 1.2),
                     )
                     for clip in clips:
                         path = self.stock.download_clip(clip)
@@ -1088,7 +1180,7 @@ class ShortsVideoGenerator:
                     for term in search_terms[:3]:
                         found = self.stock.search_videos(term, count=3)
                         for clip in found:
-                            if hasattr(self.stock, 'download_video'):
+                            if hasattr(self.stock, "download_video"):
                                 path = self.temp_dir / f"clip_{len(downloaded_paths)}.mp4"
                                 result = self.stock.download_video(clip, str(path))
                                 if result:
@@ -1098,10 +1190,10 @@ class ShortsVideoGenerator:
 
             # Also get some images for variety
             stock_images = []
-            if self.stock and hasattr(self.stock, 'search_images'):
+            if self.stock and hasattr(self.stock, "search_images"):
                 images = self.stock.search_images(title, count=3)
                 for img in images:
-                    if hasattr(self.stock, 'download_image'):
+                    if hasattr(self.stock, "download_image"):
                         path = self.stock.download_image(img)
                         if path:
                             stock_images.append(path)
@@ -1126,6 +1218,7 @@ class ShortsVideoGenerator:
                     # Use default niche prompts from shorts_hybrid
                     try:
                         from .shorts_hybrid import HybridShortsGenerator
+
                         hybrid_gen = HybridShortsGenerator()
                         intro_prompt = hybrid_gen._get_prompt_for_niche(niche, "intro", title)
                     except ImportError:
@@ -1135,13 +1228,14 @@ class ShortsVideoGenerator:
 
                 # Generate intro clip asynchronously
                 import asyncio
+
                 try:
                     pika_intro_path = str(self.temp_dir / "pika_intro.mp4")
-                    pika_intro_clip = asyncio.run(self.generate_pika_clip(
-                        prompt=intro_prompt,
-                        output_path=pika_intro_path,
-                        duration=5
-                    ))
+                    pika_intro_clip = asyncio.run(
+                        self.generate_pika_clip(
+                            prompt=intro_prompt, output_path=pika_intro_path, duration=5
+                        )
+                    )
 
                     if pika_intro_clip:
                         logger.success(f"Pika intro generated: {pika_intro_clip}")
@@ -1157,6 +1251,7 @@ class ShortsVideoGenerator:
                     # Use default niche prompts from shorts_hybrid
                     try:
                         from .shorts_hybrid import HybridShortsGenerator
+
                         hybrid_gen = HybridShortsGenerator()
                         outro_prompt = hybrid_gen._get_prompt_for_niche(niche, "outro", title)
                     except ImportError:
@@ -1167,11 +1262,11 @@ class ShortsVideoGenerator:
                 # Generate outro clip asynchronously
                 try:
                     pika_outro_path = str(self.temp_dir / "pika_outro.mp4")
-                    pika_outro_clip = asyncio.run(self.generate_pika_clip(
-                        prompt=outro_prompt,
-                        output_path=pika_outro_path,
-                        duration=5
-                    ))
+                    pika_outro_clip = asyncio.run(
+                        self.generate_pika_clip(
+                            prompt=outro_prompt, output_path=pika_outro_path, duration=5
+                        )
+                    )
 
                     if pika_outro_clip:
                         logger.success(f"Pika outro generated: {pika_outro_clip}")
@@ -1187,7 +1282,9 @@ class ShortsVideoGenerator:
             # 1. CATCHY ANIMATED HOOK (research: must grab attention in FIRST SECOND!)
             # Hook duration: 2-3 seconds for animated intro, NEVER blank!
             # Skip animated hook if we already have a Pika intro
-            hook_duration = 2.5 if not pika_intro_clip else 0  # Animated hook (longer than static title)
+            hook_duration = (
+                2.5 if not pika_intro_clip else 0
+            )  # Animated hook (longer than static title)
 
             # Generate hook text based on niche
             hook_text = None
@@ -1199,7 +1296,7 @@ class ShortsVideoGenerator:
                     logger.info(f"Hook text: {hook_text}")
 
             # Use script hook if available
-            if not hook_text and hasattr(script, 'hook') and script.hook:
+            if not hook_text and hasattr(script, "hook") and script.hook:
                 hook_text = script.hook
             elif not hook_text:
                 # Default hook based on title
@@ -1215,7 +1312,7 @@ class ShortsVideoGenerator:
                     niche=niche,
                     duration=hook_duration,
                     animation_type=animation_type,
-                    output_path=str(self.temp_dir / "hook_intro.mp4")
+                    output_path=str(self.temp_dir / "hook_intro.mp4"),
                 )
 
             if hook_video and os.path.exists(hook_video):
@@ -1231,12 +1328,18 @@ class ShortsVideoGenerator:
                     title=hook_text[:40],  # Use hook text instead of plain title
                     output_path=str(title_frame),
                     style=style,
-                    subtitle=getattr(script, 'description', '')[:30] if hasattr(script, 'description') else None
+                    subtitle=(
+                        getattr(script, "description", "")[:30]
+                        if hasattr(script, "description")
+                        else None
+                    ),
                 )
 
                 if title_frame.exists():
                     title_video = self.temp_dir / "title.mp4"
-                    self._create_simple_clip(str(title_frame), str(title_video), title_duration, style)
+                    self._create_simple_clip(
+                        str(title_frame), str(title_video), title_duration, style
+                    )
                     if title_video.exists():
                         segment_files.append(str(title_video))
                         current_time += title_duration
@@ -1264,11 +1367,7 @@ class ShortsVideoGenerator:
                     # Apply aggressive Ken Burns effect for Shorts
                     effect = random.choice(self.KEN_BURNS_EFFECTS)
                     result = self.create_ken_burns_clip(
-                        media_path,
-                        str(segment_path),
-                        seg_duration,
-                        effect,
-                        style
+                        media_path, str(segment_path), seg_duration, effect, style
                     )
 
                     if result:
@@ -1278,11 +1377,7 @@ class ShortsVideoGenerator:
                         continue
 
                 # Fallback: gradient background
-                result = self.create_gradient_background(
-                    str(segment_path),
-                    style,
-                    seg_duration
-                )
+                result = self.create_gradient_background(str(segment_path), style, seg_duration)
 
                 if result:
                     segment_files.append(result)
@@ -1308,22 +1403,18 @@ class ShortsVideoGenerator:
 
             # 3. Concatenate all segments with GPU-accelerated encoding
             concat_file = self.temp_dir / "concat_list.txt"
-            with open(concat_file, 'w') as f:
+            with open(concat_file, "w") as f:
                 for seg in segment_files:
                     safe_path = seg.replace("'", "'\\''")
                     f.write(f"file '{safe_path}'\n")
 
             video_only = self.temp_dir / "video_only.mp4"
             encoder_args = self._get_encoder_args(use_fast_preset=True)
-            concat_cmd = [
-                self.ffmpeg, '-y',
-                '-f', 'concat',
-                '-safe', '0',
-                '-i', str(concat_file)
-            ] + encoder_args + [
-                '-pix_fmt', 'yuv420p',
-                str(video_only)
-            ]
+            concat_cmd = (
+                [self.ffmpeg, "-y", "-f", "concat", "-safe", "0", "-i", str(concat_file)]
+                + encoder_args
+                + ["-pix_fmt", "yuv420p", str(video_only)]
+            )
 
             result = subprocess.run(concat_cmd, capture_output=True, timeout=300)
             if result.returncode != 0:
@@ -1337,15 +1428,22 @@ class ShortsVideoGenerator:
             Path(output_file).parent.mkdir(parents=True, exist_ok=True)
 
             final_cmd = [
-                self.ffmpeg, '-y',
-                '-i', str(video_only),
-                '-i', audio_file,
-                '-c:v', 'copy',
-                '-c:a', 'aac',
-                '-b:a', '192k',
-                '-t', str(min(audio_duration, self.MAX_DURATION)),
-                '-shortest',
-                output_file
+                self.ffmpeg,
+                "-y",
+                "-i",
+                str(video_only),
+                "-i",
+                audio_file,
+                "-c:v",
+                "copy",
+                "-c:a",
+                "aac",
+                "-b:a",
+                "192k",
+                "-t",
+                str(min(audio_duration, self.MAX_DURATION)),
+                "-shortest",
+                output_file,
             ]
 
             result = subprocess.run(final_cmd, capture_output=True, timeout=300)
@@ -1357,10 +1455,7 @@ class ShortsVideoGenerator:
                     logger.info("Adding background music to Short...")
                     video_with_music = self.temp_dir / "short_with_music.mp4"
                     music_result = self.add_background_music(
-                        output_file,
-                        music_path,
-                        str(video_with_music),
-                        music_volume
+                        output_file, music_path, str(video_with_music), music_volume
                     )
                     if music_result and os.path.exists(str(video_with_music)):
                         # Replace output with music version
@@ -1374,25 +1469,31 @@ class ShortsVideoGenerator:
                         narration = script_text
                         if not narration and script:
                             # Try to extract narration from script object
-                            if hasattr(script, 'sections'):
+                            if hasattr(script, "sections"):
                                 narrations = []
                                 for section in script.sections:
-                                    if hasattr(section, 'narration') and section.narration:
+                                    if hasattr(section, "narration") and section.narration:
                                         narrations.append(section.narration)
                                 narration = " ".join(narrations)
-                            elif hasattr(script, 'full_narration'):
+                            elif hasattr(script, "full_narration"):
                                 narration = script.full_narration
                             elif isinstance(script, dict):
-                                narration = script.get('full_narration', '')
+                                narration = script.get("full_narration", "")
                                 if not narration:
-                                    sections = script.get('sections', [])
-                                    narrations = [s.get('narration', '') for s in sections if s.get('narration')]
+                                    sections = script.get("sections", [])
+                                    narrations = [
+                                        s.get("narration", "")
+                                        for s in sections
+                                        if s.get("narration")
+                                    ]
                                     narration = " ".join(narrations)
 
                         if narration:
                             # Generate subtitle track with Shorts-optimized settings
                             style_config = self.subtitle_generator.get_style("shorts", niche)
-                            max_chars = style_config.get("max_chars", 30)  # Shorter lines for vertical
+                            max_chars = style_config.get(
+                                "max_chars", 30
+                            )  # Shorter lines for vertical
                             track = self.subtitle_generator.sync_subtitles_with_audio(
                                 narration, audio_file, max_chars
                             )
@@ -1403,18 +1504,14 @@ class ShortsVideoGenerator:
                                 shutil.move(output_file, temp_video)
 
                                 sub_result = self.subtitle_generator.burn_subtitles(
-                                    temp_video,
-                                    track,
-                                    output_file,
-                                    style="shorts",
-                                    niche=niche
+                                    temp_video, track, output_file, style="shorts", niche=niche
                                 )
 
                                 # Clean up temp video
                                 if os.path.exists(temp_video):
                                     try:
                                         os.remove(temp_video)
-                                    except:
+                                    except Exception:
                                         pass
 
                                 if sub_result:
@@ -1422,7 +1519,9 @@ class ShortsVideoGenerator:
                                 else:
                                     logger.warning("Subtitle burning failed for Short")
                                     # Restore original if subtitle burning failed
-                                    if not os.path.exists(output_file) and os.path.exists(temp_video):
+                                    if not os.path.exists(output_file) and os.path.exists(
+                                        temp_video
+                                    ):
                                         shutil.move(temp_video, output_file)
                         else:
                             logger.warning("No narration text available for subtitles")
@@ -1447,6 +1546,7 @@ class ShortsVideoGenerator:
         except (subprocess.TimeoutExpired, subprocess.SubprocessError, OSError, IOError) as e:
             logger.error(f"Short creation failed: {e}")
             import traceback
+
             traceback.print_exc()
 
         return None
@@ -1479,9 +1579,9 @@ class ShortsVideoGenerator:
         # Build list of directories to search (in priority order)
         project_root = Path(__file__).parent.parent.parent
         search_dirs = [
-            project_root / "assets" / "music",           # Primary: assets/music/
-            project_root / "music",                       # Alternative: music/
-            Path.cwd() / "assets" / "music",             # CWD-relative
+            project_root / "assets" / "music",  # Primary: assets/music/
+            project_root / "music",  # Alternative: music/
+            Path.cwd() / "assets" / "music",  # CWD-relative
             Path.home() / "joe" / "assets" / "music",  # Home directory
         ]
 
@@ -1526,11 +1626,7 @@ class ShortsVideoGenerator:
         return None
 
     def add_background_music(
-        self,
-        video_file: str,
-        music_file: str,
-        output_file: str,
-        music_volume: float = None
+        self, video_file: str, music_file: str, output_file: str, music_volume: float = None
     ) -> Optional[str]:
         """
         Add background music to a video at low volume.
@@ -1562,21 +1658,31 @@ class ShortsVideoGenerator:
 
             # Mix audio: original at full volume, music at 15%
             cmd = [
-                self.ffmpeg, '-y',
-                '-i', video_file,
-                '-stream_loop', '-1',  # Loop music if needed
-                '-i', music_file,
-                '-t', str(duration),
-                '-filter_complex',
-                f'[0:a]volume=1.0[a1];'
-                f'[1:a]volume={volume}[a2];'
-                f'[a1][a2]amix=inputs=2:duration=first[aout]',
-                '-map', '0:v',
-                '-map', '[aout]',
-                '-c:v', 'copy',
-                '-c:a', 'aac',
-                '-b:a', '192k',
-                output_file
+                self.ffmpeg,
+                "-y",
+                "-i",
+                video_file,
+                "-stream_loop",
+                "-1",  # Loop music if needed
+                "-i",
+                music_file,
+                "-t",
+                str(duration),
+                "-filter_complex",
+                f"[0:a]volume=1.0[a1];"
+                f"[1:a]volume={volume}[a2];"
+                f"[a1][a2]amix=inputs=2:duration=first[aout]",
+                "-map",
+                "0:v",
+                "-map",
+                "[aout]",
+                "-c:v",
+                "copy",
+                "-c:a",
+                "aac",
+                "-b:a",
+                "192k",
+                output_file,
             ]
 
             result = subprocess.run(cmd, capture_output=True, timeout=300)
@@ -1620,9 +1726,9 @@ class ShortsVideoGenerator:
 
 # Test
 if __name__ == "__main__":
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print("YOUTUBE SHORTS GENERATOR TEST")
-    print("="*60 + "\n")
+    print("=" * 60 + "\n")
 
     gen = ShortsVideoGenerator()
     print(f"FFmpeg: {gen.ffmpeg}")
@@ -1635,9 +1741,6 @@ if __name__ == "__main__":
     # Test title card
     style = gen.NICHE_STYLES["finance"]
     gen.create_title_card(
-        "5 Money Secrets",
-        "output/test_short_title.png",
-        style,
-        "Rich People Know"
+        "5 Money Secrets", "output/test_short_title.png", style, "Rich People Know"
     )
     print("\nShorts title card created: output/test_short_title.png")

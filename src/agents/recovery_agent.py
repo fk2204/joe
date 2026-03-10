@@ -24,13 +24,14 @@ Usage:
 """
 
 import json
-import time
 import sqlite3
+import time
+from dataclasses import asdict, dataclass, field
 from datetime import datetime, timedelta
-from pathlib import Path
-from typing import Dict, Any, List, Optional, Callable, Tuple
-from dataclasses import dataclass, field, asdict
 from enum import Enum
+from pathlib import Path
+from typing import Any, Callable, Dict, List, Optional
+
 from loguru import logger
 
 # Import canonical BaseAgent
@@ -39,6 +40,7 @@ from src.agents.base_agent import BaseAgent
 
 class ErrorCategory(Enum):
     """Categories of errors for recovery strategies."""
+
     API_RATE_LIMIT = "api_rate_limit"
     API_AUTH = "api_auth"
     API_ERROR = "api_error"
@@ -54,6 +56,7 @@ class ErrorCategory(Enum):
 
 class RecoveryStrategy(Enum):
     """Available recovery strategies."""
+
     RETRY_IMMEDIATE = "retry_immediate"
     RETRY_BACKOFF = "retry_backoff"
     FALLBACK_PROVIDER = "fallback_provider"
@@ -65,6 +68,7 @@ class RecoveryStrategy(Enum):
 @dataclass
 class RecoveryResult:
     """Result from recovery agent operations."""
+
     original_error: str
     error_category: str
     recovery_strategy: str
@@ -83,6 +87,7 @@ class RecoveryResult:
 @dataclass
 class FailureRecord:
     """Record of a failure for pattern detection."""
+
     error_type: str
     error_message: str
     operation: str
@@ -122,11 +127,9 @@ class RecoveryAgent(BaseAgent):
         "gemini": ["groq", "ollama"],
         "claude": ["gemini", "groq", "ollama"],
         "openai": ["gemini", "groq", "ollama"],
-
         # TTS providers: Fish -> Edge-TTS
         "fish_audio": ["edge_tts"],
         "edge_tts": ["fish_audio"],
-
         # Stock footage: Pexels -> Pixabay -> Coverr
         "pexels": ["pixabay", "coverr"],
         "pixabay": ["pexels", "coverr"],
@@ -135,33 +138,47 @@ class RecoveryAgent(BaseAgent):
     # Error category detection patterns
     ERROR_PATTERNS = {
         ErrorCategory.API_RATE_LIMIT: [
-            "rate limit", "rate_limit", "429", "too many requests",
-            "quota exceeded", "limit exceeded"
+            "rate limit",
+            "rate_limit",
+            "429",
+            "too many requests",
+            "quota exceeded",
+            "limit exceeded",
         ],
         ErrorCategory.API_AUTH: [
-            "unauthorized", "401", "403", "forbidden", "invalid api key",
-            "authentication failed", "invalid credentials"
+            "unauthorized",
+            "401",
+            "403",
+            "forbidden",
+            "invalid api key",
+            "authentication failed",
+            "invalid credentials",
         ],
         ErrorCategory.NETWORK: [
-            "connection", "network", "dns", "timeout", "unreachable",
-            "connection refused", "connection reset"
+            "connection",
+            "network",
+            "dns",
+            "timeout",
+            "unreachable",
+            "connection refused",
+            "connection reset",
         ],
-        ErrorCategory.TIMEOUT: [
-            "timeout", "timed out", "request timeout"
-        ],
+        ErrorCategory.TIMEOUT: ["timeout", "timed out", "request timeout"],
         ErrorCategory.FILE_NOT_FOUND: [
-            "file not found", "filenotfounderror", "no such file",
-            "path not found"
+            "file not found",
+            "filenotfounderror",
+            "no such file",
+            "path not found",
         ],
-        ErrorCategory.DISK_FULL: [
-            "disk full", "no space", "out of disk", "storage full"
-        ],
-        ErrorCategory.MEMORY: [
-            "out of memory", "memory error", "oom", "memoryerror"
-        ],
+        ErrorCategory.DISK_FULL: ["disk full", "no space", "out of disk", "storage full"],
+        ErrorCategory.MEMORY: ["out of memory", "memory error", "oom", "memoryerror"],
         ErrorCategory.PROVIDER_DOWN: [
-            "service unavailable", "503", "500", "internal server error",
-            "bad gateway", "502"
+            "service unavailable",
+            "503",
+            "500",
+            "internal server error",
+            "bad gateway",
+            "502",
         ],
     }
 
@@ -189,7 +206,8 @@ class RecoveryAgent(BaseAgent):
     def _init_db(self):
         """Initialize failure tracking database."""
         with sqlite3.connect(self.db_path) as conn:
-            conn.execute("""
+            conn.execute(
+                """
                 CREATE TABLE IF NOT EXISTS failures (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     error_type TEXT NOT NULL,
@@ -201,11 +219,14 @@ class RecoveryAgent(BaseAgent):
                     recovery_strategy TEXT,
                     timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
                 )
-            """)
-            conn.execute("""
+            """
+            )
+            conn.execute(
+                """
                 CREATE INDEX IF NOT EXISTS idx_failures_type
                 ON failures(error_type, timestamp)
-            """)
+            """
+            )
 
     def register_handler(self, operation: str, handler: Callable):
         """Register a retry handler for an operation type."""
@@ -218,7 +239,7 @@ class RecoveryAgent(BaseAgent):
         error: str,
         context: Dict[str, Any] = None,
         provider: str = None,
-        **kwargs
+        **kwargs,
     ) -> RecoveryResult:
         """
         Attempt to recover from a failed operation.
@@ -266,7 +287,7 @@ class RecoveryAgent(BaseAgent):
                 error_category=error_category.value,
                 recovery_strategy=strategy.value,
                 success=False,
-                message="Manual intervention required"
+                message="Manual intervention required",
             )
 
         else:  # SKIP
@@ -275,7 +296,7 @@ class RecoveryAgent(BaseAgent):
                 error_category=error_category.value,
                 recovery_strategy=strategy.value,
                 success=False,
-                message="Operation skipped due to unrecoverable error"
+                message="Operation skipped due to unrecoverable error",
             )
 
     def _categorize_error(self, error: str) -> ErrorCategory:
@@ -295,7 +316,7 @@ class RecoveryAgent(BaseAgent):
         context: Dict[str, Any],
         original_error: str,
         provider: str = None,
-        **kwargs
+        **kwargs,
     ) -> RecoveryResult:
         """
         Retry operation with exponential backoff.
@@ -314,7 +335,7 @@ class RecoveryAgent(BaseAgent):
                 error_category=self._categorize_error(original_error).value,
                 recovery_strategy=RecoveryStrategy.RETRY_BACKOFF.value,
                 success=False,
-                message=f"No handler available for operation: {operation}"
+                message=f"No handler available for operation: {operation}",
             )
 
         total_wait = 0
@@ -322,11 +343,13 @@ class RecoveryAgent(BaseAgent):
 
         for attempt in range(self.MAX_RETRIES):
             wait_time = min(
-                self.BACKOFF_BASE_SECONDS * (self.BACKOFF_MULTIPLIER ** attempt),
-                self.BACKOFF_MAX_SECONDS
+                self.BACKOFF_BASE_SECONDS * (self.BACKOFF_MULTIPLIER**attempt),
+                self.BACKOFF_MAX_SECONDS,
             )
 
-            logger.info(f"[{self.name}] Retry {attempt + 1}/{self.MAX_RETRIES} after {wait_time}s...")
+            logger.info(
+                f"[{self.name}] Retry {attempt + 1}/{self.MAX_RETRIES} after {wait_time}s..."
+            )
             time.sleep(wait_time)
             total_wait += wait_time
 
@@ -344,7 +367,7 @@ class RecoveryAgent(BaseAgent):
                     retry_count=attempt + 1,
                     total_wait_seconds=total_wait,
                     result_data=result if isinstance(result, dict) else {"result": result},
-                    message=f"Succeeded after {attempt + 1} retries"
+                    message=f"Succeeded after {attempt + 1} retries",
                 )
 
             except Exception as e:
@@ -358,7 +381,7 @@ class RecoveryAgent(BaseAgent):
             success=False,
             retry_count=self.MAX_RETRIES,
             total_wait_seconds=total_wait,
-            message=f"All {self.MAX_RETRIES} retries failed. Last error: {last_error}"
+            message=f"All {self.MAX_RETRIES} retries failed. Last error: {last_error}",
         )
 
     def _try_fallback_providers(
@@ -367,7 +390,7 @@ class RecoveryAgent(BaseAgent):
         context: Dict[str, Any],
         original_error: str,
         provider: str = None,
-        **kwargs
+        **kwargs,
     ) -> RecoveryResult:
         """Try fallback providers when primary provider fails."""
         if not provider:
@@ -407,7 +430,7 @@ class RecoveryAgent(BaseAgent):
                     success=True,
                     fallback_used=fallback_provider,
                     result_data=result if isinstance(result, dict) else {"result": result},
-                    message=f"Succeeded with fallback provider: {fallback_provider}"
+                    message=f"Succeeded with fallback provider: {fallback_provider}",
                 )
 
             except Exception as e:
@@ -419,7 +442,7 @@ class RecoveryAgent(BaseAgent):
             error_category=self._categorize_error(original_error).value,
             recovery_strategy=RecoveryStrategy.FALLBACK_PROVIDER.value,
             success=False,
-            message=f"All fallback providers failed: {fallbacks}"
+            message=f"All fallback providers failed: {fallbacks}",
         )
 
     def _cleanup_and_retry(
@@ -428,7 +451,7 @@ class RecoveryAgent(BaseAgent):
         context: Dict[str, Any],
         original_error: str,
         provider: str = None,
-        **kwargs
+        **kwargs,
     ) -> RecoveryResult:
         """Clean up temporary files and retry."""
         logger.info(f"[{self.name}] Running cleanup before retry...")
@@ -442,8 +465,8 @@ class RecoveryAgent(BaseAgent):
 
     def _cleanup_temp_files(self) -> int:
         """Clean up temporary files to free disk space."""
-        import tempfile
         import shutil
+        import tempfile
 
         cleaned = 0
         temp_dirs = [
@@ -472,32 +495,40 @@ class RecoveryAgent(BaseAgent):
         error_message: str,
         operation: str,
         provider: str,
-        context: Dict[str, Any]
+        context: Dict[str, Any],
     ):
         """Record a failure to the database for pattern detection."""
         with sqlite3.connect(self.db_path) as conn:
-            conn.execute("""
+            conn.execute(
+                """
                 INSERT INTO failures (error_type, error_message, operation, provider, context)
                 VALUES (?, ?, ?, ?, ?)
-            """, (
-                error_type,
-                error_message[:500],  # Truncate long messages
-                operation,
-                provider or "",
-                json.dumps(context)[:1000]
-            ))
+            """,
+                (
+                    error_type,
+                    error_message[:500],  # Truncate long messages
+                    operation,
+                    provider or "",
+                    json.dumps(context)[:1000],
+                ),
+            )
 
     def _update_failure_recovered(self, operation: str, strategy: str):
         """Mark the most recent failure for an operation as recovered."""
         with sqlite3.connect(self.db_path) as conn:
-            conn.execute("""
+            conn.execute(
+                """
                 UPDATE failures
                 SET recovered = 1, recovery_strategy = ?
                 WHERE operation = ?
                 AND id = (SELECT MAX(id) FROM failures WHERE operation = ?)
-            """, (strategy, operation, operation))
+            """,
+                (strategy, operation, operation),
+            )
 
-    def get_recovery_strategy(self, error_type: str = None, error_message: str = None) -> Dict[str, Any]:
+    def get_recovery_strategy(
+        self, error_type: str = None, error_message: str = None
+    ) -> Dict[str, Any]:
         """
         Get the recommended recovery strategy for an error.
 
@@ -524,11 +555,11 @@ class RecoveryAgent(BaseAgent):
             "error_category": category.value,
             "recommended_strategy": strategy.value,
             "backoff_sequence": [
-                self.BACKOFF_BASE_SECONDS * (self.BACKOFF_MULTIPLIER ** i)
+                self.BACKOFF_BASE_SECONDS * (self.BACKOFF_MULTIPLIER**i)
                 for i in range(self.MAX_RETRIES)
             ],
             "max_retries": self.MAX_RETRIES,
-            "description": self._get_strategy_description(strategy)
+            "description": self._get_strategy_description(strategy),
         }
 
     def _get_strategy_description(self, strategy: RecoveryStrategy) -> str:
@@ -603,9 +634,9 @@ class RecoveryAgent(BaseAgent):
             result_data={
                 "cleaned_files": cleaned_files,
                 "temp_files_cleaned": temp_cleaned,
-                "errors": errors
+                "errors": errors,
             },
-            message=message
+            message=message,
         )
 
     def recover_partial_results(self, workflow_id: str) -> Dict[str, Any]:
@@ -635,7 +666,7 @@ class RecoveryAgent(BaseAgent):
                 "topic": state.get("topic"),
                 "channel_id": state.get("channel_id"),
                 "completed_steps": [],
-                "outputs": {}
+                "outputs": {},
             }
 
             for step, result in state.get("step_results", {}).items():
@@ -647,10 +678,7 @@ class RecoveryAgent(BaseAgent):
                         if isinstance(value, str) and Path(value).exists():
                             recovered["outputs"][key] = value
 
-            return {
-                "success": True,
-                "recovered": recovered
-            }
+            return {"success": True, "recovered": recovered}
 
         except Exception as e:
             return {"success": False, "error": str(e)}
@@ -669,58 +697,61 @@ class RecoveryAgent(BaseAgent):
 
         with sqlite3.connect(self.db_path) as conn:
             # Get failure counts by type
-            type_counts = conn.execute("""
+            type_counts = conn.execute(
+                """
                 SELECT error_type, COUNT(*) as count,
                        SUM(recovered) as recovered_count
                 FROM failures
                 WHERE timestamp > ?
                 GROUP BY error_type
                 ORDER BY count DESC
-            """, (cutoff,)).fetchall()
+            """,
+                (cutoff,),
+            ).fetchall()
 
             # Get failure counts by provider
-            provider_counts = conn.execute("""
+            provider_counts = conn.execute(
+                """
                 SELECT provider, COUNT(*) as count
                 FROM failures
                 WHERE timestamp > ? AND provider != ''
                 GROUP BY provider
                 ORDER BY count DESC
-            """, (cutoff,)).fetchall()
+            """,
+                (cutoff,),
+            ).fetchall()
 
             # Get failure counts by operation
-            operation_counts = conn.execute("""
+            operation_counts = conn.execute(
+                """
                 SELECT operation, COUNT(*) as count
                 FROM failures
                 WHERE timestamp > ?
                 GROUP BY operation
                 ORDER BY count DESC
-            """, (cutoff,)).fetchall()
+            """,
+                (cutoff,),
+            ).fetchall()
 
         patterns = []
 
         for error_type, count, recovered in type_counts:
             recovery_rate = (recovered / count * 100) if count > 0 else 0
-            patterns.append({
-                "category": "error_type",
-                "value": error_type,
-                "count": count,
-                "recovered": recovered,
-                "recovery_rate": f"{recovery_rate:.0f}%"
-            })
+            patterns.append(
+                {
+                    "category": "error_type",
+                    "value": error_type,
+                    "count": count,
+                    "recovered": recovered,
+                    "recovery_rate": f"{recovery_rate:.0f}%",
+                }
+            )
 
         for provider, count in provider_counts:
-            patterns.append({
-                "category": "provider",
-                "value": provider,
-                "count": count
-            })
+            patterns.append({"category": "provider", "value": provider, "count": count})
 
         for operation, count in operation_counts:
-            patterns.append({
-                "category": "operation",
-                "value": operation,
-                "count": count
-            })
+            patterns.append({"category": "operation", "value": operation, "count": count})
 
         return patterns
 

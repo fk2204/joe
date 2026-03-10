@@ -12,15 +12,14 @@ Usage:
     python -m src.automation.runner full money_blueprints
 """
 
+import argparse
+import asyncio
+import json
 import os
 import sys
-import json
 import time
-import asyncio
-import argparse
 from pathlib import Path
-from datetime import datetime
-from typing import Optional, Dict, Any, List
+from typing import Any, Dict, List, Optional
 
 # Add project root to path
 PROJECT_ROOT = Path(__file__).parent.parent.parent
@@ -28,6 +27,7 @@ sys.path.insert(0, str(PROJECT_ROOT))
 
 # Load environment
 from dotenv import load_dotenv
+
 load_dotenv(PROJECT_ROOT / "config" / ".env")
 
 from loguru import logger
@@ -37,13 +37,13 @@ from src.utils.token_manager import (
     BudgetExceededError,
     check_budget_status,
     enforce_budget,
-    BudgetGuard,
-    load_budget_config
+    load_budget_config,
 )
 
 # Import best practices for pre-publish checklist
 try:
-    from src.utils.best_practices import pre_publish_checklist, PrePublishChecklist
+    from src.utils.best_practices import pre_publish_checklist
+
     BEST_PRACTICES_AVAILABLE = True
 except ImportError:
     BEST_PRACTICES_AVAILABLE = False
@@ -51,7 +51,9 @@ except ImportError:
 
 # Configure logging
 logger.remove()
-logger.add(sys.stderr, level="INFO", format="<green>{time:HH:mm:ss}</green> | <level>{message}</level>")
+logger.add(
+    sys.stderr, level="INFO", format="<green>{time:HH:mm:ss}</green> | <level>{message}</level>"
+)
 
 
 @enforce_budget()
@@ -74,12 +76,14 @@ def task_research(niche: str, count: int = 5) -> Dict[str, Any]:
 
     topics = []
     for idea in ideas:
-        topics.append({
-            "title": idea.title,
-            "description": idea.description,
-            "score": idea.score,
-            "tags": idea.tags
-        })
+        topics.append(
+            {
+                "title": idea.title,
+                "description": idea.description,
+                "score": idea.score,
+                "tags": idea.tags,
+            }
+        )
 
     logger.success(f"Found {len(topics)} topics")
     return {"success": True, "topics": topics}
@@ -98,11 +102,7 @@ def task_script(topic: str, niche: str = "default", duration: int = 5) -> Dict[s
     from src.content.script_writer import ScriptWriter
 
     writer = ScriptWriter(provider=os.getenv("AI_PROVIDER", "ollama"))
-    script = writer.generate_script(
-        topic=topic,
-        duration_minutes=duration,
-        niche=niche
-    )
+    script = writer.generate_script(topic=topic, duration_minutes=duration, niche=niche)
 
     if not script:
         return {"success": False, "error": "Script generation failed"}
@@ -113,19 +113,21 @@ def task_script(topic: str, niche: str = "default", duration: int = 5) -> Dict[s
         "description": script.description,
         "tags": script.tags,
         "total_duration": script.total_duration,
-        "sections": []
+        "sections": [],
     }
 
     for section in script.sections:
-        script_data["sections"].append({
-            "timestamp": section.timestamp,
-            "section_type": section.section_type,
-            "title": section.title,
-            "narration": section.narration,
-            "screen_action": section.screen_action,
-            "keywords": section.keywords,
-            "duration_seconds": section.duration_seconds
-        })
+        script_data["sections"].append(
+            {
+                "timestamp": section.timestamp,
+                "section_type": section.section_type,
+                "title": section.title,
+                "narration": section.narration,
+                "screen_action": section.screen_action,
+                "keywords": section.keywords,
+                "duration_seconds": section.duration_seconds,
+            }
+        )
 
     # Get full narration
     narration = writer.get_full_narration(script)
@@ -139,7 +141,7 @@ def task_audio(
     narration: str,
     output_file: str,
     voice: str = "en-US-GuyNeural",
-    voice_settings: Optional[Dict[str, Any]] = None
+    voice_settings: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
     """
     TASK: Generate audio from narration text.
@@ -164,7 +166,9 @@ def task_audio(
     use_ssml = settings.get("use_ssml", False)
     dramatic_pauses = settings.get("dramatic_pauses", False)
 
-    logger.info(f"Voice settings: rate={rate}, pitch={pitch}, ssml={use_ssml}, pauses={dramatic_pauses}")
+    logger.info(
+        f"Voice settings: rate={rate}, pitch={pitch}, ssml={use_ssml}, pauses={dramatic_pauses}"
+    )
 
     tts = TextToSpeech(default_voice=voice)
 
@@ -177,17 +181,11 @@ def task_audio(
                 rate=rate,
                 pitch=pitch,
                 volume=volume,
-                add_pauses=dramatic_pauses
+                add_pauses=dramatic_pauses,
             )
         else:
             # Standard generation with rate/pitch settings
-            await tts.generate(
-                narration,
-                output_file,
-                rate=rate,
-                pitch=pitch,
-                volume=volume
-            )
+            await tts.generate(narration, output_file, rate=rate, pitch=pitch, volume=volume)
 
     asyncio.run(generate())
 
@@ -203,7 +201,7 @@ def task_audio(
 def task_audio_batch(
     narrations: List[Dict[str, Any]],
     voice: str = "en-US-GuyNeural",
-    voice_settings: Optional[Dict[str, Any]] = None
+    voice_settings: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
     """
     TASK: Generate multiple audio files in parallel (90% faster for batches).
@@ -249,15 +247,15 @@ def task_audio_batch(
             # Create async task for each narration
             if use_ssml or dramatic_pauses:
                 task = tts.generate_with_ssml(
-                    text, output_file,
-                    rate=rate, pitch=pitch, volume=volume,
-                    add_pauses=dramatic_pauses
+                    text,
+                    output_file,
+                    rate=rate,
+                    pitch=pitch,
+                    volume=volume,
+                    add_pauses=dramatic_pauses,
                 )
             else:
-                task = tts.generate(
-                    text, output_file,
-                    rate=rate, pitch=pitch, volume=volume
-                )
+                task = tts.generate(text, output_file, rate=rate, pitch=pitch, volume=volume)
 
             tasks.append(task)
 
@@ -297,7 +295,7 @@ def task_audio_batch(
         "failed": failed,
         "total": len(narrations),
         "elapsed_seconds": elapsed,
-        "avg_time_per_file": elapsed / len(narrations)
+        "avg_time_per_file": elapsed / len(narrations),
     }
 
 
@@ -309,7 +307,7 @@ def task_video(
     music_enabled: bool = True,
     music_volume: Optional[float] = None,
     subtitles_enabled: bool = True,
-    subtitle_style: str = "regular"
+    subtitle_style: str = "regular",
 ) -> Dict[str, Any]:
     """
     TASK: Create video from audio and script.
@@ -335,9 +333,7 @@ def task_video(
     generator = FastVideoGenerator()
 
     result = generator.create_video(
-        audio_file=audio_file,
-        output_file=output_file,
-        title=script_data.get("title", "Video")
+        audio_file=audio_file, output_file=output_file, title=script_data.get("title", "Video")
     )
 
     if result and os.path.exists(result):
@@ -357,7 +353,7 @@ def task_short(
     music_volume: Optional[float] = None,
     subtitles_enabled: bool = False,
     use_pika: bool = False,
-    pika_prompts: Optional[Dict[str, str]] = None
+    pika_prompts: Optional[Dict[str, str]] = None,
 ) -> Dict[str, Any]:
     """
     TASK: Create YouTube Short (vertical video) from audio and script.
@@ -385,21 +381,23 @@ def task_short(
     logger.info(f"Music settings: enabled={music_enabled}, volume={music_volume}")
     logger.info(f"Pika hybrid mode: enabled={use_pika}")
 
+    from src.content.script_writer import ScriptSection, VideoScript
     from src.content.video_shorts import ShortsVideoGenerator
-    from src.content.script_writer import VideoScript, ScriptSection
 
     # Reconstruct script object
     sections = []
     for s in script_data.get("sections", []):
-        sections.append(ScriptSection(
-            timestamp=s.get("timestamp", "00:00"),
-            section_type=s.get("section_type", "content"),
-            title=s.get("title", ""),
-            narration=s.get("narration", ""),
-            screen_action=s.get("screen_action", ""),
-            keywords=s.get("keywords", []),
-            duration_seconds=s.get("duration_seconds", 10)
-        ))
+        sections.append(
+            ScriptSection(
+                timestamp=s.get("timestamp", "00:00"),
+                section_type=s.get("section_type", "content"),
+                title=s.get("title", ""),
+                narration=s.get("narration", ""),
+                screen_action=s.get("screen_action", ""),
+                keywords=s.get("keywords", []),
+                duration_seconds=s.get("duration_seconds", 10),
+            )
+        )
 
     script = VideoScript(
         title=script_data.get("title", "Short"),
@@ -407,7 +405,7 @@ def task_short(
         tags=script_data.get("tags", []),
         sections=sections,
         total_duration=script_data.get("total_duration", 60),
-        thumbnail_idea=""
+        thumbnail_idea="",
     )
 
     generator = ShortsVideoGenerator()
@@ -423,17 +421,16 @@ def task_short(
     script_text = script_data.get("full_narration", "")
     if not script_text:
         # Build from sections
-        narrations = [s.get("narration", "") for s in script_data.get("sections", []) if s.get("narration")]
+        narrations = [
+            s.get("narration", "") for s in script_data.get("sections", []) if s.get("narration")
+        ]
         script_text = " ".join(narrations)
 
     # Convert pika_prompts dict to list format expected by create_short
     # pika_prompts should be [intro_prompt, outro_prompt]
     pika_prompt_list = None
     if pika_prompts:
-        pika_prompt_list = [
-            pika_prompts.get("intro", ""),
-            pika_prompts.get("outro", "")
-        ]
+        pika_prompt_list = [pika_prompts.get("intro", ""), pika_prompts.get("outro", "")]
         # Filter out empty strings
         pika_prompt_list = [p for p in pika_prompt_list if p] or None
 
@@ -447,7 +444,7 @@ def task_short(
         use_pika=use_pika,
         pika_prompts=pika_prompt_list,
         subtitles_enabled=subtitles_enabled,
-        script_text=script_text if subtitles_enabled else None
+        script_text=script_text if subtitles_enabled else None,
     )
 
     if result and os.path.exists(result):
@@ -458,7 +455,14 @@ def task_short(
     return {"success": False, "error": "Short generation failed"}
 
 
-def task_upload(video_file: str, channel_id: str, title: str, description: str, tags: list, thumbnail: str = None) -> Dict[str, Any]:
+def task_upload(
+    video_file: str,
+    channel_id: str,
+    title: str,
+    description: str,
+    tags: list,
+    thumbnail: str = None,
+) -> Dict[str, Any]:
     """
     TASK: Upload video to YouTube.
 
@@ -466,8 +470,9 @@ def task_upload(video_file: str, channel_id: str, title: str, description: str, 
     """
     logger.info(f"Uploading to {channel_id}: {title}")
 
-    from src.youtube.uploader import YouTubeUploader
     import yaml
+
+    from src.youtube.uploader import YouTubeUploader
 
     # Load channel config
     with open(PROJECT_ROOT / "config" / "channels.yaml") as f:
@@ -494,16 +499,12 @@ def task_upload(video_file: str, channel_id: str, title: str, description: str, 
         description=description,
         tags=tags,
         privacy="unlisted",
-        thumbnail_file=thumbnail
+        thumbnail_file=thumbnail,
     )
 
     if result.success:
         logger.success(f"Uploaded: {result.video_url}")
-        return {
-            "success": True,
-            "video_id": result.video_id,
-            "video_url": result.video_url
-        }
+        return {"success": True, "video_id": result.video_id, "video_url": result.video_url}
 
     return {"success": False, "error": result.error}
 
@@ -519,7 +520,9 @@ def _check_budget_for_pipeline() -> Dict[str, Any]:
     status = check_budget_status()
 
     if status["exceeded"]:
-        logger.error(f"Cannot start pipeline: Daily budget exceeded (${status['spent_today']:.4f} spent)")
+        logger.error(
+            f"Cannot start pipeline: Daily budget exceeded (${status['spent_today']:.4f} spent)"
+        )
         return {"can_proceed": False, "reason": "budget_exceeded", "status": status}
 
     if status["warning"]:
@@ -538,8 +541,9 @@ def task_full_pipeline(channel_id: str, topic: str = None) -> Dict[str, Any]:
     Returns dict with all outputs.
     Budget-enforced: Checks budget before starting and at each step.
     """
-    import yaml
     import re
+
+    import yaml
 
     logger.info(f"Starting full pipeline for: {channel_id}")
 
@@ -549,7 +553,7 @@ def task_full_pipeline(channel_id: str, topic: str = None) -> Dict[str, Any]:
         return {
             "success": False,
             "error": f"Budget exceeded: ${budget_check['status']['spent_today']:.4f} spent of ${budget_check['status']['daily_budget']:.2f} limit",
-            "budget_status": budget_check["status"]
+            "budget_status": budget_check["status"],
         }
 
     # Load channel config
@@ -572,10 +576,16 @@ def task_full_pipeline(channel_id: str, topic: str = None) -> Dict[str, Any]:
 
     # Get music settings from channel config, with fallback to global settings
     global_music = config.get("global", {}).get("music", {})
-    channel_music_enabled = channel_config["settings"].get("music_enabled", global_music.get("enabled", True))
-    channel_music_volume = channel_config["settings"].get("music_volume", global_music.get("volume", 0.12))
+    channel_music_enabled = channel_config["settings"].get(
+        "music_enabled", global_music.get("enabled", True)
+    )
+    channel_music_volume = channel_config["settings"].get(
+        "music_volume", global_music.get("volume", 0.12)
+    )
 
-    logger.info(f"Music configuration: enabled={channel_music_enabled}, volume={channel_music_volume}")
+    logger.info(
+        f"Music configuration: enabled={channel_music_enabled}, volume={channel_music_volume}"
+    )
 
     results = {
         "channel": channel_id,
@@ -583,7 +593,7 @@ def task_full_pipeline(channel_id: str, topic: str = None) -> Dict[str, Any]:
         "voice_settings": voice_settings,
         "music_enabled": channel_music_enabled,
         "music_volume": channel_music_volume,
-        "steps": {}
+        "steps": {},
     }
 
     # Step 1: Research (if no topic provided)
@@ -592,6 +602,7 @@ def task_full_pipeline(channel_id: str, topic: str = None) -> Dict[str, Any]:
         topics = channel_config["settings"].get("topics", [])
         if topics:
             import random
+
             topic = random.choice(topics)
         else:
             research = task_research(niche, count=3)
@@ -614,14 +625,11 @@ def task_full_pipeline(channel_id: str, topic: str = None) -> Dict[str, Any]:
 
     # Step 3: Audio
     logger.info("\n[3/4] AUDIO")
-    safe_name = re.sub(r'[^\w\s-]', '', script_data["title"])[:40].replace(' ', '_')
+    safe_name = re.sub(r"[^\w\s-]", "", script_data["title"])[:40].replace(" ", "_")
     audio_file = str(PROJECT_ROOT / "output" / f"{safe_name}_audio.mp3")
 
     audio_result = task_audio(
-        script_data["full_narration"],
-        audio_file,
-        voice=voice,
-        voice_settings=voice_settings
+        script_data["full_narration"], audio_file, voice=voice, voice_settings=voice_settings
     )
     if not audio_result["success"]:
         return {"success": False, "error": "Audio failed", "results": results}
@@ -638,7 +646,7 @@ def task_full_pipeline(channel_id: str, topic: str = None) -> Dict[str, Any]:
         video_file,
         niche=niche,
         music_enabled=channel_music_enabled,
-        music_volume=channel_music_volume
+        music_volume=channel_music_volume,
     )
     if not video_result["success"]:
         return {"success": False, "error": "Video failed", "results": results}
@@ -658,7 +666,7 @@ def task_quality_check(
     script_data: Optional[Dict[str, Any]] = None,
     is_short: bool = False,
     threshold: int = 70,
-    skip_ai_checks: bool = False
+    skip_ai_checks: bool = False,
 ) -> Dict[str, Any]:
     """
     TASK: Run quality check on a video before upload.
@@ -682,7 +690,7 @@ def task_quality_check(
         script_data=script_data,
         is_short=is_short,
         threshold=threshold,
-        skip_ai_checks=skip_ai_checks
+        skip_ai_checks=skip_ai_checks,
     )
 
     logger.info(f"Quality score: {report.overall_score}/100 (threshold: {threshold})")
@@ -705,20 +713,18 @@ def task_quality_check(
                 "category": issue.category,
                 "issue": issue.issue,
                 "severity": issue.severity.value,
-                "recommendation": issue.recommendation
+                "recommendation": issue.recommendation,
             }
             for issue in report.issues
         ],
         "recommendations": report.recommendations,
         "summary": report.summary(),
-        "report": report.to_dict()
+        "report": report.to_dict(),
     }
 
 
 def task_pre_publish_checklist(
-    script_data: Dict[str, Any],
-    niche: str = "default",
-    strict_mode: bool = False
+    script_data: Dict[str, Any], niche: str = "default", strict_mode: bool = False
 ) -> Dict[str, Any]:
     """
     TASK: Run pre-publish checklist to validate content quality.
@@ -745,25 +751,27 @@ def task_pre_publish_checklist(
             "ready_to_publish": True,
             "score": 100,
             "skipped": True,
-            "reason": "Best practices module not available"
+            "reason": "Best practices module not available",
         }
 
     logger.info("Running pre-publish checklist...")
 
     # Build script object for checklist
-    from src.content.script_writer import VideoScript, ScriptSection
+    from src.content.script_writer import ScriptSection, VideoScript
 
     sections = []
     for s in script_data.get("sections", []):
-        sections.append(ScriptSection(
-            timestamp=s.get("timestamp", "00:00"),
-            section_type=s.get("section_type", "content"),
-            title=s.get("title", ""),
-            narration=s.get("narration", ""),
-            screen_action=s.get("screen_action", ""),
-            keywords=s.get("keywords", []),
-            duration_seconds=s.get("duration_seconds", 10)
-        ))
+        sections.append(
+            ScriptSection(
+                timestamp=s.get("timestamp", "00:00"),
+                section_type=s.get("section_type", "content"),
+                title=s.get("title", ""),
+                narration=s.get("narration", ""),
+                screen_action=s.get("screen_action", ""),
+                keywords=s.get("keywords", []),
+                duration_seconds=s.get("duration_seconds", 10),
+            )
+        )
 
     script = VideoScript(
         title=script_data.get("title", "Video"),
@@ -772,7 +780,7 @@ def task_pre_publish_checklist(
         sections=sections,
         total_duration=script_data.get("total_duration", 60),
         thumbnail_idea="",
-        hook_text=script_data.get("hook_text", "")
+        hook_text=script_data.get("hook_text", ""),
     )
 
     # Run checklist
@@ -802,14 +810,13 @@ def task_pre_publish_checklist(
                 "name": item.name,
                 "passed": item.passed,
                 "priority": item.priority,
-                "details": item.details
+                "details": item.details,
             }
             for item in checklist.items
         ],
         "critical_issues": [
-            item.details for item in checklist.items
-            if not item.passed and item.priority == "high"
-        ]
+            item.details for item in checklist.items if not item.passed and item.priority == "high"
+        ],
     }
 
 
@@ -853,16 +860,13 @@ def task_full_with_upload(channel_id: str, topic: str = None) -> Dict[str, Any]:
         quality_gates = {}
 
     quality_check_enabled = channel_config.get("settings", {}).get(
-        "quality_check_enabled",
-        global_settings.get("quality_check_enabled", False)
+        "quality_check_enabled", global_settings.get("quality_check_enabled", False)
     )
     quality_threshold = channel_config.get("settings", {}).get(
-        "quality_threshold",
-        global_settings.get("quality_threshold", 70)
+        "quality_threshold", global_settings.get("quality_threshold", 70)
     )
     skip_upload_on_fail = channel_config.get("settings", {}).get(
-        "skip_upload_on_quality_fail",
-        global_settings.get("skip_upload_on_quality_fail", False)
+        "skip_upload_on_quality_fail", global_settings.get("skip_upload_on_quality_fail", False)
     )
 
     # Quality gates: strict mode and pre-publish checklist
@@ -877,7 +881,7 @@ def task_full_with_upload(channel_id: str, topic: str = None) -> Dict[str, Any]:
         "tags": result["results"]["tags"],
         "sections": result["results"]["steps"].get("script", {}).get("sections", []),
         "full_narration": result["results"]["steps"].get("script", {}).get("full_narration", ""),
-        "hook_text": result["results"]["steps"].get("script", {}).get("hook_text", "")
+        "hook_text": result["results"]["steps"].get("script", {}).get("hook_text", ""),
     }
 
     # PRE-PUBLISH CHECKLIST (Phase 1.1 - Quality Gate Enforcement)
@@ -885,16 +889,16 @@ def task_full_with_upload(channel_id: str, topic: str = None) -> Dict[str, Any]:
         logger.info("\n[5/7] PRE-PUBLISH CHECKLIST")
 
         checklist_result = task_pre_publish_checklist(
-            script_data=script_data,
-            niche=niche,
-            strict_mode=strict_mode
+            script_data=script_data, niche=niche, strict_mode=strict_mode
         )
 
         result["results"]["steps"]["pre_publish_checklist"] = checklist_result
         result["results"]["checklist_score"] = checklist_result["score"]
 
         if not checklist_result["ready_to_publish"]:
-            logger.warning(f"Pre-publish checklist failed: {checklist_result['score']}/{'75' if strict_mode else '70'}")
+            logger.warning(
+                f"Pre-publish checklist failed: {checklist_result['score']}/{'75' if strict_mode else '70'}"
+            )
             if block_on_fail:
                 logger.warning("Blocking upload due to failed pre-publish checklist")
                 result["results"]["upload_skipped"] = True
@@ -902,7 +906,9 @@ def task_full_with_upload(channel_id: str, topic: str = None) -> Dict[str, Any]:
                 result["results"]["critical_issues"] = checklist_result.get("critical_issues", [])
                 return result
             else:
-                logger.warning("Proceeding with upload despite failed checklist (block_on_fail=false)")
+                logger.warning(
+                    "Proceeding with upload despite failed checklist (block_on_fail=false)"
+                )
 
     # Quality check
     if quality_check_enabled:
@@ -913,7 +919,7 @@ def task_full_with_upload(channel_id: str, topic: str = None) -> Dict[str, Any]:
             video_file=result["results"]["video_file"],
             script_data=script_data,
             is_short=False,
-            threshold=quality_threshold
+            threshold=quality_threshold,
         )
 
         result["results"]["steps"]["quality_check"] = quality_result
@@ -944,7 +950,7 @@ def task_full_with_upload(channel_id: str, topic: str = None) -> Dict[str, Any]:
         channel_id=channel_id,
         title=result["results"]["title"],
         description=result["results"]["description"],
-        tags=result["results"]["tags"]
+        tags=result["results"]["tags"],
     )
 
     result["results"]["steps"]["upload"] = upload_result
@@ -964,8 +970,9 @@ def task_short_pipeline(channel_id: str, topic: str = None) -> Dict[str, Any]:
     Returns dict with all outputs.
     Budget-enforced: Checks budget before starting and at each step.
     """
-    import yaml
     import re
+
+    import yaml
 
     logger.info(f"Starting YouTube Shorts pipeline for: {channel_id}")
 
@@ -975,7 +982,7 @@ def task_short_pipeline(channel_id: str, topic: str = None) -> Dict[str, Any]:
         return {
             "success": False,
             "error": f"Budget exceeded: ${budget_check['status']['spent_today']:.4f} spent of ${budget_check['status']['daily_budget']:.2f} limit",
-            "budget_status": budget_check["status"]
+            "budget_status": budget_check["status"],
         }
 
     # Load channel config
@@ -999,23 +1006,33 @@ def task_short_pipeline(channel_id: str, topic: str = None) -> Dict[str, Any]:
     # Get music settings from channel config, with fallback to global settings
     # For Shorts, use shorts_volume if specified, otherwise use regular volume
     global_music = config.get("global", {}).get("music", {})
-    channel_music_enabled = channel_config["settings"].get("music_enabled", global_music.get("enabled", True))
-    channel_music_volume = channel_config["settings"].get("music_volume", global_music.get("shorts_volume", 0.15))
+    channel_music_enabled = channel_config["settings"].get(
+        "music_enabled", global_music.get("enabled", True)
+    )
+    channel_music_volume = channel_config["settings"].get(
+        "music_volume", global_music.get("shorts_volume", 0.15)
+    )
 
     # Get subtitle settings from channel config, with fallback to global settings
     global_subtitles = config.get("global", {}).get("subtitles", {})
     channel_subtitles_enabled = channel_config["settings"].get(
         "subtitles_enabled",
-        global_subtitles.get("enabled", True)  # Default enabled - subtitles increase retention by 15-25%
+        global_subtitles.get(
+            "enabled", True
+        ),  # Default enabled - subtitles increase retention by 15-25%
     )
 
     # Get Pika hybrid settings from channel shorts_schedule, with fallback to global settings
     global_shorts_schedule = config.get("global", {}).get("shorts_schedule", {})
     channel_shorts_schedule = channel_config.get("shorts_schedule", {})
-    use_pika = channel_shorts_schedule.get("use_hybrid", global_shorts_schedule.get("use_hybrid", False))
+    use_pika = channel_shorts_schedule.get(
+        "use_hybrid", global_shorts_schedule.get("use_hybrid", False)
+    )
     pika_prompts = channel_shorts_schedule.get("pika_prompts", None)
 
-    logger.info(f"Shorts music configuration: enabled={channel_music_enabled}, volume={channel_music_volume}")
+    logger.info(
+        f"Shorts music configuration: enabled={channel_music_enabled}, volume={channel_music_volume}"
+    )
     logger.info(f"Subtitles configuration: enabled={channel_subtitles_enabled}")
     logger.info(f"Pika hybrid configuration: enabled={use_pika}")
 
@@ -1028,7 +1045,7 @@ def task_short_pipeline(channel_id: str, topic: str = None) -> Dict[str, Any]:
         "music_volume": channel_music_volume,
         "subtitles_enabled": channel_subtitles_enabled,
         "use_pika": use_pika,
-        "steps": {}
+        "steps": {},
     }
 
     # Step 1: Research (if no topic provided)
@@ -1037,6 +1054,7 @@ def task_short_pipeline(channel_id: str, topic: str = None) -> Dict[str, Any]:
         topics = channel_config["settings"].get("topics", [])
         if topics:
             import random
+
             topic = random.choice(topics)
         else:
             research = task_research(niche, count=3)
@@ -1069,14 +1087,11 @@ def task_short_pipeline(channel_id: str, topic: str = None) -> Dict[str, Any]:
 
     # Step 3: Audio
     logger.info("\n[3/4] AUDIO (Short format)")
-    safe_name = re.sub(r'[^\w\s-]', '', script_data["title"])[:40].replace(' ', '_')
+    safe_name = re.sub(r"[^\w\s-]", "", script_data["title"])[:40].replace(" ", "_")
     audio_file = str(PROJECT_ROOT / "output" / f"{safe_name}_short_audio.mp3")
 
     audio_result = task_audio(
-        script_data["full_narration"],
-        audio_file,
-        voice=voice,
-        voice_settings=voice_settings
+        script_data["full_narration"], audio_file, voice=voice, voice_settings=voice_settings
     )
     if not audio_result["success"]:
         return {"success": False, "error": "Audio failed", "results": results}
@@ -1096,7 +1111,7 @@ def task_short_pipeline(channel_id: str, topic: str = None) -> Dict[str, Any]:
         music_volume=channel_music_volume,
         subtitles_enabled=channel_subtitles_enabled,
         use_pika=use_pika,
-        pika_prompts=pika_prompts
+        pika_prompts=pika_prompts,
     )
     if not video_result["success"]:
         return {"success": False, "error": "Short video generation failed", "results": results}
@@ -1151,16 +1166,13 @@ def task_short_with_upload(channel_id: str, topic: str = None) -> Dict[str, Any]
         quality_gates = {}
 
     quality_check_enabled = channel_config.get("settings", {}).get(
-        "quality_check_enabled",
-        global_settings.get("quality_check_enabled", False)
+        "quality_check_enabled", global_settings.get("quality_check_enabled", False)
     )
     quality_threshold = channel_config.get("settings", {}).get(
-        "quality_threshold",
-        global_settings.get("quality_threshold", 70)
+        "quality_threshold", global_settings.get("quality_threshold", 70)
     )
     skip_upload_on_fail = channel_config.get("settings", {}).get(
-        "skip_upload_on_quality_fail",
-        global_settings.get("skip_upload_on_quality_fail", False)
+        "skip_upload_on_quality_fail", global_settings.get("skip_upload_on_quality_fail", False)
     )
 
     # Quality gates: strict mode and pre-publish checklist
@@ -1175,7 +1187,7 @@ def task_short_with_upload(channel_id: str, topic: str = None) -> Dict[str, Any]
         "tags": result["results"]["tags"],
         "sections": result["results"]["steps"].get("script", {}).get("sections", []),
         "full_narration": result["results"]["steps"].get("script", {}).get("full_narration", ""),
-        "hook_text": result["results"]["steps"].get("script", {}).get("hook_text", "")
+        "hook_text": result["results"]["steps"].get("script", {}).get("hook_text", ""),
     }
 
     # PRE-PUBLISH CHECKLIST (Phase 1.1 - Quality Gate Enforcement)
@@ -1183,16 +1195,16 @@ def task_short_with_upload(channel_id: str, topic: str = None) -> Dict[str, Any]
         logger.info("\n[5/7] PRE-PUBLISH CHECKLIST (Shorts)")
 
         checklist_result = task_pre_publish_checklist(
-            script_data=script_data,
-            niche=niche,
-            strict_mode=strict_mode
+            script_data=script_data, niche=niche, strict_mode=strict_mode
         )
 
         result["results"]["steps"]["pre_publish_checklist"] = checklist_result
         result["results"]["checklist_score"] = checklist_result["score"]
 
         if not checklist_result["ready_to_publish"]:
-            logger.warning(f"Pre-publish checklist failed: {checklist_result['score']}/{'75' if strict_mode else '70'}")
+            logger.warning(
+                f"Pre-publish checklist failed: {checklist_result['score']}/{'75' if strict_mode else '70'}"
+            )
             if block_on_fail:
                 logger.warning("Blocking upload due to failed pre-publish checklist")
                 result["results"]["upload_skipped"] = True
@@ -1200,18 +1212,24 @@ def task_short_with_upload(channel_id: str, topic: str = None) -> Dict[str, Any]
                 result["results"]["critical_issues"] = checklist_result.get("critical_issues", [])
                 return result
             else:
-                logger.warning("Proceeding with upload despite failed checklist (block_on_fail=false)")
+                logger.warning(
+                    "Proceeding with upload despite failed checklist (block_on_fail=false)"
+                )
 
     # Quality check
     if quality_check_enabled:
-        step_label = "[6/7] QUALITY CHECK (Shorts)" if pre_publish_enabled else "[5/6] QUALITY CHECK (Shorts)"
+        step_label = (
+            "[6/7] QUALITY CHECK (Shorts)"
+            if pre_publish_enabled
+            else "[5/6] QUALITY CHECK (Shorts)"
+        )
         logger.info(f"\n{step_label}")
 
         quality_result = task_quality_check(
             video_file=result["results"]["video_file"],
             script_data=script_data,
             is_short=True,  # This is a Short
-            threshold=quality_threshold
+            threshold=quality_threshold,
         )
 
         result["results"]["steps"]["quality_check"] = quality_result
@@ -1242,7 +1260,7 @@ def task_short_with_upload(channel_id: str, topic: str = None) -> Dict[str, Any]
         channel_id=channel_id,
         title=result["results"]["title"],
         description=result["results"]["description"],
-        tags=result["results"]["tags"]
+        tags=result["results"]["tags"],
     )
 
     result["results"]["steps"]["upload"] = upload_result
@@ -1255,7 +1273,22 @@ def task_short_with_upload(channel_id: str, topic: str = None) -> Dict[str, Any]
 # CLI Interface
 def main():
     parser = argparse.ArgumentParser(description="Joe Runner")
-    parser.add_argument("task", choices=["research", "script", "audio", "video", "short", "upload", "full", "full-upload", "short-pipeline", "short-upload", "budget"])
+    parser.add_argument(
+        "task",
+        choices=[
+            "research",
+            "script",
+            "audio",
+            "video",
+            "short",
+            "upload",
+            "full",
+            "full-upload",
+            "short-pipeline",
+            "short-upload",
+            "budget",
+        ],
+    )
     parser.add_argument("args", nargs="*", help="Task arguments")
     parser.add_argument("--niche", default="default", help="Content niche")
     parser.add_argument("--channel", help="Channel ID")
@@ -1303,11 +1336,7 @@ def main():
                 print("Usage: runner.py upload <video_file> <channel_id>")
                 return
             result = task_upload(
-                args.args[0],
-                args.args[1],
-                title="Test Video",
-                description="Test",
-                tags=["test"]
+                args.args[0], args.args[1], title="Test Video", description="Test", tags=["test"]
             )
 
         elif args.task == "full":
@@ -1340,14 +1369,20 @@ def main():
                 "success": True,
                 "config": config,
                 "status": status,
-                "message": "Budget EXCEEDED - pipeline will not run" if status["exceeded"]
-                          else "Budget WARNING - approaching limit" if status["warning"]
-                          else "Budget OK - within limits"
+                "message": (
+                    "Budget EXCEEDED - pipeline will not run"
+                    if status["exceeded"]
+                    else (
+                        "Budget WARNING - approaching limit"
+                        if status["warning"]
+                        else "Budget OK - within limits"
+                    )
+                ),
             }
             # Print a nice summary
-            print("\n" + "="*50)
+            print("\n" + "=" * 50)
             print("         BUDGET STATUS")
-            print("="*50)
+            print("=" * 50)
             print(f"\nDaily Limit:    ${config['daily_limit']:.2f}")
             print(f"Spent Today:    ${status['spent_today']:.4f}")
             print(f"Remaining:      ${status['remaining']:.4f}")
@@ -1355,12 +1390,12 @@ def main():
             print(f"Warning at:     {config['warning_threshold']*100:.0f}%")
             print(f"Enforcement:    {'ENABLED' if config['enforce'] else 'DISABLED'}")
             print(f"\nStatus:         {result['message']}")
-            print("="*50)
+            print("=" * 50)
             return  # Skip the JSON output for budget check
 
         # Print result
         if result is not None:
-            print("\n" + "="*50)
+            print("\n" + "=" * 50)
             print(json.dumps(result, indent=2, default=str))
 
     except BudgetExceededError as e:
@@ -1371,11 +1406,11 @@ def main():
             "error": str(e),
             "error_type": "BudgetExceededError",
             "spent": e.spent,
-            "limit": e.limit
+            "limit": e.limit,
         }
-        print("\n" + "="*50)
+        print("\n" + "=" * 50)
         print("         BUDGET EXCEEDED")
-        print("="*50)
+        print("=" * 50)
         print(f"\nError: {e}")
         print(f"Spent today: ${e.spent:.4f}")
         print(f"Daily limit: ${e.limit:.2f}")
@@ -1384,7 +1419,7 @@ def main():
         print("  1. Wait until tomorrow (budget resets daily)")
         print("  2. Increase daily_limit in config/config.yaml")
         print("  3. Set budget.enforce: false to disable enforcement")
-        print("="*50)
+        print("=" * 50)
 
 
 if __name__ == "__main__":

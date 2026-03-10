@@ -32,17 +32,16 @@ Usage:
     cache.cache_segment("transition_fade", "global", fade_path)
 """
 
-import os
 import json
+import os
 import shutil
-import hashlib
 import threading
-from pathlib import Path
+from dataclasses import asdict, dataclass
 from datetime import datetime, timedelta
-from typing import Optional, Dict, List, Tuple, Any
-from dataclasses import dataclass, asdict
-from loguru import logger
+from pathlib import Path
+from typing import Any, Dict, Optional, Tuple
 
+from loguru import logger
 
 # Default configuration
 DEFAULT_CACHE_DIR = Path("data/segment_cache")
@@ -54,6 +53,7 @@ MAX_CACHE_SIZE_MB = 1000  # 1 GB max cache
 @dataclass
 class SegmentEntry:
     """Represents a cached video segment."""
+
     segment_type: str  # intro, outro, transition, etc.
     channel_id: str
     file_path: str
@@ -76,6 +76,7 @@ class SegmentEntry:
 @dataclass
 class SegmentCacheStats:
     """Cache statistics."""
+
     total_segments: int
     total_size_mb: float
     segments_by_type: Dict[str, int]
@@ -99,19 +100,23 @@ class SegmentCacheStats:
         for seg_type, count in self.segments_by_type.items():
             lines.append(f"    - {seg_type}: {count}")
 
-        lines.extend([
-            "",
-            "  Segments by channel:",
-        ])
+        lines.extend(
+            [
+                "",
+                "  Segments by channel:",
+            ]
+        )
         for channel, count in self.segments_by_channel.items():
             lines.append(f"    - {channel}: {count}")
 
-        lines.extend([
-            "",
-            f"  Oldest segment: {self.oldest_segment_days} days",
-            f"  Newest segment: {self.newest_segment_days} days",
-            "=" * 60,
-        ])
+        lines.extend(
+            [
+                "",
+                f"  Oldest segment: {self.oldest_segment_days} days",
+                f"  Newest segment: {self.newest_segment_days} days",
+                "=" * 60,
+            ]
+        )
         return "\n".join(lines)
 
 
@@ -133,14 +138,14 @@ class SegmentCache:
         "lower_third",
         "subscribe_cta",
         "end_screen",
-        "background_loop"
+        "background_loop",
     ]
 
     def __init__(
         self,
         cache_dir: Optional[Path] = None,
         expiry_days: int = DEFAULT_EXPIRY_DAYS,
-        max_size_mb: int = MAX_CACHE_SIZE_MB
+        max_size_mb: int = MAX_CACHE_SIZE_MB,
     ):
         """
         Initialize the segment cache.
@@ -172,12 +177,9 @@ class SegmentCache:
         """Load cache metadata from file."""
         if self.metadata_file.exists():
             try:
-                with open(self.metadata_file, 'r', encoding='utf-8') as f:
+                with open(self.metadata_file, "r", encoding="utf-8") as f:
                     data = json.load(f)
-                return {
-                    key: SegmentEntry.from_dict(entry)
-                    for key, entry in data.items()
-                }
+                return {key: SegmentEntry.from_dict(entry) for key, entry in data.items()}
             except (json.JSONDecodeError, KeyError, TypeError) as e:
                 logger.warning(f"Failed to load segment cache metadata: {e}")
         return {}
@@ -185,7 +187,7 @@ class SegmentCache:
     def _save_metadata(self) -> None:
         """Save cache metadata to file."""
         try:
-            with open(self.metadata_file, 'w', encoding='utf-8') as f:
+            with open(self.metadata_file, "w", encoding="utf-8") as f:
                 data = {key: entry.to_dict() for key, entry in self.metadata.items()}
                 json.dump(data, f, indent=2)
         except (OSError, IOError) as e:
@@ -215,7 +217,9 @@ class SegmentCache:
         """
         return self._get_segment("outro", channel_id)
 
-    def get_transition_segment(self, transition_type: str, channel_id: str = "global") -> Optional[str]:
+    def get_transition_segment(
+        self, transition_type: str, channel_id: str = "global"
+    ) -> Optional[str]:
         """
         Get cached transition segment.
 
@@ -275,7 +279,7 @@ class SegmentCache:
         video_path: str,
         duration: float = 0.0,
         resolution: str = "1920x1080",
-        metadata: Optional[Dict[str, Any]] = None
+        metadata: Optional[Dict[str, Any]] = None,
     ) -> Optional[str]:
         """
         Cache a video segment.
@@ -319,7 +323,7 @@ class SegmentCache:
                     created_at=now,
                     last_accessed=now,
                     access_count=0,
-                    metadata=metadata or {}
+                    metadata=metadata or {},
                 )
 
                 self.metadata[cache_key] = entry
@@ -357,10 +361,7 @@ class SegmentCache:
             return
 
         # Sort by last accessed (oldest first)
-        sorted_entries = sorted(
-            self.metadata.items(),
-            key=lambda x: x[1].last_accessed
-        )
+        sorted_entries = sorted(self.metadata.items(), key=lambda x: x[1].last_accessed)
 
         # Remove oldest until under limit
         for cache_key, entry in sorted_entries:
@@ -425,7 +426,9 @@ class SegmentCache:
                 removed += 1
                 bytes_freed += file_size
 
-        logger.info(f"Cleanup: removed {removed} expired segments, freed {bytes_freed / 1024 / 1024:.1f} MB")
+        logger.info(
+            f"Cleanup: removed {removed} expired segments, freed {bytes_freed / 1024 / 1024:.1f} MB"
+        )
         return removed, bytes_freed
 
     def get_stats(self) -> SegmentCacheStats:
@@ -434,7 +437,7 @@ class SegmentCache:
         total_size = 0
         total_hits = 0
         oldest_days = 0
-        newest_days = float('inf')
+        newest_days = float("inf")
         by_type: Dict[str, int] = {}
         by_channel: Dict[str, int] = {}
 
@@ -461,7 +464,7 @@ class SegmentCache:
                 except (ValueError, TypeError):
                     pass
 
-        if newest_days == float('inf'):
+        if newest_days == float("inf"):
             newest_days = 0
 
         return SegmentCacheStats(
@@ -471,7 +474,7 @@ class SegmentCache:
             segments_by_channel=by_channel,
             total_hits=total_hits,
             oldest_segment_days=oldest_days,
-            newest_segment_days=newest_days
+            newest_segment_days=newest_days,
         )
 
     def clear_cache(self) -> Tuple[int, int]:
@@ -503,7 +506,7 @@ class SegmentCache:
         self,
         channel_id: str,
         intro_generator: Optional[callable] = None,
-        outro_generator: Optional[callable] = None
+        outro_generator: Optional[callable] = None,
     ) -> Dict[str, Optional[str]]:
         """
         Pre-generate and cache intro/outro for a channel.

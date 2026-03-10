@@ -35,11 +35,11 @@ Example:
 import os
 import re
 from dataclasses import dataclass, field
-from typing import List, Dict, Any, Optional, Tuple
-from pathlib import Path
+from typing import Any, Dict, List, Optional, Tuple
+
 from loguru import logger
 
-from .base_agent import BaseAgent, AgentResult
+from .base_agent import AgentResult, BaseAgent
 
 
 @dataclass
@@ -58,6 +58,7 @@ class AccessibilityResult:
         language_support: Languages supported/detected
         readability_score: Text readability score (for thumbnails/titles)
     """
+
     score: int
     captions_accuracy: Optional[float] = None
     has_captions: bool = False
@@ -79,7 +80,7 @@ class AccessibilityResult:
             "issues": self.issues,
             "warnings": self.warnings,
             "language_support": self.language_support,
-            "readability_score": self.readability_score
+            "readability_score": self.readability_score,
         }
 
 
@@ -128,6 +129,7 @@ class AccessibilityAgent(BaseAgent):
         if self._subtitle_generator is None:
             try:
                 from ..content.subtitles import SubtitleGenerator
+
                 self._subtitle_generator = SubtitleGenerator()
             except ImportError as e:
                 logger.warning(f"Could not import SubtitleGenerator: {e}")
@@ -142,7 +144,7 @@ class AccessibilityAgent(BaseAgent):
         title: str = "",
         thumbnail_text: str = "",
         target_languages: List[str] = None,
-        **kwargs
+        **kwargs,
     ) -> AgentResult:
         """
         Check accessibility features for a video.
@@ -183,29 +185,26 @@ class AccessibilityAgent(BaseAgent):
         scores["captions"] = caption_score
 
         # Check caption sync accuracy
-        sync_score = self._check_sync_accuracy(
-            subtitle_file, audio_file, accessibility_result
-        )
+        sync_score = self._check_sync_accuracy(subtitle_file, audio_file, accessibility_result)
         scores["sync"] = sync_score
 
         # Check text readability
-        readability_score = self._check_readability(
-            title, thumbnail_text, accessibility_result
-        )
+        readability_score = self._check_readability(title, thumbnail_text, accessibility_result)
         scores["readability"] = readability_score
 
         # Check coverage
-        coverage_score = self._check_coverage(
-            subtitle_file, video_file, accessibility_result
-        )
+        coverage_score = self._check_coverage(subtitle_file, video_file, accessibility_result)
         scores["coverage"] = coverage_score
 
         # Calculate overall score
         accessibility_result.score = int(
-            (scores["captions"] * self.WEIGHT_CAPTIONS +
-             scores["sync"] * self.WEIGHT_SYNC_ACCURACY +
-             scores["readability"] * self.WEIGHT_READABILITY +
-             scores["coverage"] * self.WEIGHT_COVERAGE) / 100
+            (
+                scores["captions"] * self.WEIGHT_CAPTIONS
+                + scores["sync"] * self.WEIGHT_SYNC_ACCURACY
+                + scores["readability"] * self.WEIGHT_READABILITY
+                + scores["coverage"] * self.WEIGHT_COVERAGE
+            )
+            / 100
         )
 
         # Set caption accuracy
@@ -216,9 +215,7 @@ class AccessibilityAgent(BaseAgent):
         self._generate_improvements(accessibility_result, scores)
 
         # Log results
-        logger.info(
-            f"[AccessibilityAgent] Accessibility score: {accessibility_result.score}/100"
-        )
+        logger.info(f"[AccessibilityAgent] Accessibility score: {accessibility_result.score}/100")
 
         return AgentResult(
             success=True,
@@ -229,16 +226,12 @@ class AccessibilityAgent(BaseAgent):
                 "video_file": video_file,
                 "subtitle_file": subtitle_file,
                 "target_languages": target_languages,
-                "component_scores": scores
-            }
+                "component_scores": scores,
+            },
         )
 
     def _check_captions(
-        self,
-        script: str,
-        subtitle_file: str,
-        audio_file: str,
-        result: AccessibilityResult
+        self, script: str, subtitle_file: str, audio_file: str, result: AccessibilityResult
     ) -> Tuple[int, Optional[float]]:
         """
         Check caption availability and quality.
@@ -283,9 +276,7 @@ class AccessibilityAgent(BaseAgent):
             # Try to generate captions
             generator = self._get_subtitle_generator()
             if generator:
-                result.improvements.append(
-                    "Use SubtitleGenerator to create captions from script"
-                )
+                result.improvements.append("Use SubtitleGenerator to create captions from script")
         else:
             # No subtitles and no script
             result.has_captions = False
@@ -295,10 +286,7 @@ class AccessibilityAgent(BaseAgent):
         return score, accuracy
 
     def _check_sync_accuracy(
-        self,
-        subtitle_file: str,
-        audio_file: str,
-        result: AccessibilityResult
+        self, subtitle_file: str, audio_file: str, result: AccessibilityResult
     ) -> int:
         """
         Check caption sync accuracy.
@@ -320,7 +308,7 @@ class AccessibilityAgent(BaseAgent):
 
             for i, cue in enumerate(cues):
                 # Check cue duration
-                duration = cue['end'] - cue['start']
+                duration = cue["end"] - cue["start"]
 
                 if duration < self.MIN_CAPTION_DURATION:
                     issues.append(f"Cue {i+1} too short ({duration:.1f}s)")
@@ -330,7 +318,7 @@ class AccessibilityAgent(BaseAgent):
                     score -= 3
 
                 # Check word count per cue
-                word_count = len(cue['text'].split())
+                word_count = len(cue["text"].split())
                 if word_count < self.OPTIMAL_WORDS_PER_CAPTION[0]:
                     score -= 1  # Minor penalty for very short cues
                 elif word_count > self.OPTIMAL_WORDS_PER_CAPTION[1]:
@@ -338,7 +326,7 @@ class AccessibilityAgent(BaseAgent):
 
                 # Check for gaps between cues
                 if i > 0:
-                    gap = cue['start'] - cues[i-1]['end']
+                    gap = cue["start"] - cues[i - 1]["end"]
                     if gap > 3.0:  # More than 3 second gap
                         score -= 2
 
@@ -355,10 +343,7 @@ class AccessibilityAgent(BaseAgent):
             return 50
 
     def _check_readability(
-        self,
-        title: str,
-        thumbnail_text: str,
-        result: AccessibilityResult
+        self, title: str, thumbnail_text: str, result: AccessibilityResult
     ) -> int:
         """
         Check text readability for title and thumbnail.
@@ -380,33 +365,26 @@ class AccessibilityAgent(BaseAgent):
                 score -= 10
             elif title_length > self.MAX_TITLE_LENGTH:
                 result.issues.append(
-                    f"Title too long ({title_length} chars). "
-                    "Screen readers may truncate it."
+                    f"Title too long ({title_length} chars). " "Screen readers may truncate it."
                 )
                 score -= 15
 
             # Check for all caps (harder to read)
             if title.isupper():
-                result.warnings.append(
-                    "All-caps title is harder to read for many users"
-                )
+                result.warnings.append("All-caps title is harder to read for many users")
                 score -= 10
 
             # Check for excessive punctuation
             punct_count = sum(1 for c in title if c in "!?#*@$%")
             if punct_count > 3:
-                result.warnings.append(
-                    "Excessive punctuation in title may confuse screen readers"
-                )
+                result.warnings.append("Excessive punctuation in title may confuse screen readers")
                 score -= 5
 
         # Check thumbnail text
         if thumbnail_text:
             # Thumbnail text should be short and high-contrast
             if len(thumbnail_text) > 50:
-                result.warnings.append(
-                    "Thumbnail text may be too long to read at small sizes"
-                )
+                result.warnings.append("Thumbnail text may be too long to read at small sizes")
                 score -= 10
 
             if thumbnail_text.isupper():
@@ -417,10 +395,7 @@ class AccessibilityAgent(BaseAgent):
         return result.readability_score
 
     def _check_coverage(
-        self,
-        subtitle_file: str,
-        video_file: str,
-        result: AccessibilityResult
+        self, subtitle_file: str, video_file: str, result: AccessibilityResult
     ) -> int:
         """
         Check how much of the video is covered by captions.
@@ -437,8 +412,8 @@ class AccessibilityAgent(BaseAgent):
                 return 0
 
             # Calculate total caption duration
-            total_caption_time = sum(cue['end'] - cue['start'] for cue in cues)
-            last_caption_time = max(cue['end'] for cue in cues)
+            total_caption_time = sum(cue["end"] - cue["start"] for cue in cues)
+            last_caption_time = max(cue["end"] for cue in cues)
 
             # Estimate coverage (captions typically don't cover silence)
             # Assume 70% coverage is excellent for typical video
@@ -452,9 +427,7 @@ class AccessibilityAgent(BaseAgent):
                 )
                 return int(coverage)
             elif coverage < 70:
-                result.warnings.append(
-                    f"Caption coverage ({coverage:.0f}%) could be improved"
-                )
+                result.warnings.append(f"Caption coverage ({coverage:.0f}%) could be improved")
 
             return min(100, int(coverage))
 
@@ -467,45 +440,35 @@ class AccessibilityAgent(BaseAgent):
         cues = []
 
         try:
-            with open(srt_file, 'r', encoding='utf-8') as f:
+            with open(srt_file, "r", encoding="utf-8") as f:
                 content = f.read()
 
             # Split into blocks
-            blocks = re.split(r'\n\n+', content.strip())
+            blocks = re.split(r"\n\n+", content.strip())
 
             for block in blocks:
-                lines = block.strip().split('\n')
+                lines = block.strip().split("\n")
                 if len(lines) >= 3:
                     # Parse timestamp line
                     timestamp_match = re.match(
-                        r'(\d{2}):(\d{2}):(\d{2}),(\d{3})\s*-->\s*(\d{2}):(\d{2}):(\d{2}),(\d{3})',
-                        lines[1]
+                        r"(\d{2}):(\d{2}):(\d{2}),(\d{3})\s*-->\s*(\d{2}):(\d{2}):(\d{2}),(\d{3})",
+                        lines[1],
                     )
 
                     if timestamp_match:
                         g = timestamp_match.groups()
-                        start = (int(g[0]) * 3600 + int(g[1]) * 60 +
-                                int(g[2]) + int(g[3]) / 1000)
-                        end = (int(g[4]) * 3600 + int(g[5]) * 60 +
-                              int(g[6]) + int(g[7]) / 1000)
+                        start = int(g[0]) * 3600 + int(g[1]) * 60 + int(g[2]) + int(g[3]) / 1000
+                        end = int(g[4]) * 3600 + int(g[5]) * 60 + int(g[6]) + int(g[7]) / 1000
 
-                        text = '\n'.join(lines[2:])
-                        cues.append({
-                            'start': start,
-                            'end': end,
-                            'text': text
-                        })
+                        text = "\n".join(lines[2:])
+                        cues.append({"start": start, "end": end, "text": text})
 
         except Exception as e:
             logger.debug(f"SRT parsing error: {e}")
 
         return cues
 
-    def _estimate_caption_accuracy(
-        self,
-        cues: List[Dict[str, Any]],
-        script: str
-    ) -> float:
+    def _estimate_caption_accuracy(self, cues: List[Dict[str, Any]], script: str) -> float:
         """
         Estimate caption accuracy by comparing with script.
 
@@ -516,7 +479,7 @@ class AccessibilityAgent(BaseAgent):
             return 50.0  # Neutral when can't compare
 
         # Combine all caption text
-        caption_text = ' '.join(cue['text'] for cue in cues)
+        caption_text = " ".join(cue["text"] for cue in cues)
 
         # Simple word overlap calculation
         script_words = set(script.lower().split())
@@ -540,11 +503,7 @@ class AccessibilityAgent(BaseAgent):
 
         return adjusted
 
-    def _generate_improvements(
-        self,
-        result: AccessibilityResult,
-        scores: Dict[str, int]
-    ):
+    def _generate_improvements(self, result: AccessibilityResult, scores: Dict[str, int]):
         """Generate accessibility improvement suggestions."""
         if not result.has_captions:
             result.improvements.append(
@@ -557,19 +516,13 @@ class AccessibilityAgent(BaseAgent):
             )
 
         if scores.get("sync", 0) < 70:
-            result.improvements.append(
-                "Review caption timing to ensure sync with audio"
-            )
+            result.improvements.append("Review caption timing to ensure sync with audio")
 
         if scores.get("readability", 0) < 80:
-            result.improvements.append(
-                "Simplify title text for better screen reader compatibility"
-            )
+            result.improvements.append("Simplify title text for better screen reader compatibility")
 
         if result.caption_coverage and result.caption_coverage < 70:
-            result.improvements.append(
-                "Add captions to cover more of the video content"
-            )
+            result.improvements.append("Add captions to cover more of the video content")
 
         # Language support suggestions
         if len(result.language_support) == 1:
@@ -578,16 +531,10 @@ class AccessibilityAgent(BaseAgent):
             )
 
         if not result.improvements:
-            result.improvements.append(
-                "Accessibility features are in good shape"
-            )
+            result.improvements.append("Accessibility features are in good shape")
 
     def generate_captions(
-        self,
-        script: str,
-        audio_duration: float,
-        output_file: str,
-        max_chars: int = 50
+        self, script: str, audio_duration: float, output_file: str, max_chars: int = 50
     ) -> Optional[str]:
         """
         Generate captions from script text.
@@ -608,9 +555,7 @@ class AccessibilityAgent(BaseAgent):
 
         try:
             track = generator.generate_subtitles_from_script(
-                script=script,
-                audio_duration=audio_duration,
-                max_chars=max_chars
+                script=script, audio_duration=audio_duration, max_chars=max_chars
             )
 
             if track and track.cues:
@@ -625,11 +570,7 @@ class AccessibilityAgent(BaseAgent):
             logger.error(f"Caption generation failed: {e}")
             return None
 
-    def validate_captions(
-        self,
-        subtitle_file: str,
-        script: str = ""
-    ) -> Dict[str, Any]:
+    def validate_captions(self, subtitle_file: str, script: str = "") -> Dict[str, Any]:
         """
         Validate caption file quality.
 
@@ -641,35 +582,29 @@ class AccessibilityAgent(BaseAgent):
             Dictionary with validation results
         """
         if not os.path.exists(subtitle_file):
-            return {
-                "valid": False,
-                "error": "Subtitle file not found"
-            }
+            return {"valid": False, "error": "Subtitle file not found"}
 
         try:
             cues = self._parse_srt(subtitle_file)
 
             if not cues:
-                return {
-                    "valid": False,
-                    "error": "No valid cues found in subtitle file"
-                }
+                return {"valid": False, "error": "No valid cues found in subtitle file"}
 
             # Calculate metrics
-            total_duration = sum(cue['end'] - cue['start'] for cue in cues)
+            total_duration = sum(cue["end"] - cue["start"] for cue in cues)
             avg_duration = total_duration / len(cues)
-            avg_words = sum(len(cue['text'].split()) for cue in cues) / len(cues)
+            avg_words = sum(len(cue["text"].split()) for cue in cues) / len(cues)
 
             # Check for issues
             issues = []
             for i, cue in enumerate(cues):
-                duration = cue['end'] - cue['start']
+                duration = cue["end"] - cue["start"]
                 if duration < 0.3:
                     issues.append(f"Cue {i+1}: Too short ({duration:.2f}s)")
                 elif duration > 7:
                     issues.append(f"Cue {i+1}: Too long ({duration:.2f}s)")
 
-                if cue['start'] >= cue['end']:
+                if cue["start"] >= cue["end"]:
                     issues.append(f"Cue {i+1}: Invalid timing")
 
             # Calculate accuracy if script provided
@@ -684,24 +619,22 @@ class AccessibilityAgent(BaseAgent):
                 "avg_cue_duration": avg_duration,
                 "avg_words_per_cue": avg_words,
                 "accuracy": accuracy,
-                "issues": issues[:10]  # Limit to first 10 issues
+                "issues": issues[:10],  # Limit to first 10 issues
             }
 
         except Exception as e:
-            return {
-                "valid": False,
-                "error": str(e)
-            }
+            return {"valid": False, "error": str(e)}
 
 
 # CLI entry point
 def main():
     """CLI entry point for accessibility agent."""
-    import sys
     import json
+    import sys
 
     if len(sys.argv) < 2:
-        print("""
+        print(
+            """
 Accessibility Agent - Accessibility Features Validation
 
 Usage:
@@ -723,7 +656,8 @@ Examples:
     python -m src.agents.accessibility_agent video.mp4 --srt subtitles.srt
     python -m src.agents.accessibility_agent --validate subtitles.srt
     python -m src.agents.accessibility_agent --generate script.txt --duration 120 --output captions.srt
-        """)
+        """
+        )
         return
 
     # Parse arguments
@@ -744,7 +678,7 @@ Examples:
         if arg == "--script" and i + 1 < len(sys.argv):
             script_arg = sys.argv[i + 1]
             if os.path.exists(script_arg):
-                with open(script_arg, 'r', encoding='utf-8') as f:
+                with open(script_arg, "r", encoding="utf-8") as f:
                     script = f.read()
             else:
                 script = script_arg
@@ -770,7 +704,7 @@ Examples:
             if i + 1 < len(sys.argv) and not sys.argv[i + 1].startswith("--"):
                 script_arg = sys.argv[i + 1]
                 if os.path.exists(script_arg):
-                    with open(script_arg, 'r', encoding='utf-8') as f:
+                    with open(script_arg, "r", encoding="utf-8") as f:
                         script = f.read()
                 else:
                     script = script_arg
@@ -801,18 +735,18 @@ Examples:
             print("CAPTION VALIDATION RESULT")
             print("=" * 60)
             print(f"Valid: {result.get('valid', False)}")
-            if result.get('error'):
+            if result.get("error"):
                 print(f"Error: {result['error']}")
             else:
                 print(f"Cue Count: {result.get('cue_count', 0)}")
                 print(f"Total Duration: {result.get('total_duration', 0):.1f}s")
                 print(f"Avg Cue Duration: {result.get('avg_cue_duration', 0):.2f}s")
                 print(f"Avg Words/Cue: {result.get('avg_words_per_cue', 0):.1f}")
-                if result.get('accuracy'):
+                if result.get("accuracy"):
                     print(f"Accuracy: {result['accuracy']:.1f}%")
-                if result.get('issues'):
+                if result.get("issues"):
                     print(f"\nIssues ({len(result['issues'])}):")
-                    for issue in result['issues']:
+                    for issue in result["issues"]:
                         print(f"  - {issue}")
 
     elif generate_mode and script and duration:
@@ -821,9 +755,7 @@ Examples:
             output_file = "output/captions.srt"
 
         result = agent.generate_captions(
-            script=script,
-            audio_duration=duration,
-            output_file=output_file
+            script=script, audio_duration=duration, output_file=output_file
         )
 
         if result:
@@ -834,10 +766,7 @@ Examples:
     else:
         # Run full accessibility check
         result = agent.run(
-            video_file=video_file,
-            script=script,
-            subtitle_file=subtitle_file,
-            title=title
+            video_file=video_file, script=script, subtitle_file=subtitle_file, title=title
         )
 
         if output_json:
@@ -851,11 +780,11 @@ Examples:
             print(f"Accessibility Score: {data['score']}/100")
             print(f"Has Captions: {'Yes' if data['has_captions'] else 'No'}")
 
-            if data['captions_accuracy']:
+            if data["captions_accuracy"]:
                 print(f"Caption Accuracy: {data['captions_accuracy']:.1f}%")
-            if data['caption_coverage']:
+            if data["caption_coverage"]:
                 print(f"Caption Coverage: {data['caption_coverage']:.1f}%")
-            if data['readability_score']:
+            if data["readability_score"]:
                 print(f"Readability Score: {data['readability_score']}/100")
 
             print(f"Languages: {', '.join(data['language_support'])}")

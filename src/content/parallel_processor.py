@@ -14,18 +14,19 @@ Usage:
     ])
 """
 
-import os
 import multiprocessing as mp
-from concurrent.futures import ProcessPoolExecutor, as_completed
-from typing import List, Dict, Optional, Callable, Any
-from dataclasses import dataclass
-from loguru import logger
 import time
+from concurrent.futures import ProcessPoolExecutor, as_completed
+from dataclasses import dataclass
+from typing import Any, Callable, Dict, List, Optional
+
+from loguru import logger
 
 
 @dataclass
 class ProcessingTask:
     """A video processing task."""
+
     task_id: str
     task_type: str  # 'full_video', 'short', 'thumbnail', 'subtitle'
     params: Dict[str, Any]
@@ -35,6 +36,7 @@ class ProcessingTask:
 @dataclass
 class ProcessingResult:
     """Result of a processing task."""
+
     task_id: str
     success: bool
     output_path: Optional[str] = None
@@ -72,9 +74,7 @@ class ParallelVideoProcessor:
         logger.info(f"ParallelVideoProcessor initialized with {max_workers} workers")
 
     def process_batch(
-        self,
-        tasks: List[ProcessingTask],
-        callback: Optional[Callable] = None
+        self, tasks: List[ProcessingTask], callback: Optional[Callable] = None
     ) -> List[ProcessingResult]:
         """
         Process multiple tasks in parallel.
@@ -99,8 +99,7 @@ class ParallelVideoProcessor:
         with ProcessPoolExecutor(max_workers=self.max_workers) as executor:
             # Submit all tasks
             future_to_task = {
-                executor.submit(self._process_single_task, task): task
-                for task in tasks
+                executor.submit(self._process_single_task, task): task for task in tasks
             }
 
             # Collect results as they complete
@@ -115,7 +114,9 @@ class ParallelVideoProcessor:
                     if result.success:
                         logger.success(f"[{completed+1}/{len(tasks)}] Completed: {task.task_id}")
                     else:
-                        logger.error(f"[{completed+1}/{len(tasks)}] Failed: {task.task_id} - {result.error}")
+                        logger.error(
+                            f"[{completed+1}/{len(tasks)}] Failed: {task.task_id} - {result.error}"
+                        )
 
                     # Call callback if provided
                     if callback:
@@ -126,11 +127,9 @@ class ParallelVideoProcessor:
 
                 except Exception as e:
                     logger.error(f"Task {task.task_id} raised exception: {e}")
-                    results.append(ProcessingResult(
-                        task_id=task.task_id,
-                        success=False,
-                        error=str(e)
-                    ))
+                    results.append(
+                        ProcessingResult(task_id=task.task_id, success=False, error=str(e))
+                    )
 
                 completed += 1
 
@@ -167,16 +166,13 @@ class ParallelVideoProcessor:
                 task_id=task.task_id,
                 success=True,
                 output_path=output_path,
-                duration_seconds=duration
+                duration_seconds=duration,
             )
 
         except Exception as e:
             duration = time.time() - start_time
             return ProcessingResult(
-                task_id=task.task_id,
-                success=False,
-                error=str(e),
-                duration_seconds=duration
+                task_id=task.task_id, success=False, error=str(e), duration_seconds=duration
             )
 
     @staticmethod
@@ -194,10 +190,7 @@ class ParallelVideoProcessor:
         output_file = params.get("output_file", f"output/videos/{topic[:30]}.mp4")
 
         # Create video
-        result = generator.create_video(
-            title=topic,
-            output_file=output_file
-        )
+        result = generator.create_video(title=topic, output_file=output_file)
 
         return result
 
@@ -211,10 +204,7 @@ class ParallelVideoProcessor:
         topic = params.get("topic")
         output_file = params.get("output_file", f"output/shorts/{topic[:30]}.mp4")
 
-        result = generator.create_short(
-            topic=topic,
-            output_file=output_file
-        )
+        result = generator.create_short(topic=topic, output_file=output_file)
 
         return result
 
@@ -258,7 +248,7 @@ class ParallelVideoProcessor:
         topics: List[str],
         channel_id: str,
         niche: str = "general",
-        task_type: str = "full_video"
+        task_type: str = "full_video",
     ) -> List[ProcessingResult]:
         """
         Create multiple videos in parallel.
@@ -282,18 +272,16 @@ class ParallelVideoProcessor:
                     "topic": topic,
                     "channel_id": channel_id,
                     "niche": niche,
-                    "output_file": f"output/{task_type}/{channel_id}_{i}_{topic[:30]}.mp4"
+                    "output_file": f"output/{task_type}/{channel_id}_{i}_{topic[:30]}.mp4",
                 },
-                priority=i  # First topics have higher priority
+                priority=i,  # First topics have higher priority
             )
             tasks.append(task)
 
         return self.process_batch(tasks)
 
     def create_thumbnails_parallel(
-        self,
-        titles: List[str],
-        use_ai: bool = True
+        self, titles: List[str], use_ai: bool = True
     ) -> List[ProcessingResult]:
         """
         Create multiple thumbnails in parallel.
@@ -314,17 +302,15 @@ class ParallelVideoProcessor:
                 params={
                     "title": title,
                     "use_ai": use_ai,
-                    "output_file": f"output/thumbnails/thumb_{i}.png"
-                }
+                    "output_file": f"output/thumbnails/thumb_{i}.png",
+                },
             )
             tasks.append(task)
 
         return self.process_batch(tasks)
 
     def process_chunks(
-        self,
-        all_tasks: List[ProcessingTask],
-        callback: Optional[Callable] = None
+        self, all_tasks: List[ProcessingTask], callback: Optional[Callable] = None
     ) -> List[ProcessingResult]:
         """
         Process tasks in chunks to manage memory usage.
@@ -340,7 +326,7 @@ class ParallelVideoProcessor:
 
         # Process in chunks
         for i in range(0, len(all_tasks), self.chunk_size):
-            chunk = all_tasks[i:i + self.chunk_size]
+            chunk = all_tasks[i : i + self.chunk_size]
             logger.info(f"Processing chunk {i // self.chunk_size + 1} ({len(chunk)} tasks)...")
 
             chunk_results = self.process_batch(chunk, callback)
@@ -355,9 +341,9 @@ class ParallelVideoProcessor:
 
 # Example usage
 if __name__ == "__main__":
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print("  PARALLEL VIDEO PROCESSOR TEST")
-    print("="*60 + "\n")
+    print("=" * 60 + "\n")
 
     processor = ParallelVideoProcessor(max_workers=3)
 
@@ -370,9 +356,9 @@ if __name__ == "__main__":
                 "topic": f"Test Video {i}",
                 "channel_id": "test_channel",
                 "niche": "psychology",
-                "output_file": f"output/test_video_{i}.mp4"
+                "output_file": f"output/test_video_{i}.mp4",
             },
-            priority=i
+            priority=i,
         )
         for i in range(5)
     ]

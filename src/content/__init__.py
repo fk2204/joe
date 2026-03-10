@@ -1,37 +1,44 @@
 # Content generation modules
-from .tts import TextToSpeech
-from .script_writer import ScriptWriter
 from .audio_processor import AudioProcessor
-from .script_validator import ScriptValidator, ValidationResult, clean_script, validate_script, improve_script
-from .subtitles import (
-    SubtitleGenerator,
-    SubtitleTrack,
-    SubtitleCue,
-    SubtitlePosition,
-    SUBTITLE_STYLES,
-    NICHE_SUBTITLE_STYLES,
+from .parallel_downloader import BatchDownloadResult, DownloadResult, ParallelDownloader
+from .script_validator import (
+    ScriptValidator,
+    ValidationResult,
+    clean_script,
+    improve_script,
+    validate_script,
 )
-from .video_hooks import (
-    VideoHookGenerator,
-    HookTemplate,
-    HookAnimationType,
-    HookValidationResult,
-    create_hook_generator,
+from .script_writer import ScriptWriter
+from .stock_cache import SmartPrefetcher, StockCache
+from .subtitles import (
+    NICHE_SUBTITLE_STYLES,
+    SUBTITLE_STYLES,
+    SubtitleCue,
+    SubtitleGenerator,
+    SubtitlePosition,
+    SubtitleTrack,
 )
 from .thumbnail_generator import ThumbnailGenerator
-from .stock_cache import StockCache, SmartPrefetcher
-from .parallel_downloader import ParallelDownloader, DownloadResult, BatchDownloadResult
+from .tts import TextToSpeech
+from .video_hooks import (
+    HookAnimationType,
+    HookTemplate,
+    HookValidationResult,
+    VideoHookGenerator,
+    create_hook_generator,
+)
 
 # Viral Hooks (Integrated 2026-01-20)
 try:
     from .viral_hooks import (
-        ViralHookGenerator,
         HookFormula,
         OpenLoop,
         PatternInterrupt,
-        generate_viral_hook,
+        ViralHookGenerator,
         enhance_retention,
+        generate_viral_hook,
     )
+
     VIRAL_HOOKS_AVAILABLE = True
 except ImportError:
     VIRAL_HOOKS_AVAILABLE = False
@@ -39,6 +46,7 @@ except ImportError:
 # Chatterbox TTS (MIT Licensed, Integrated 2026-01-20)
 try:
     from .tts_chatterbox import ChatterboxTTS, generate_chatterbox_speech
+
     CHATTERBOX_AVAILABLE = True
 except ImportError:
     CHATTERBOX_AVAILABLE = False

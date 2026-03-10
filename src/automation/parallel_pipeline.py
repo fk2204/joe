@@ -81,10 +81,7 @@ class GPUQueueManager:
         logger.info(f"GPUQueueManager initialized: max_concurrent={self.max_concurrent}")
 
     async def encode_with_queue(
-        self,
-        encode_func: Callable,
-        video_data: Dict,
-        priority: int = 0
+        self, encode_func: Callable, video_data: Dict, priority: int = 0
     ) -> str:
         """
         Encode video through GPU queue.
@@ -124,6 +121,7 @@ class GPUQueueManager:
         """Check if VRAM usage is above threshold."""
         try:
             import pynvml
+
             pynvml.nvmlInit()
             handle = pynvml.nvmlDeviceGetHandleByIndex(0)
             info = pynvml.nvmlDeviceGetMemoryInfo(handle)
@@ -153,11 +151,7 @@ class ParallelVideoPipeline:
     4. [Async Parallel] YouTube upload
     """
 
-    def __init__(
-        self,
-        max_cpu_workers: Optional[int] = None,
-        max_gpu_workers: int = 1
-    ):
+    def __init__(self, max_cpu_workers: Optional[int] = None, max_gpu_workers: int = 1):
         """
         Initialize parallel pipeline.
 
@@ -180,9 +174,7 @@ class ParallelVideoPipeline:
         )
 
     async def process_video_batch(
-        self,
-        tasks: List[PipelineTask],
-        upload: bool = True
+        self, tasks: List[PipelineTask], upload: bool = True
     ) -> List[PipelineResult]:
         """
         Process multiple videos in parallel.
@@ -201,10 +193,7 @@ class ParallelVideoPipeline:
 
         # Stage 1: CPU-bound tasks (fully parallel)
         logger.info(f"Stage 1: Generating {len(tasks)} scripts in parallel...")
-        script_futures = [
-            self._generate_script_async(task)
-            for task in tasks
-        ]
+        script_futures = [self._generate_script_async(task) for task in tasks]
         scripts = await asyncio.gather(*script_futures, return_exceptions=True)
 
         # Filter out failures
@@ -212,11 +201,7 @@ class ParallelVideoPipeline:
         for task, script in zip(tasks, scripts):
             if isinstance(script, Exception):
                 logger.error(f"Script generation failed for {task.topic}: {script}")
-                results.append(PipelineResult(
-                    task=task,
-                    success=False,
-                    error=str(script)
-                ))
+                results.append(PipelineResult(task=task, success=False, error=str(script)))
             else:
                 valid_scripts.append((task, script))
 
@@ -227,8 +212,7 @@ class ParallelVideoPipeline:
         # Stage 2: Network I/O (fully parallel)
         logger.info(f"Stage 2: Downloading assets for {len(valid_scripts)} videos...")
         asset_futures = [
-            self._download_assets_async(task, script)
-            for task, script in valid_scripts
+            self._download_assets_async(task, script) for task, script in valid_scripts
         ]
         assets = await asyncio.gather(*asset_futures, return_exceptions=True)
 
@@ -237,11 +221,7 @@ class ParallelVideoPipeline:
         for (task, script), asset in zip(valid_scripts, assets):
             if isinstance(asset, Exception):
                 logger.error(f"Asset download failed for {task.topic}: {asset}")
-                results.append(PipelineResult(
-                    task=task,
-                    success=False,
-                    error=str(asset)
-                ))
+                results.append(PipelineResult(task=task, success=False, error=str(asset)))
             else:
                 valid_assets.append((task, script, asset))
 
@@ -254,25 +234,19 @@ class ParallelVideoPipeline:
                 # Stage 4: Upload (if enabled)
                 if upload:
                     upload_result = await self._upload_video_async(task, video_result)
-                    results.append(PipelineResult(
-                        task=task,
-                        success=True,
-                        video_path=video_result,
-                        upload_url=upload_result
-                    ))
+                    results.append(
+                        PipelineResult(
+                            task=task,
+                            success=True,
+                            video_path=video_result,
+                            upload_url=upload_result,
+                        )
+                    )
                 else:
-                    results.append(PipelineResult(
-                        task=task,
-                        success=True,
-                        video_path=video_result
-                    ))
+                    results.append(PipelineResult(task=task, success=True, video_path=video_result))
             except Exception as e:
                 logger.error(f"Video creation failed for {task.topic}: {e}")
-                results.append(PipelineResult(
-                    task=task,
-                    success=False,
-                    error=str(e)
-                ))
+                results.append(PipelineResult(task=task, success=False, error=str(e)))
 
         # Summary
         successful = sum(1 for r in results if r.success)
@@ -284,36 +258,18 @@ class ParallelVideoPipeline:
         """Generate script using CPU pool."""
         loop = asyncio.get_event_loop()
         return await loop.run_in_executor(
-            self.cpu_pool,
-            _generate_script_sync,
-            task.topic,
-            task.niche,
-            task.duration_minutes
+            self.cpu_pool, _generate_script_sync, task.topic, task.niche, task.duration_minutes
         )
 
-    async def _download_assets_async(
-        self,
-        task: PipelineTask,
-        script: Dict
-    ) -> Dict:
+    async def _download_assets_async(self, task: PipelineTask, script: Dict) -> Dict:
         """Download stock footage and generate TTS in parallel."""
         # Run TTS and stock footage download concurrently
-        tts_task = asyncio.create_task(
-            self._generate_tts_async(script)
-        )
-        footage_task = asyncio.create_task(
-            self._download_footage_async(script, task.niche)
-        )
+        tts_task = asyncio.create_task(self._generate_tts_async(script))
+        footage_task = asyncio.create_task(self._download_footage_async(script, task.niche))
 
-        tts_result, footage_result = await asyncio.gather(
-            tts_task, footage_task
-        )
+        tts_result, footage_result = await asyncio.gather(tts_task, footage_task)
 
-        return {
-            "audio_file": tts_result,
-            "footage_files": footage_result,
-            "script": script
-        }
+        return {"audio_file": tts_result, "footage_files": footage_result, "script": script}
 
     async def _generate_tts_async(self, script: Dict) -> str:
         """Generate TTS audio from script."""
@@ -331,11 +287,7 @@ class ParallelVideoPipeline:
             logger.error(f"TTS generation failed: {e}")
             raise
 
-    async def _download_footage_async(
-        self,
-        script: Dict,
-        niche: str
-    ) -> List[str]:
+    async def _download_footage_async(self, script: Dict, niche: str) -> List[str]:
         """Download stock footage for video."""
         try:
             from src.content.stock_cache import StockFootageCache
@@ -345,10 +297,7 @@ class ParallelVideoPipeline:
 
             if not keywords:
                 # Extract from script content
-                keywords = _extract_visual_keywords(
-                    script.get("narration", ""),
-                    niche
-                )
+                keywords = _extract_visual_keywords(script.get("narration", ""), niche)
 
             footage_files = []
             for keyword in keywords[:5]:  # Limit to 5 keywords
@@ -360,13 +309,9 @@ class ParallelVideoPipeline:
             logger.error(f"Footage download failed: {e}")
             raise
 
-    async def _encode_video_gpu(
-        self,
-        task: PipelineTask,
-        script: Dict,
-        assets: Dict
-    ) -> str:
+    async def _encode_video_gpu(self, task: PipelineTask, script: Dict, assets: Dict) -> str:
         """Encode video using GPU queue."""
+
         async def encode_func(data: Dict) -> str:
             from src.content.video_fast import FastVideoGenerator
 
@@ -376,31 +321,21 @@ class ParallelVideoPipeline:
             generator.create_video(
                 audio_file=data["audio_file"],
                 output_file=str(output_file),
-                title=script.get("title", task.topic)
+                title=script.get("title", task.topic),
             )
 
             return str(output_file)
 
-        return await self.gpu_queue.encode_with_queue(
-            encode_func,
-            assets,
-            priority=task.priority
-        )
+        return await self.gpu_queue.encode_with_queue(encode_func, assets, priority=task.priority)
 
-    async def _upload_video_async(
-        self,
-        task: PipelineTask,
-        video_path: str
-    ) -> str:
+    async def _upload_video_async(self, task: PipelineTask, video_path: str) -> str:
         """Upload video to YouTube."""
         try:
             from src.youtube.uploader import YouTubeUploader
 
             uploader = YouTubeUploader(channel_id=task.channel_id)
             result = await uploader.upload_async(
-                video_file=video_path,
-                title=task.topic,
-                privacy="unlisted"  # Safe default
+                video_file=video_path, title=task.topic, privacy="unlisted"  # Safe default
             )
 
             return result.get("video_url", "")
@@ -421,28 +356,24 @@ class ParallelVideoPipeline:
         self.shutdown()
 
 
-def _generate_script_sync(
-    topic: str,
-    niche: str,
-    duration_minutes: int
-) -> Dict:
+def _generate_script_sync(topic: str, niche: str, duration_minutes: int) -> Dict:
     """Synchronous script generation (runs in CPU pool)."""
     try:
         from src.content.script_writer import ScriptWriter
 
         writer = ScriptWriter(provider="groq")  # Fast, free API
-        script = writer.generate_script(
-            topic=topic,
-            niche=niche,
-            duration_minutes=duration_minutes
-        )
+        script = writer.generate_script(topic=topic, niche=niche, duration_minutes=duration_minutes)
 
         return {
             "id": getattr(script, "id", topic[:20]),
             "title": getattr(script, "title", topic),
             "narration": getattr(script, "narration", str(script)),
-            "full_text": writer.get_full_narration(script) if hasattr(writer, "get_full_narration") else str(script),
-            "visual_keywords": getattr(script, "visual_keywords", [])
+            "full_text": (
+                writer.get_full_narration(script)
+                if hasattr(writer, "get_full_narration")
+                else str(script)
+            ),
+            "visual_keywords": getattr(script, "visual_keywords", []),
         }
     except Exception as e:
         logger.error(f"Script generation error: {e}")
@@ -469,10 +400,8 @@ def _extract_visual_keywords(text: str, niche: str) -> List[str]:
 
 # Convenience functions
 
-async def process_batch(
-    tasks: List[Dict],
-    max_gpu_workers: int = 1
-) -> List[PipelineResult]:
+
+async def process_batch(tasks: List[Dict], max_gpu_workers: int = 1) -> List[PipelineResult]:
     """
     Process a batch of video tasks.
 
@@ -483,9 +412,7 @@ async def process_batch(
     Returns:
         List of results
     """
-    pipeline_tasks = [
-        PipelineTask(**task) for task in tasks
-    ]
+    pipeline_tasks = [PipelineTask(**task) for task in tasks]
 
     async with ParallelVideoPipeline(max_gpu_workers=max_gpu_workers) as pipeline:
         return await pipeline.process_video_batch(pipeline_tasks)
@@ -501,14 +428,12 @@ _pipeline: Optional[ParallelVideoPipeline] = None
 
 
 def get_pipeline(
-    max_cpu_workers: Optional[int] = None,
-    max_gpu_workers: int = 1
+    max_cpu_workers: Optional[int] = None, max_gpu_workers: int = 1
 ) -> ParallelVideoPipeline:
     """Get or create pipeline singleton."""
     global _pipeline
     if _pipeline is None:
         _pipeline = ParallelVideoPipeline(
-            max_cpu_workers=max_cpu_workers,
-            max_gpu_workers=max_gpu_workers
+            max_cpu_workers=max_cpu_workers, max_gpu_workers=max_gpu_workers
         )
     return _pipeline

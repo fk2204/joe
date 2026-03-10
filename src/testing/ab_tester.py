@@ -30,19 +30,19 @@ Usage:
 """
 
 import json
-import os
 import uuid
-from dataclasses import dataclass, field, asdict
+from dataclasses import dataclass
 from datetime import datetime, timedelta
 from enum import Enum
 from pathlib import Path
-from typing import Optional, List, Dict, Any, Tuple
+from typing import Any, Dict, List, Optional
 
 from loguru import logger
 
 # Try to import scipy for statistical tests
 try:
     from scipy import stats
+
     HAS_SCIPY = True
 except ImportError:
     HAS_SCIPY = False
@@ -51,6 +51,7 @@ except ImportError:
 
 class ABTestStatus(Enum):
     """Status of an A/B test."""
+
     RUNNING = "running"
     COMPLETED = "completed"
     FAILED = "failed"
@@ -59,6 +60,7 @@ class ABTestStatus(Enum):
 
 class ABTestType(Enum):
     """Type of A/B test."""
+
     THUMBNAIL = "thumbnail"
     TITLE = "title"
     THUMBNAIL_AND_TITLE = "thumbnail_and_title"
@@ -67,6 +69,7 @@ class ABTestType(Enum):
 @dataclass
 class ABVariant:
     """A single variant in an A/B test."""
+
     id: str
     title: Optional[str] = None
     thumbnail_path: Optional[str] = None
@@ -100,7 +103,7 @@ class ABVariant:
             "views": self.views,
             "watch_time": self.watch_time,
             "ctr": round(self.ctr, 4),
-            "avg_watch_time": round(self.avg_watch_time, 2)
+            "avg_watch_time": round(self.avg_watch_time, 2),
         }
 
     @classmethod
@@ -113,13 +116,14 @@ class ABVariant:
             impressions=data.get("impressions", 0),
             clicks=data.get("clicks", 0),
             views=data.get("views", 0),
-            watch_time=data.get("watch_time", 0.0)
+            watch_time=data.get("watch_time", 0.0),
         )
 
 
 @dataclass
 class ABTest:
     """An A/B test configuration and results."""
+
     test_id: str
     video_id: str
     test_type: ABTestType
@@ -146,8 +150,10 @@ class ABTest:
             "winner_id": self.winner_id,
             "confidence_level": round(self.confidence_level, 4),
             "current_variant_index": self.current_variant_index,
-            "variant_switch_time": self.variant_switch_time.isoformat() if self.variant_switch_time else None,
-            "notes": self.notes
+            "variant_switch_time": (
+                self.variant_switch_time.isoformat() if self.variant_switch_time else None
+            ),
+            "notes": self.notes,
         }
 
     @classmethod
@@ -164,14 +170,19 @@ class ABTest:
             winner_id=data.get("winner_id"),
             confidence_level=data.get("confidence_level", 0.0),
             current_variant_index=data.get("current_variant_index", 0),
-            variant_switch_time=datetime.fromisoformat(data["variant_switch_time"]) if data.get("variant_switch_time") else None,
-            notes=data.get("notes", "")
+            variant_switch_time=(
+                datetime.fromisoformat(data["variant_switch_time"])
+                if data.get("variant_switch_time")
+                else None
+            ),
+            notes=data.get("notes", ""),
         )
 
 
 @dataclass
 class AnalysisResult:
     """Result of statistical analysis."""
+
     winner_id: Optional[str]
     confidence_level: float
     chi_squared: float
@@ -225,12 +236,9 @@ class ABTester:
             return {}
 
         try:
-            with open(self.tests_file, 'r', encoding='utf-8') as f:
+            with open(self.tests_file, "r", encoding="utf-8") as f:
                 data = json.load(f)
-                return {
-                    test_id: ABTest.from_dict(test_data)
-                    for test_id, test_data in data.items()
-                }
+                return {test_id: ABTest.from_dict(test_data) for test_id, test_data in data.items()}
         except Exception as e:
             logger.error(f"Failed to load tests: {e}")
             return {}
@@ -238,11 +246,8 @@ class ABTester:
     def _save_tests(self) -> None:
         """Save tests to JSON file."""
         try:
-            data = {
-                test_id: test.to_dict()
-                for test_id, test in self.tests.items()
-            }
-            with open(self.tests_file, 'w', encoding='utf-8') as f:
+            data = {test_id: test.to_dict() for test_id, test in self.tests.items()}
+            with open(self.tests_file, "w", encoding="utf-8") as f:
                 json.dump(data, f, indent=2)
             logger.debug(f"Saved {len(self.tests)} tests to {self.tests_file}")
         except Exception as e:
@@ -253,7 +258,7 @@ class ABTester:
         video_id: str,
         thumbnail_variants: List[str],
         test_duration_hours: int = 72,
-        titles: Optional[List[str]] = None
+        titles: Optional[List[str]] = None,
     ) -> str:
         """
         Start a new A/B test for thumbnails.
@@ -290,7 +295,7 @@ class ABTester:
             variant = ABVariant(
                 id=f"variant_{chr(65 + i)}",  # A, B, C, ...
                 thumbnail_path=str(Path(thumb_path).absolute()),
-                title=titles[i] if titles else None
+                title=titles[i] if titles else None,
             )
             variants.append(variant)
 
@@ -315,7 +320,7 @@ class ABTester:
             end_time=end_time,
             status=ABTestStatus.RUNNING,
             current_variant_index=0,
-            variant_switch_time=variant_switch_time
+            variant_switch_time=variant_switch_time,
         )
 
         # Save test
@@ -334,7 +339,7 @@ class ABTester:
         video_id: str,
         title_variants: List[str],
         thumbnail_path: str,
-        test_duration_hours: int = 72
+        test_duration_hours: int = 72,
     ) -> str:
         """
         Start a new A/B test for titles only.
@@ -358,7 +363,7 @@ class ABTester:
             variant = ABVariant(
                 id=f"variant_{chr(65 + i)}",
                 title=title,
-                thumbnail_path=str(Path(thumbnail_path).absolute())
+                thumbnail_path=str(Path(thumbnail_path).absolute()),
             )
             variants.append(variant)
 
@@ -376,7 +381,7 @@ class ABTester:
             end_time=end_time,
             status=ABTestStatus.RUNNING,
             current_variant_index=0,
-            variant_switch_time=variant_switch_time
+            variant_switch_time=variant_switch_time,
         )
 
         self.tests[test_id] = test
@@ -387,12 +392,7 @@ class ABTester:
         return test_id
 
     def update_metrics(
-        self,
-        test_id: str,
-        impressions: int,
-        clicks: int,
-        views: int,
-        watch_time: float
+        self, test_id: str, impressions: int, clicks: int, views: int, watch_time: float
     ) -> None:
         """
         Update metrics for the current variant.
@@ -490,22 +490,19 @@ class ABTester:
                 self._save_tests()
 
                 logger.info(
-                    f"Test {test_id}: Switched to variant "
-                    f"{test.variants[next_index].id}"
+                    f"Test {test_id}: Switched to variant " f"{test.variants[next_index].id}"
                 )
 
                 return {
                     "action": "switch_variant",
                     "new_variant": test.variants[next_index].to_dict(),
-                    "progress": self._build_progress_report(test)
+                    "progress": self._build_progress_report(test),
                 }
 
         return self._build_progress_report(test)
 
     def _build_progress_report(
-        self,
-        test: ABTest,
-        analysis: Optional[AnalysisResult] = None
+        self, test: ABTest, analysis: Optional[AnalysisResult] = None
     ) -> Dict[str, Any]:
         """Build a progress report dictionary."""
         now = datetime.now()
@@ -529,7 +526,7 @@ class ABTester:
             "current_variant": test.variants[test.current_variant_index].id,
             "variants": [v.to_dict() for v in test.variants],
             "winner_id": test.winner_id,
-            "confidence_level": test.confidence_level
+            "confidence_level": test.confidence_level,
         }
 
         if analysis:
@@ -537,7 +534,7 @@ class ABTester:
                 "chi_squared": round(analysis.chi_squared, 4),
                 "p_value": round(analysis.p_value, 6),
                 "is_significant": analysis.is_significant,
-                "recommendation": analysis.recommendation
+                "recommendation": analysis.recommendation,
             }
 
         return report
@@ -568,9 +565,11 @@ class ABTester:
                 chi_squared=0.0,
                 p_value=1.0,
                 is_significant=False,
-                variant_stats={v.id: {"ctr": v.ctr, "impressions": v.impressions} for v in variants},
+                variant_stats={
+                    v.id: {"ctr": v.ctr, "impressions": v.impressions} for v in variants
+                },
                 recommendation=f"Need at least {min_impressions} total impressions. "
-                             f"Currently have {total_impressions}."
+                f"Currently have {total_impressions}.",
             )
 
         # Prepare data for Chi-squared test
@@ -605,7 +604,7 @@ class ABTester:
                 "impressions": v.impressions,
                 "clicks": v.clicks,
                 "views": v.views,
-                "avg_watch_time": round(v.avg_watch_time, 2)
+                "avg_watch_time": round(v.avg_watch_time, 2),
             }
 
         # Generate recommendation
@@ -629,7 +628,7 @@ class ABTester:
             p_value=p_value,
             is_significant=is_significant,
             variant_stats=variant_stats,
-            recommendation=recommendation
+            recommendation=recommendation,
         )
 
     def get_test_report(self, test_id: str) -> str:
@@ -685,17 +684,19 @@ class ABTester:
 
         lines.extend(["", "-" * 60, "STATISTICAL ANALYSIS", "-" * 60, ""])
 
-        lines.extend([
-            f"Chi-squared:      {analysis.chi_squared:.4f}",
-            f"P-value:          {analysis.p_value:.6f}",
-            f"Confidence:       {analysis.confidence_level:.1%}",
-            f"Significant:      {'Yes' if analysis.is_significant else 'No'}",
-            "",
-            "RECOMMENDATION:",
-            analysis.recommendation,
-            "",
-            "=" * 60
-        ])
+        lines.extend(
+            [
+                f"Chi-squared:      {analysis.chi_squared:.4f}",
+                f"P-value:          {analysis.p_value:.6f}",
+                f"Confidence:       {analysis.confidence_level:.1%}",
+                f"Significant:      {'Yes' if analysis.is_significant else 'No'}",
+                "",
+                "RECOMMENDATION:",
+                analysis.recommendation,
+                "",
+                "=" * 60,
+            ]
+        )
 
         return "\n".join(lines)
 
@@ -745,7 +746,7 @@ class ABTester:
                     "action": "set_final",
                     "video_id": test.video_id,
                     "thumbnail_path": winner.thumbnail_path,
-                    "title": winner.title
+                    "title": winner.title,
                 }
             return {"action": "none", "status": test.status.value}
 
@@ -754,7 +755,7 @@ class ABTester:
             "video_id": test.video_id,
             "variant_id": current_variant.id,
             "thumbnail_path": current_variant.thumbnail_path,
-            "title": current_variant.title
+            "title": current_variant.title,
         }
 
 

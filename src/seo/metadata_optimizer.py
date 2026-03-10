@@ -30,13 +30,15 @@ Usage:
 
 import re
 from dataclasses import dataclass
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional
+
 from loguru import logger
 
 
 @dataclass
 class OptimizedMetadata:
     """Optimized video metadata."""
+
     title: str
     description: str
     tags: List[str]
@@ -66,11 +68,11 @@ class MetadataOptimizer:
     # IMPACT formula components
     IMPACT_COMPONENTS = {
         "I": "Immediate",  # Create urgency
-        "M": "Massive",    # Show big benefit
+        "M": "Massive",  # Show big benefit
         "P": "Perceived",  # Specific outcome
-        "A": "Action",     # Use action verbs
-        "C": "Clear",      # Easy to understand
-        "T": "Transform"   # Promise transformation
+        "A": "Action",  # Use action verbs
+        "C": "Clear",  # Easy to understand
+        "T": "Transform",  # Promise transformation
     }
 
     def __init__(self):
@@ -82,7 +84,7 @@ class MetadataOptimizer:
         base_title: str,
         keywords: List[str],
         max_length: int = 70,
-        front_load_keywords: bool = True
+        front_load_keywords: bool = True,
     ) -> str:
         """
         Optimize title using IMPACT formula and keyword front-loading.
@@ -123,7 +125,7 @@ class MetadataOptimizer:
 
         # Trim if too long
         if len(title) > max_length:
-            title = title[:max_length - 3] + "..."
+            title = title[: max_length - 3] + "..."
 
         score = self._score_title(title, keywords)
         logger.info(f"[MetadataOptimizer] Title score: {score:.1f}/100")
@@ -148,13 +150,12 @@ class MetadataOptimizer:
 
         # Power word presence (20 points)
         power_words_found = sum(
-            1 for category in self.POWER_WORDS.values()
-            for word in category if word in title_lower
+            1 for category in self.POWER_WORDS.values() for word in category if word in title_lower
         )
         score += min(20, power_words_found * 10)
 
         # Number presence (15 points)
-        if re.search(r'\d+', title):
+        if re.search(r"\d+", title):
             score += 15
 
         # Freshness (year) (10 points)
@@ -180,12 +181,7 @@ class MetadataOptimizer:
         """
         return self._score_title(title, keywords or [])
 
-    def generate_title_variants(
-        self,
-        topic: str,
-        keywords: List[str],
-        count: int = 3
-    ) -> List[str]:
+    def generate_title_variants(self, topic: str, keywords: List[str], count: int = 3) -> List[str]:
         """
         Generate multiple title variants for A/B testing.
 
@@ -215,7 +211,7 @@ class MetadataOptimizer:
                         break
 
         # Variant 3: Number-based format
-        if count >= 3 and not re.search(r'\d+', topic):
+        if count >= 3 and not re.search(r"\d+", topic):
             v3 = f"7 {topic} Tips That Actually Work"
             v3 = self.optimize_title(v3, keywords)
             if v3 not in variants:
@@ -237,7 +233,7 @@ class MetadataOptimizer:
         video_duration: int = 600,
         target_words: int = 250,
         include_chapters: bool = True,
-        chapters: Optional[List[Dict]] = None
+        chapters: Optional[List[Dict]] = None,
     ) -> str:
         """
         Generate optimized description (200-300 words).
@@ -350,10 +346,7 @@ class MetadataOptimizer:
         )
 
     def auto_generate_chapters(
-        self,
-        script: str,
-        video_duration: int,
-        chapter_count: int = 5
+        self, script: str, video_duration: int, chapter_count: int = 5
     ) -> List[Dict]:
         """
         Auto-generate chapters from script.
@@ -381,36 +374,29 @@ class MetadataOptimizer:
             section = paragraphs[start_idx] if start_idx < len(paragraphs) else ""
 
             # Extract first sentence as chapter title
-            sentences = re.split(r'[.!?]', section)
+            sentences = re.split(r"[.!?]", section)
             title = sentences[0].strip()[:60] if sentences else f"Chapter {i+1}"
 
             # Calculate timestamp
             timestamp = (video_duration / chapter_count) * i
 
-            chapters.append({
-                "start": timestamp,
-                "title": title,
-                "index": i
-            })
+            chapters.append({"start": timestamp, "title": title, "index": i})
 
         # Always add intro and outro
         if chapters:
             chapters[0]["title"] = "Introduction"
-            chapters.append({
-                "start": video_duration * 0.95,
-                "title": "Wrap Up & Next Steps",
-                "index": len(chapters)
-            })
+            chapters.append(
+                {
+                    "start": video_duration * 0.95,
+                    "title": "Wrap Up & Next Steps",
+                    "index": len(chapters),
+                }
+            )
 
         logger.info(f"[MetadataOptimizer] Generated {len(chapters)} chapters")
         return chapters
 
-    def optimize_tags(
-        self,
-        keywords: List[str],
-        topic: str,
-        max_tags: int = 15
-    ) -> List[str]:
+    def optimize_tags(self, keywords: List[str], topic: str, max_tags: int = 15) -> List[str]:
         """
         Generate optimized tag list.
 
@@ -444,11 +430,7 @@ class MetadataOptimizer:
         return tags
 
     def create_complete_metadata(
-        self,
-        topic: str,
-        keywords: List[str],
-        script: str,
-        video_duration: int
+        self, topic: str, keywords: List[str], script: str, video_duration: int
     ) -> OptimizedMetadata:
         """
         Generate complete optimized metadata package.
@@ -471,10 +453,7 @@ class MetadataOptimizer:
 
         # Generate description
         description = self.generate_description(
-            topic=topic,
-            keywords=keywords,
-            video_duration=video_duration,
-            chapters=chapters
+            topic=topic, keywords=keywords, video_duration=video_duration, chapters=chapters
         )
 
         # Calculate keyword density
@@ -491,7 +470,7 @@ class MetadataOptimizer:
             tags=tags,
             title_score=title_score,
             keyword_density=density,
-            chapters=chapters
+            chapters=chapters,
         )
 
         logger.success(
@@ -505,10 +484,10 @@ class MetadataOptimizer:
 # CLI
 if __name__ == "__main__":
     import sys
-    import json
 
     if len(sys.argv) < 2:
-        print("""
+        print(
+            """
 Metadata Optimizer - Title & Description SEO
 
 Commands:
@@ -525,7 +504,8 @@ Examples:
     python -m src.seo.metadata_optimizer title "Make Money" "passive income" "2026"
     python -m src.seo.metadata_optimizer description "investing" "stocks" "beginners" --duration 600
     python -m src.seo.metadata_optimizer complete "passive income" "make money" --script script.txt --duration 600
-        """)
+        """
+        )
     else:
         optimizer = MetadataOptimizer()
         cmd = sys.argv[1]

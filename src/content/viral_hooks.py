@@ -27,15 +27,16 @@ Usage:
 """
 
 import random
-import re
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Tuple
+from typing import List, Tuple
+
 from loguru import logger
 
 
 @dataclass
 class HookFormula:
     """Viral hook formula template."""
+
     name: str
     template: str
     style: str  # curiosity, action, contrarian, emotional, etc.
@@ -55,6 +56,7 @@ class HookFormula:
 @dataclass
 class OpenLoop:
     """Open loop to maintain curiosity."""
+
     setup: str  # The question/mystery introduced
     payoff: str  # The answer/resolution
     optimal_gap: int  # Seconds between setup and payoff
@@ -64,6 +66,7 @@ class OpenLoop:
 @dataclass
 class PatternInterrupt:
     """Pattern interrupt marker."""
+
     timestamp: float  # When to trigger (seconds)
     type: str  # visual, audio, question, statistic, story
     content: str  # What to say/show
@@ -85,7 +88,7 @@ class ViralHookGenerator:
                 style="curiosity",
                 niche_fit=["all"],
                 avg_retention=78.5,
-                examples=["I thought I knew investing, until I discovered this loophole..."]
+                examples=["I thought I knew investing, until I discovered this loophole..."],
             ),
             HookFormula(
                 name="hidden_truth",
@@ -93,14 +96,14 @@ class ViralHookGenerator:
                 style="curiosity",
                 niche_fit=["finance", "psychology"],
                 avg_retention=81.2,
-                examples=["Wall Street doesn't want you to know this simple strategy"]
+                examples=["Wall Street doesn't want you to know this simple strategy"],
             ),
             HookFormula(
                 name="mistake_reveal",
                 template="I made a ${amount} mistake so you don't have to",
                 style="curiosity",
                 niche_fit=["finance", "business"],
-                avg_retention=76.3
+                avg_retention=76.3,
             ),
         ],
         "action": [
@@ -110,14 +113,14 @@ class ViralHookGenerator:
                 style="action",
                 niche_fit=["storytelling", "business"],
                 avg_retention=82.1,
-                examples=["It's 3 AM. I'm down $50,000. Here's what happened."]
+                examples=["It's 3 AM. I'm down $50,000. Here's what happened."],
             ),
             HookFormula(
                 name="challenge_started",
                 template="I tried {challenge} for {duration}. Day {day_number}:",
                 style="action",
                 niche_fit=["lifestyle", "finance"],
-                avg_retention=79.4
+                avg_retention=79.4,
             ),
         ],
         "contrarian": [
@@ -127,14 +130,14 @@ class ViralHookGenerator:
                 style="contrarian",
                 niche_fit=["all"],
                 avg_retention=83.7,
-                examples=["Stop saving money. Do this instead."]
+                examples=["Stop saving money. Do this instead."],
             ),
             HookFormula(
                 name="everyone_wrong",
                 template="Everyone tells you to {common_advice}. They're wrong.",
                 style="contrarian",
                 niche_fit=["all"],
-                avg_retention=80.9
+                avg_retention=80.9,
             ),
         ],
         "emotional": [
@@ -144,14 +147,14 @@ class ViralHookGenerator:
                 style="emotional",
                 niche_fit=["all"],
                 avg_retention=77.8,
-                examples=["From broke to $10K/month in 90 days"]
+                examples=["From broke to $10K/month in 90 days"],
             ),
             HookFormula(
                 name="fear_based",
                 template="If you're {age}+ and still {situation}, watch this.",
                 style="emotional",
                 niche_fit=["finance", "lifestyle"],
-                avg_retention=75.2
+                avg_retention=75.2,
             ),
         ],
         "value": [
@@ -161,16 +164,16 @@ class ViralHookGenerator:
                 style="value",
                 niche_fit=["all"],
                 avg_retention=74.5,
-                examples=["7 passive income streams that actually work"]
+                examples=["7 passive income streams that actually work"],
             ),
             HookFormula(
                 name="ultimate_guide",
                 template="The only {topic} guide you'll ever need",
                 style="value",
                 niche_fit=["all"],
-                avg_retention=73.1
+                avg_retention=73.1,
             ),
-        ]
+        ],
     }
 
     # Pattern interrupt types
@@ -204,26 +207,23 @@ class ViralHookGenerator:
             "[SOUND EFFECT]",
             "[PAUSE]",
             "[VOLUME DROP]",
-        ]
+        ],
     }
 
     # Open loop templates
     OPEN_LOOP_TEMPLATES = [
         {
             "setup": "But before I reveal {payoff}, you need to understand {context}",
-            "type": "delayed_payoff"
+            "type": "delayed_payoff",
         },
-        {
-            "setup": "I'll show you {promise} in a minute, but first...",
-            "type": "explicit_promise"
-        },
+        {"setup": "I'll show you {promise} in a minute, but first...", "type": "explicit_promise"},
         {
             "setup": "The real secret isn't {obvious}. It's something completely different.",
-            "type": "misdirection"
+            "type": "misdirection",
         },
         {
             "setup": "By the end of this video, you'll know {outcome}. But not yet.",
-            "type": "end_promise"
+            "type": "end_promise",
         },
     ]
 
@@ -247,12 +247,7 @@ class ViralHookGenerator:
         self.niche = niche
         logger.info(f"[ViralHookGenerator] Initialized for niche: {niche}")
 
-    def generate_hook(
-        self,
-        topic: str,
-        style: str = "curiosity",
-        **variables
-    ) -> str:
+    def generate_hook(self, topic: str, style: str = "curiosity", **variables) -> str:
         """
         Generate a viral hook.
 
@@ -283,10 +278,7 @@ class ViralHookGenerator:
         return hook
 
     def get_all_hooks(
-        self,
-        topic: str,
-        count: int = 5,
-        **variables
+        self, topic: str, count: int = 5, **variables
     ) -> List[Tuple[str, str, float]]:
         """
         Generate multiple hook options.
@@ -308,10 +300,7 @@ class ViralHookGenerator:
         return hooks[:count]
 
     def enhance_script_retention(
-        self,
-        script: str,
-        video_duration: int = 600,
-        min_open_loops: int = 3
+        self, script: str, video_duration: int = 600, min_open_loops: int = 3
     ) -> str:
         """
         Enhance script with retention features.
@@ -383,7 +372,9 @@ class ViralHookGenerator:
             if i in interrupt_positions:
                 interrupt_type = random.choice(list(self.PATTERN_INTERRUPTS.keys()))
                 interrupt_text = random.choice(self.PATTERN_INTERRUPTS[interrupt_type])
-                result_words.append(f"\n\n[PATTERN INTERRUPT - {interrupt_type.upper()}] {interrupt_text}\n\n")
+                result_words.append(
+                    f"\n\n[PATTERN INTERRUPT - {interrupt_type.upper()}] {interrupt_text}\n\n"
+                )
 
         return " ".join(result_words)
 
@@ -420,9 +411,7 @@ class ViralHookGenerator:
         return "\n\n".join(paragraphs)
 
     def get_pattern_interrupts(
-        self,
-        video_duration: int,
-        interrupt_interval: int = 45
+        self, video_duration: int, interrupt_interval: int = 45
     ) -> List[PatternInterrupt]:
         """
         Get list of pattern interrupts for a video.
@@ -444,11 +433,9 @@ class ViralHookGenerator:
 
             content = random.choice(self.PATTERN_INTERRUPTS[interrupt_type])
 
-            interrupts.append(PatternInterrupt(
-                timestamp=float(timestamp),
-                type=interrupt_type,
-                content=content
-            ))
+            interrupts.append(
+                PatternInterrupt(timestamp=float(timestamp), type=interrupt_type, content=content)
+            )
 
             timestamp += interrupt_interval
 
@@ -474,7 +461,8 @@ if __name__ == "__main__":
     import sys
 
     if len(sys.argv) < 2:
-        print("""
+        print(
+            """
 Viral Hook Generator - Proven Retention Templates
 
 Commands:
@@ -491,7 +479,8 @@ Examples:
     python -m src.content.viral_hooks hook "passive income" --style curiosity
     python -m src.content.viral_hooks hooks "investing" --count 10
     python -m src.content.viral_hooks enhance script.txt --duration 600
-        """)
+        """
+        )
     else:
         generator = ViralHookGenerator()
 

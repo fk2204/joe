@@ -38,27 +38,16 @@ Usage:
 """
 
 import asyncio
-import time
 import threading
+import time
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
-from typing import (
-    Any,
-    Callable,
-    Dict,
-    List,
-    Optional,
-    Set,
-    Tuple,
-    Type,
-    Union,
-)
+from typing import Any, Callable, Dict, List, Optional, Set, Tuple, Type
 from uuid import uuid4
 
 from loguru import logger
-
 
 # ============================================================================
 # Data Classes and Enums
@@ -67,6 +56,7 @@ from loguru import logger
 
 class AgentCapability(Enum):
     """Agent capabilities for task routing."""
+
     RESEARCH = "research"
     CONTENT_GENERATION = "content_generation"
     VIDEO_PRODUCTION = "video_production"
@@ -86,6 +76,7 @@ class AgentCapability(Enum):
 
 class TaskPriority(Enum):
     """Task priority levels."""
+
     CRITICAL = 1
     HIGH = 2
     NORMAL = 3
@@ -95,6 +86,7 @@ class TaskPriority(Enum):
 
 class ExecutionStatus(Enum):
     """Task execution status."""
+
     PENDING = "pending"
     QUEUED = "queued"
     RUNNING = "running"
@@ -107,6 +99,7 @@ class ExecutionStatus(Enum):
 @dataclass
 class AgentInfo:
     """Information about a registered agent."""
+
     name: str
     agent_class: Type
     instance: Optional[Any] = None
@@ -125,6 +118,7 @@ class AgentInfo:
 @dataclass
 class TaskResult:
     """Result from task execution."""
+
     task_id: str
     agent_name: str
     success: bool
@@ -138,6 +132,7 @@ class TaskResult:
 @dataclass
 class WorkflowResult:
     """Result from workflow execution."""
+
     workflow_id: str
     workflow_type: str
     status: ExecutionStatus
@@ -153,6 +148,7 @@ class WorkflowResult:
 @dataclass
 class DependencyNode:
     """Node in the dependency graph."""
+
     agent_name: str
     dependencies: Set[str] = field(default_factory=set)
     dependents: Set[str] = field(default_factory=set)
@@ -182,7 +178,10 @@ class AgentRegistry:
         "QualityAgent": [AgentCapability.QUALITY_CHECK, AgentCapability.VALIDATION],
         "AnalyticsAgent": [AgentCapability.ANALYTICS, AgentCapability.MONITORING],
         "ThumbnailAgent": [AgentCapability.THUMBNAILS, AgentCapability.VIDEO_PRODUCTION],
-        "RetentionOptimizerAgent": [AgentCapability.CONTENT_GENERATION, AgentCapability.QUALITY_CHECK],
+        "RetentionOptimizerAgent": [
+            AgentCapability.CONTENT_GENERATION,
+            AgentCapability.QUALITY_CHECK,
+        ],
         "ValidatorAgent": [AgentCapability.VALIDATION, AgentCapability.QUALITY_CHECK],
         "WorkflowAgent": [AgentCapability.WORKFLOW, AgentCapability.SCHEDULING],
         "MonitorAgent": [AgentCapability.MONITORING, AgentCapability.RECOVERY],
@@ -248,7 +247,9 @@ class AgentRegistry:
                 if name not in self._capability_index[cap]:
                     self._capability_index[cap].append(name)
 
-            logger.debug(f"Registered agent: {name} with capabilities {[c.value for c in capabilities]}")
+            logger.debug(
+                f"Registered agent: {name} with capabilities {[c.value for c in capabilities]}"
+            )
 
     def get_agent(self, name: str, create_instance: bool = True) -> Optional[AgentInfo]:
         """Get agent info, optionally creating instance."""
@@ -297,9 +298,8 @@ class AgentRegistry:
 
                 # Update average execution time
                 agent_info.avg_execution_time = (
-                    (agent_info.avg_execution_time * total + execution_time) /
-                    (total + 1)
-                )
+                    agent_info.avg_execution_time * total + execution_time
+                ) / (total + 1)
 
                 # Update success rate
                 successes = agent_info.success_rate * total
@@ -418,7 +418,9 @@ class TaskRouter:
             load_score = agent.current_load / max(agent.max_concurrent, 1)
             perf_score = agent.avg_execution_time / 100  # Normalize
             success_penalty = 1 - agent.success_rate
-            return (load_score * 0.5 + perf_score * 0.3 + success_penalty * 0.2) / agent.priority_weight
+            return (
+                load_score * 0.5 + perf_score * 0.3 + success_penalty * 0.2
+            ) / agent.priority_weight
 
         agents.sort(key=score_agent)
         return agents[0]
@@ -503,9 +505,7 @@ class DependencyGraph:
             for name in remaining:
                 node = self._nodes[name]
                 if all(
-                    self._nodes[dep].resolved
-                    for dep in node.dependencies
-                    if dep in self._nodes
+                    self._nodes[dep].resolved for dep in node.dependencies if dep in self._nodes
                 ):
                     ready.append(name)
 
@@ -811,7 +811,9 @@ class ResultAggregator:
             "errors": errors,
             "successful_count": len(successful),
             "failed_count": len(failed),
-            "total_execution_time": sum(r.execution_time for r in {**successful, **failed}.values()),
+            "total_execution_time": sum(
+                r.execution_time for r in {**successful, **failed}.values()
+            ),
         }
 
     def _first_success(
@@ -965,6 +967,7 @@ class LoadBalancer:
 
     def _least_loaded(self, agents: List[AgentInfo]) -> str:
         """Select least loaded agent."""
+
         def load_score(agent: AgentInfo) -> float:
             return agent.current_load / max(agent.max_concurrent, 1)
 
@@ -973,6 +976,7 @@ class LoadBalancer:
 
     def _weighted(self, agents: List[AgentInfo]) -> str:
         """Weighted selection based on priority and performance."""
+
         def weight_score(agent: AgentInfo) -> float:
             load_factor = 1 - (agent.current_load / max(agent.max_concurrent, 1))
             perf_factor = agent.success_rate
@@ -1046,23 +1050,23 @@ class MasterOrchestrator:
         try:
             # Import all agents
             from . import (
-                ResearchAgent,
-                QualityAgent,
+                AccessibilityAgent,
                 AnalyticsAgent,
-                ThumbnailAgent,
-                RetentionOptimizerAgent,
-                ValidatorAgent,
-                WorkflowAgent,
-                MonitorAgent,
-                RecoveryAgent,
-                SchedulerAgent,
+                AudioQualityAgent,
                 ComplianceAgent,
                 ContentSafetyAgent,
-                AudioQualityAgent,
-                VideoQualityAgent,
-                AccessibilityAgent,
+                MonitorAgent,
+                QualityAgent,
+                RecoveryAgent,
+                ResearchAgent,
+                RetentionOptimizerAgent,
+                SchedulerAgent,
                 SEOAgent,
                 SEOStrategist,
+                ThumbnailAgent,
+                ValidatorAgent,
+                VideoQualityAgent,
+                WorkflowAgent,
             )
 
             agents = [
@@ -1088,12 +1092,14 @@ class MasterOrchestrator:
             # Try to import additional agents
             try:
                 from . import InsightAgent
+
                 agents.append(("InsightAgent", InsightAgent))
             except ImportError:
                 pass
 
             try:
                 from . import ContentStrategyAgent
+
                 agents.append(("ContentStrategyAgent", ContentStrategyAgent))
             except ImportError:
                 pass
@@ -1165,17 +1171,16 @@ class MasterOrchestrator:
                 # Get tasks for this level
                 tasks = []
                 for agent_name in level_agents:
-                    step_def = next(
-                        (s for s in workflow_def if s["agent"] == agent_name),
-                        None
-                    )
+                    step_def = next((s for s in workflow_def if s["agent"] == agent_name), None)
                     if step_def:
                         step_params = {**params, **step_def.get("params", {})}
-                        tasks.append((
-                            agent_name,
-                            step_def.get("method", "run"),
-                            step_params,
-                        ))
+                        tasks.append(
+                            (
+                                agent_name,
+                                step_def.get("method", "run"),
+                                step_params,
+                            )
+                        )
 
                 # Execute level in parallel
                 level_results = await self.executor.execute_parallel(tasks)
@@ -1184,14 +1189,11 @@ class MasterOrchestrator:
                 for task_id, result in level_results.items():
                     workflow_result.results[task_id] = result
                     if not result.success:
-                        workflow_result.errors.append(
-                            f"{result.agent_name}: {result.error}"
-                        )
+                        workflow_result.errors.append(f"{result.agent_name}: {result.error}")
 
                         # Check if this is a critical failure
                         step_def = next(
-                            (s for s in workflow_def if s["agent"] == result.agent_name),
-                            None
+                            (s for s in workflow_def if s["agent"] == result.agent_name), None
                         )
                         if step_def and step_def.get("required", True):
                             workflow_result.status = ExecutionStatus.FAILED
@@ -1283,18 +1285,15 @@ class MasterOrchestrator:
         """Get orchestrator status."""
         return {
             "registered_agents": len(self.registry.get_all_agents()),
-            "active_workflows": len([
-                w for w in self._workflows.values()
-                if w.status == ExecutionStatus.RUNNING
-            ]),
-            "completed_workflows": len([
-                w for w in self._workflows.values()
-                if w.status == ExecutionStatus.COMPLETED
-            ]),
-            "failed_workflows": len([
-                w for w in self._workflows.values()
-                if w.status == ExecutionStatus.FAILED
-            ]),
+            "active_workflows": len(
+                [w for w in self._workflows.values() if w.status == ExecutionStatus.RUNNING]
+            ),
+            "completed_workflows": len(
+                [w for w in self._workflows.values() if w.status == ExecutionStatus.COMPLETED]
+            ),
+            "failed_workflows": len(
+                [w for w in self._workflows.values() if w.status == ExecutionStatus.FAILED]
+            ),
             "load_distribution": self.load_balancer.get_distribution_stats(),
         }
 
@@ -1357,7 +1356,7 @@ def main():
             print(f"Completed Workflows: {status['completed_workflows']}")
             print(f"Failed Workflows: {status['failed_workflows']}")
             print(f"\nLoad Distribution:")
-            for agent, load in status['load_distribution']['by_agent'].items():
+            for agent, load in status["load_distribution"]["by_agent"].items():
                 print(f"  {agent}: {load['current_load']}/{load['max_concurrent']}")
 
         elif command == "workflow" and len(sys.argv) > 2:

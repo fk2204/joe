@@ -11,12 +11,7 @@ Integrated (2026-01-20) into:
 - Uploader for description disclaimer
 """
 
-from .ai_disclosure import (
-    AIDisclosureTracker,
-    AIContentType,
-    DisclosureLevel,
-    DisclosureMetadata,
-)
+from .ai_disclosure import AIContentType, AIDisclosureTracker, DisclosureLevel, DisclosureMetadata
 
 __all__ = [
     "AIDisclosureTracker",

@@ -5,26 +5,16 @@ Provides functions for database initialization, session management,
 and common database operations for the Joe content automation pipeline.
 """
 
-import os
-from pathlib import Path
-from datetime import datetime, timezone
-from typing import Optional, List
 from contextlib import contextmanager
+from datetime import datetime, timezone
+from pathlib import Path
+from typing import List, Optional
 
-from sqlalchemy import create_engine, desc
-from sqlalchemy.orm import sessionmaker, Session
 from loguru import logger
+from sqlalchemy import create_engine, desc
+from sqlalchemy.orm import Session, sessionmaker
 
-from .models import (
-    Base,
-    Video,
-    Upload,
-    Generation,
-    GenerationStep,
-    GenerationStatus,
-    UploadStatus,
-)
-
+from .models import Base, Generation, GenerationStatus, GenerationStep, Upload, UploadStatus, Video
 
 # Database configuration
 PROJECT_ROOT = Path(__file__).parent.parent.parent
@@ -183,7 +173,9 @@ def log_upload(
         )
         session.add(upload)
         session.flush()
-        logger.info(f"Logged upload for video {video_id} (Upload ID: {upload.id}, Status: {status})")
+        logger.info(
+            f"Logged upload for video {video_id} (Upload ID: {upload.id}, Status: {status})"
+        )
         session.expunge(upload)
         return upload
 
@@ -249,9 +241,11 @@ def log_generation_step(
     """
     with get_session_context() as session:
         started_at = datetime.now(timezone.utc) if status == GenerationStatus.IN_PROGRESS else None
-        completed_at = datetime.now(timezone.utc) if status in (
-            GenerationStatus.COMPLETED, GenerationStatus.FAILED
-        ) else None
+        completed_at = (
+            datetime.now(timezone.utc)
+            if status in (GenerationStatus.COMPLETED, GenerationStatus.FAILED)
+            else None
+        )
 
         generation = Generation(
             video_id=video_id,
@@ -285,9 +279,7 @@ def update_generation_step(
         Updated Generation object or None if not found
     """
     with get_session_context() as session:
-        generation = session.query(Generation).filter(
-            Generation.id == generation_id
-        ).first()
+        generation = session.query(Generation).filter(Generation.id == generation_id).first()
 
         if generation is None:
             logger.warning(f"Generation {generation_id} not found")
@@ -317,12 +309,7 @@ def get_recent_videos(limit: int = 10) -> List[Video]:
         List of Video objects ordered by creation date (newest first)
     """
     with get_session_context() as session:
-        videos = (
-            session.query(Video)
-            .order_by(desc(Video.created_at))
-            .limit(limit)
-            .all()
-        )
+        videos = session.query(Video).order_by(desc(Video.created_at)).limit(limit).all()
         # Detach from session
         for video in videos:
             session.expunge(video)
@@ -394,8 +381,9 @@ def get_video_generations(video_id: int) -> List[Generation]:
 
 # Example usage and testing
 if __name__ == "__main__":
-    from loguru import logger
     import sys
+
+    from loguru import logger
 
     # Configure loguru for testing
     logger.remove()

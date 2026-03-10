@@ -8,18 +8,20 @@ This module provides:
 - Channel-wide performance tracking
 """
 
-import os
 import json
-import requests
-from dataclasses import dataclass, field, asdict
+import os
+from dataclasses import asdict, dataclass, field
 from datetime import datetime, timedelta
-from typing import List, Optional, Dict, Any
 from enum import Enum
+from typing import Any, Dict, List, Optional
+
+import requests
 from loguru import logger
 
 
 class AlertSeverity(Enum):
     """Alert severity levels."""
+
     INFO = "info"
     WARNING = "warning"
     CRITICAL = "critical"
@@ -27,6 +29,7 @@ class AlertSeverity(Enum):
 
 class AlertType(Enum):
     """Types of performance alerts."""
+
     LOW_CTR = "low_ctr"
     LOW_RETENTION = "low_retention"
     UNDERPERFORMING = "underperforming"
@@ -50,6 +53,7 @@ class PerformanceAlert:
         video_title: Optional video title for context
         channel_id: Optional channel ID
     """
+
     video_id: str
     alert_type: str
     severity: str
@@ -70,9 +74,9 @@ class PerformanceAlert:
     def to_webhook_payload(self) -> Dict[str, Any]:
         """Convert to webhook-friendly payload (Discord/Slack compatible)."""
         severity_colors = {
-            "info": 0x3498db,      # Blue
-            "warning": 0xf39c12,   # Orange
-            "critical": 0xe74c3c,  # Red
+            "info": 0x3498DB,  # Blue
+            "warning": 0xF39C12,  # Orange
+            "critical": 0xE74C3C,  # Red
         }
         severity_emojis = {
             "info": ":information_source:",
@@ -80,42 +84,38 @@ class PerformanceAlert:
             "critical": ":rotating_light:",
         }
 
-        color = severity_colors.get(self.severity, 0x95a5a6)
+        color = severity_colors.get(self.severity, 0x95A5A6)
         emoji = severity_emojis.get(self.severity, ":bell:")
 
         # Discord embed format
         return {
-            "embeds": [{
-                "title": f"{emoji} Performance Alert: {self.alert_type.upper().replace('_', ' ')}",
-                "description": self.message,
-                "color": color,
-                "fields": [
-                    {
-                        "name": "Video",
-                        "value": f"[{self.video_title or self.video_id}](https://youtube.com/watch?v={self.video_id})",
-                        "inline": True
-                    },
-                    {
-                        "name": "Metric Value",
-                        "value": f"{self.metric_value:.2f}%",
-                        "inline": True
-                    },
-                    {
-                        "name": "Threshold",
-                        "value": f"{self.threshold_value:.2f}%",
-                        "inline": True
-                    },
-                    {
-                        "name": "Recommendation",
-                        "value": self.recommendation,
-                        "inline": False
-                    }
-                ],
-                "timestamp": self.timestamp.isoformat(),
-                "footer": {
-                    "text": f"Channel: {self.channel_id or 'Unknown'}"
+            "embeds": [
+                {
+                    "title": f"{emoji} Performance Alert: {self.alert_type.upper().replace('_', ' ')}",
+                    "description": self.message,
+                    "color": color,
+                    "fields": [
+                        {
+                            "name": "Video",
+                            "value": f"[{self.video_title or self.video_id}](https://youtube.com/watch?v={self.video_id})",
+                            "inline": True,
+                        },
+                        {
+                            "name": "Metric Value",
+                            "value": f"{self.metric_value:.2f}%",
+                            "inline": True,
+                        },
+                        {
+                            "name": "Threshold",
+                            "value": f"{self.threshold_value:.2f}%",
+                            "inline": True,
+                        },
+                        {"name": "Recommendation", "value": self.recommendation, "inline": False},
+                    ],
+                    "timestamp": self.timestamp.isoformat(),
+                    "footer": {"text": f"Channel: {self.channel_id or 'Unknown'}"},
                 }
-            }]
+            ]
         }
 
     def __str__(self) -> str:
@@ -152,7 +152,7 @@ class PerformanceMonitor:
         self,
         discord_webhook_url: Optional[str] = None,
         slack_webhook_url: Optional[str] = None,
-        alert_log_path: Optional[str] = None
+        alert_log_path: Optional[str] = None,
     ):
         """
         Initialize the performance monitor.
@@ -227,10 +227,7 @@ class PerformanceMonitor:
         logger.info("PerformanceMonitor initialized")
 
     def check_video(
-        self,
-        video_id: str,
-        hours_since_upload: int,
-        metrics: Optional[Dict[str, Any]] = None
+        self, video_id: str, hours_since_upload: int, metrics: Optional[Dict[str, Any]] = None
     ) -> List[PerformanceAlert]:
         """
         Check video performance and generate alerts.
@@ -262,55 +259,63 @@ class PerformanceMonitor:
 
         # Check CTR thresholds
         if ctr < self.CTR_CRITICAL:
-            alerts.append(PerformanceAlert(
-                video_id=video_id,
-                alert_type=AlertType.LOW_CTR.value,
-                severity=AlertSeverity.CRITICAL.value,
-                message=f"CTR is critically low at {ctr:.2f}% (threshold: {self.CTR_CRITICAL}%)",
-                metric_value=ctr,
-                threshold_value=self.CTR_CRITICAL,
-                recommendation=self._recommendations[AlertType.LOW_CTR.value]["critical"],
-                video_title=video_title,
-                channel_id=channel_id
-            ))
+            alerts.append(
+                PerformanceAlert(
+                    video_id=video_id,
+                    alert_type=AlertType.LOW_CTR.value,
+                    severity=AlertSeverity.CRITICAL.value,
+                    message=f"CTR is critically low at {ctr:.2f}% (threshold: {self.CTR_CRITICAL}%)",
+                    metric_value=ctr,
+                    threshold_value=self.CTR_CRITICAL,
+                    recommendation=self._recommendations[AlertType.LOW_CTR.value]["critical"],
+                    video_title=video_title,
+                    channel_id=channel_id,
+                )
+            )
         elif ctr < self.CTR_WARNING:
-            alerts.append(PerformanceAlert(
-                video_id=video_id,
-                alert_type=AlertType.LOW_CTR.value,
-                severity=AlertSeverity.WARNING.value,
-                message=f"CTR is below target at {ctr:.2f}% (threshold: {self.CTR_WARNING}%)",
-                metric_value=ctr,
-                threshold_value=self.CTR_WARNING,
-                recommendation=self._recommendations[AlertType.LOW_CTR.value]["warning"],
-                video_title=video_title,
-                channel_id=channel_id
-            ))
+            alerts.append(
+                PerformanceAlert(
+                    video_id=video_id,
+                    alert_type=AlertType.LOW_CTR.value,
+                    severity=AlertSeverity.WARNING.value,
+                    message=f"CTR is below target at {ctr:.2f}% (threshold: {self.CTR_WARNING}%)",
+                    metric_value=ctr,
+                    threshold_value=self.CTR_WARNING,
+                    recommendation=self._recommendations[AlertType.LOW_CTR.value]["warning"],
+                    video_title=video_title,
+                    channel_id=channel_id,
+                )
+            )
 
         # Check retention thresholds
         if retention < self.RETENTION_CRITICAL:
-            alerts.append(PerformanceAlert(
-                video_id=video_id,
-                alert_type=AlertType.LOW_RETENTION.value,
-                severity=AlertSeverity.CRITICAL.value,
-                message=f"Retention is critically low at {retention:.2f}% (threshold: {self.RETENTION_CRITICAL}%)",
-                metric_value=retention,
-                threshold_value=self.RETENTION_CRITICAL,
-                recommendation=self._recommendations[AlertType.LOW_RETENTION.value]["critical"],
-                video_title=video_title,
-                channel_id=channel_id
-            ))
+            alerts.append(
+                PerformanceAlert(
+                    video_id=video_id,
+                    alert_type=AlertType.LOW_RETENTION.value,
+                    severity=AlertSeverity.CRITICAL.value,
+                    message=f"Retention is critically low at {retention:.2f}% (threshold: {self.RETENTION_CRITICAL}%)",
+                    metric_value=retention,
+                    threshold_value=self.RETENTION_CRITICAL,
+                    recommendation=self._recommendations[AlertType.LOW_RETENTION.value]["critical"],
+                    video_title=video_title,
+                    channel_id=channel_id,
+                )
+            )
         elif retention < self.RETENTION_WARNING:
-            alerts.append(PerformanceAlert(
-                video_id=video_id,
-                alert_type=AlertType.LOW_RETENTION.value,
-                severity=AlertSeverity.WARNING.value,
-                message=f"Retention is below target at {retention:.2f}% (threshold: {self.RETENTION_WARNING}%)",
-                metric_value=retention,
-                threshold_value=self.RETENTION_WARNING,
-                recommendation=self._recommendations[AlertType.LOW_RETENTION.value]["warning"],
-                video_title=video_title,
-                channel_id=channel_id
-            ))
+            alerts.append(
+                PerformanceAlert(
+                    video_id=video_id,
+                    alert_type=AlertType.LOW_RETENTION.value,
+                    severity=AlertSeverity.WARNING.value,
+                    message=f"Retention is below target at {retention:.2f}% (threshold: {self.RETENTION_WARNING}%)",
+                    metric_value=retention,
+                    threshold_value=self.RETENTION_WARNING,
+                    recommendation=self._recommendations[AlertType.LOW_RETENTION.value]["warning"],
+                    video_title=video_title,
+                    channel_id=channel_id,
+                )
+            )
 
         # Check against channel average (if available)
         if channel_id:
@@ -320,39 +325,54 @@ class PerformanceMonitor:
 
                 # Check for viral potential (above 3x average)
                 if views > avg_views * self.VIRAL_MULTIPLIER:
-                    alerts.append(PerformanceAlert(
-                        video_id=video_id,
-                        alert_type=AlertType.VIRAL_POTENTIAL.value,
-                        severity=AlertSeverity.INFO.value,
-                        message=f"Video is going viral! {views:,} views vs {avg_views:,.0f} channel average ({views/avg_views:.1f}x)",
-                        metric_value=(views / avg_views) * 100,
-                        threshold_value=self.VIRAL_MULTIPLIER * 100,
-                        recommendation=self._recommendations[AlertType.VIRAL_POTENTIAL.value]["info"],
-                        video_title=video_title,
-                        channel_id=channel_id
-                    ))
+                    alerts.append(
+                        PerformanceAlert(
+                            video_id=video_id,
+                            alert_type=AlertType.VIRAL_POTENTIAL.value,
+                            severity=AlertSeverity.INFO.value,
+                            message=f"Video is going viral! {views:,} views vs {avg_views:,.0f} channel average ({views/avg_views:.1f}x)",
+                            metric_value=(views / avg_views) * 100,
+                            threshold_value=self.VIRAL_MULTIPLIER * 100,
+                            recommendation=self._recommendations[AlertType.VIRAL_POTENTIAL.value][
+                                "info"
+                            ],
+                            video_title=video_title,
+                            channel_id=channel_id,
+                        )
+                    )
 
                 # Check for underperforming (below 50% of average at 24+ hours)
                 elif hours_since_upload >= 24 and views < avg_views * 0.5:
-                    severity = AlertSeverity.CRITICAL if views < avg_views * 0.25 else AlertSeverity.WARNING
-                    alerts.append(PerformanceAlert(
-                        video_id=video_id,
-                        alert_type=AlertType.UNDERPERFORMING.value,
-                        severity=severity.value,
-                        message=f"Video underperforming: {views:,} views vs {avg_views:,.0f} channel average ({views/avg_views:.1%})",
-                        metric_value=(views / avg_views) * 100,
-                        threshold_value=50.0,
-                        recommendation=self._recommendations[AlertType.UNDERPERFORMING.value][severity.value],
-                        video_title=video_title,
-                        channel_id=channel_id
-                    ))
+                    severity = (
+                        AlertSeverity.CRITICAL
+                        if views < avg_views * 0.25
+                        else AlertSeverity.WARNING
+                    )
+                    alerts.append(
+                        PerformanceAlert(
+                            video_id=video_id,
+                            alert_type=AlertType.UNDERPERFORMING.value,
+                            severity=severity.value,
+                            message=f"Video underperforming: {views:,} views vs {avg_views:,.0f} channel average ({views/avg_views:.1%})",
+                            metric_value=(views / avg_views) * 100,
+                            threshold_value=50.0,
+                            recommendation=self._recommendations[AlertType.UNDERPERFORMING.value][
+                                severity.value
+                            ],
+                            video_title=video_title,
+                            channel_id=channel_id,
+                        )
+                    )
 
         # Log alerts
         for alert in alerts:
             logger.log(
-                "WARNING" if alert.severity == "warning" else
-                "ERROR" if alert.severity == "critical" else "INFO",
-                str(alert)
+                (
+                    "WARNING"
+                    if alert.severity == "warning"
+                    else "ERROR" if alert.severity == "critical" else "INFO"
+                ),
+                str(alert),
             )
 
         return alerts
@@ -389,7 +409,9 @@ class PerformanceMonitor:
             if isinstance(upload_time, str):
                 upload_time = datetime.fromisoformat(upload_time.replace("Z", "+00:00"))
 
-            hours_since = (datetime.now(upload_time.tzinfo if upload_time.tzinfo else None) - upload_time).total_seconds() / 3600
+            hours_since = (
+                datetime.now(upload_time.tzinfo if upload_time.tzinfo else None) - upload_time
+            ).total_seconds() / 3600
 
             # Check video performance
             alerts = self.check_video(video_id, int(hours_since), video.get("metrics"))
@@ -423,11 +445,7 @@ class PerformanceMonitor:
             # Send to Discord
             if self.discord_webhook_url:
                 try:
-                    response = requests.post(
-                        self.discord_webhook_url,
-                        json=payload,
-                        timeout=10
-                    )
+                    response = requests.post(self.discord_webhook_url, json=payload, timeout=10)
                     response.raise_for_status()
                     logger.info(f"Discord alert sent for {video_id}: {alert.alert_type}")
                 except requests.RequestException as e:
@@ -438,11 +456,7 @@ class PerformanceMonitor:
             if self.slack_webhook_url:
                 try:
                     slack_payload = self._convert_to_slack_format(alert)
-                    response = requests.post(
-                        self.slack_webhook_url,
-                        json=slack_payload,
-                        timeout=10
-                    )
+                    response = requests.post(self.slack_webhook_url, json=slack_payload, timeout=10)
                     response.raise_for_status()
                     logger.info(f"Slack alert sent for {video_id}: {alert.alert_type}")
                 except requests.RequestException as e:
@@ -466,45 +480,39 @@ class PerformanceMonitor:
                     "type": "header",
                     "text": {
                         "type": "plain_text",
-                        "text": f"{emoji} Performance Alert: {alert.alert_type.upper().replace('_', ' ')}"
-                    }
+                        "text": f"{emoji} Performance Alert: {alert.alert_type.upper().replace('_', ' ')}",
+                    },
                 },
-                {
-                    "type": "section",
-                    "text": {
-                        "type": "mrkdwn",
-                        "text": alert.message
-                    }
-                },
+                {"type": "section", "text": {"type": "mrkdwn", "text": alert.message}},
                 {
                     "type": "section",
                     "fields": [
                         {
                             "type": "mrkdwn",
-                            "text": f"*Video:*\n<https://youtube.com/watch?v={alert.video_id}|{alert.video_title or alert.video_id}>"
+                            "text": f"*Video:*\n<https://youtube.com/watch?v={alert.video_id}|{alert.video_title or alert.video_id}>",
                         },
                         {
                             "type": "mrkdwn",
-                            "text": f"*Metric:* {alert.metric_value:.2f}% (Threshold: {alert.threshold_value:.2f}%)"
-                        }
-                    ]
+                            "text": f"*Metric:* {alert.metric_value:.2f}% (Threshold: {alert.threshold_value:.2f}%)",
+                        },
+                    ],
                 },
                 {
                     "type": "section",
                     "text": {
                         "type": "mrkdwn",
-                        "text": f"*Recommendation:*\n{alert.recommendation}"
-                    }
+                        "text": f"*Recommendation:*\n{alert.recommendation}",
+                    },
                 },
                 {
                     "type": "context",
                     "elements": [
                         {
                             "type": "mrkdwn",
-                            "text": f"Channel: {alert.channel_id or 'Unknown'} | {alert.timestamp.strftime('%Y-%m-%d %H:%M:%S')}"
+                            "text": f"Channel: {alert.channel_id or 'Unknown'} | {alert.timestamp.strftime('%Y-%m-%d %H:%M:%S')}",
                         }
-                    ]
-                }
+                    ],
+                },
             ]
         }
 
@@ -522,10 +530,7 @@ class PerformanceMonitor:
             youtube = get_authenticated_service()
 
             # Get video details
-            video_response = youtube.videos().list(
-                part="snippet,statistics",
-                id=video_id
-            ).execute()
+            video_response = youtube.videos().list(part="snippet,statistics", id=video_id).execute()
 
             if not video_response.get("items"):
                 return None
@@ -563,13 +568,13 @@ class PerformanceMonitor:
         try:
             # Try to get from database first
             from src.database.models import get_recent_uploads
+
             return get_recent_uploads(hours)
         except ImportError:
             pass
 
         try:
             # Fallback to reading from output directory
-            import glob
             from pathlib import Path
 
             output_dir = Path("output")
@@ -586,11 +591,13 @@ class PerformanceMonitor:
                     if upload_time_str:
                         upload_time = datetime.fromisoformat(upload_time_str.replace("Z", "+00:00"))
                         if upload_time > cutoff_time:
-                            recent_videos.append({
-                                "video_id": metadata.get("video_id"),
-                                "upload_time": upload_time,
-                                "metrics": metadata.get("metrics")
-                            })
+                            recent_videos.append(
+                                {
+                                    "video_id": metadata.get("video_id"),
+                                    "upload_time": upload_time,
+                                    "metrics": metadata.get("metrics"),
+                                }
+                            )
                 except (json.JSONDecodeError, KeyError, ValueError):
                     continue
 
@@ -611,6 +618,7 @@ class PerformanceMonitor:
         try:
             # Try to calculate from database or API
             from src.database.models import get_channel_stats
+
             stats = get_channel_stats(channel_id)
             if stats:
                 self._channel_averages[channel_id] = stats
@@ -686,7 +694,7 @@ class PerformanceMonitor:
             "warning": sum(1 for a in recent_alerts if a.get("severity") == "warning"),
             "info": sum(1 for a in recent_alerts if a.get("severity") == "info"),
             "recent_critical": [a for a in recent_alerts if a.get("severity") == "critical"][-5:],
-            "by_type": {}
+            "by_type": {},
         }
 
         for alert in recent_alerts:

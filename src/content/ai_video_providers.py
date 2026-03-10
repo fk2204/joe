@@ -24,17 +24,18 @@ Usage:
     )
 """
 
-import os
 import asyncio
+import os
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
-from typing import Optional, Dict, Any, List, Union, Literal
-from loguru import logger
+from typing import Any, Dict, List, Optional
 
 # Load environment variables
 from dotenv import load_dotenv
+from loguru import logger
+
 _env_paths = [
     Path(__file__).parent.parent.parent / "config" / ".env",
     Path.cwd() / "config" / ".env",
@@ -47,6 +48,7 @@ for _env_path in _env_paths:
 # Import available providers
 try:
     from .video_pika import PikaVideoGenerator, PikaVideoResult
+
     PIKA_AVAILABLE = True
 except ImportError:
     PIKA_AVAILABLE = False
@@ -55,7 +57,8 @@ except ImportError:
 
 # Import token manager for cost tracking
 try:
-    from ..utils.token_manager import get_token_manager, BudgetGuard
+    from ..utils.token_manager import BudgetGuard, get_token_manager
+
     TOKEN_MANAGER_AVAILABLE = True
 except ImportError:
     TOKEN_MANAGER_AVAILABLE = False
@@ -65,13 +68,15 @@ except ImportError:
 
 class AIVideoProviderType(str, Enum):
     """Supported AI video providers."""
+
     PIKA = "pika"
-    KLING = "kling"    # Future support
+    KLING = "kling"  # Future support
 
 
 @dataclass
 class AIVideoResult:
     """Unified result from any AI video provider."""
+
     success: bool
     provider: str
     video_url: Optional[str] = None
@@ -115,13 +120,11 @@ class AIVideoProvider(ABC):
     @abstractmethod
     def name(self) -> str:
         """Provider name."""
-        pass
 
     @property
     @abstractmethod
     def is_available(self) -> bool:
         """Check if provider is available (SDK installed, API key set)."""
-        pass
 
     @abstractmethod
     async def generate_video(
@@ -130,7 +133,7 @@ class AIVideoProvider(ABC):
         output_file: Optional[str] = None,
         duration: int = 5,
         aspect_ratio: str = "16:9",
-        **kwargs
+        **kwargs,
     ) -> AIVideoResult:
         """
         Generate video from text prompt.
@@ -145,7 +148,6 @@ class AIVideoProvider(ABC):
         Returns:
             AIVideoResult with generation results
         """
-        pass
 
     @abstractmethod
     async def generate_from_image(
@@ -154,7 +156,7 @@ class AIVideoProvider(ABC):
         motion_prompt: str,
         output_file: Optional[str] = None,
         duration: int = 5,
-        **kwargs
+        **kwargs,
     ) -> AIVideoResult:
         """
         Generate video from image with motion.
@@ -169,7 +171,6 @@ class AIVideoProvider(ABC):
         Returns:
             AIVideoResult with generation results
         """
-        pass
 
     @abstractmethod
     def get_cost_per_second(self) -> float:
@@ -179,7 +180,6 @@ class AIVideoProvider(ABC):
         Returns:
             Cost in USD per second
         """
-        pass
 
     def estimate_cost(self, duration: int) -> float:
         """
@@ -229,13 +229,11 @@ class PikaProvider(AIVideoProvider):
         output_file: Optional[str] = None,
         duration: int = 5,
         aspect_ratio: str = "16:9",
-        **kwargs
+        **kwargs,
     ) -> AIVideoResult:
         if not self.is_available:
             return AIVideoResult(
-                success=False,
-                provider=self.name,
-                error="Pika provider not available"
+                success=False, provider=self.name, error="Pika provider not available"
             )
 
         resolution = kwargs.get("resolution", "720p")
@@ -247,7 +245,7 @@ class PikaProvider(AIVideoProvider):
             resolution=resolution,
             aspect_ratio=aspect_ratio,
             negative_prompt=kwargs.get("negative_prompt"),
-            seed=kwargs.get("seed")
+            seed=kwargs.get("seed"),
         )
 
         return AIVideoResult(
@@ -260,7 +258,7 @@ class PikaProvider(AIVideoProvider):
             error=result.error,
             task_id=result.request_id,
             cost_estimate=result.cost_estimate,
-            metadata={"resolution": resolution}
+            metadata={"resolution": resolution},
         )
 
     async def generate_from_image(
@@ -269,13 +267,11 @@ class PikaProvider(AIVideoProvider):
         motion_prompt: str,
         output_file: Optional[str] = None,
         duration: int = 5,
-        **kwargs
+        **kwargs,
     ) -> AIVideoResult:
         if not self.is_available:
             return AIVideoResult(
-                success=False,
-                provider=self.name,
-                error="Pika provider not available"
+                success=False, provider=self.name, error="Pika provider not available"
             )
 
         resolution = kwargs.get("resolution", "720p")
@@ -288,7 +284,7 @@ class PikaProvider(AIVideoProvider):
             resolution=resolution,
             use_turbo=kwargs.get("use_turbo", False),
             negative_prompt=kwargs.get("negative_prompt"),
-            seed=kwargs.get("seed")
+            seed=kwargs.get("seed"),
         )
 
         return AIVideoResult(
@@ -300,7 +296,7 @@ class PikaProvider(AIVideoProvider):
             error=result.error,
             task_id=result.request_id,
             cost_estimate=result.cost_estimate,
-            metadata={"resolution": resolution}
+            metadata={"resolution": resolution},
         )
 
     def get_cost_per_second(self) -> float:
@@ -328,9 +324,7 @@ PROVIDER_QUALITY = {
 
 
 def get_ai_video_provider(
-    name: str,
-    api_key: Optional[str] = None,
-    **kwargs
+    name: str, api_key: Optional[str] = None, **kwargs
 ) -> Optional[AIVideoProvider]:
     """
     Factory function to get an AI video provider.
@@ -382,9 +376,7 @@ class AIVideoProviderRouter:
     """
 
     def __init__(
-        self,
-        preferred_providers: Optional[List[str]] = None,
-        budget_limit: Optional[float] = None
+        self, preferred_providers: Optional[List[str]] = None, budget_limit: Optional[float] = None
     ):
         """
         Initialize the router.
@@ -410,7 +402,7 @@ class AIVideoProviderRouter:
         duration: int = 5,
         prefer_quality: bool = False,
         prefer_speed: bool = False,
-        max_cost: Optional[float] = None
+        max_cost: Optional[float] = None,
     ) -> Optional[AIVideoProvider]:
         """
         Select the best provider based on requirements.
@@ -482,7 +474,7 @@ class AIVideoProviderRouter:
         prefer_speed: bool = False,
         max_cost: Optional[float] = None,
         fallback: bool = True,
-        **kwargs
+        **kwargs,
     ) -> AIVideoResult:
         """
         Generate video using the best available provider.
@@ -505,14 +497,12 @@ class AIVideoProviderRouter:
             duration=duration,
             prefer_quality=prefer_quality,
             prefer_speed=prefer_speed,
-            max_cost=max_cost
+            max_cost=max_cost,
         )
 
         if not provider:
             return AIVideoResult(
-                success=False,
-                provider="none",
-                error="No suitable provider available"
+                success=False, provider="none", error="No suitable provider available"
             )
 
         # Try selected provider
@@ -521,7 +511,7 @@ class AIVideoProviderRouter:
             output_file=output_file,
             duration=duration,
             aspect_ratio=aspect_ratio,
-            **kwargs
+            **kwargs,
         )
 
         # Try fallback providers if failed
@@ -537,7 +527,7 @@ class AIVideoProviderRouter:
                     output_file=output_file,
                     duration=duration,
                     aspect_ratio=aspect_ratio,
-                    **kwargs
+                    **kwargs,
                 )
 
                 if result.success:
@@ -553,7 +543,7 @@ class AIVideoProviderRouter:
         duration: int = 5,
         prefer_quality: bool = False,
         max_cost: Optional[float] = None,
-        **kwargs
+        **kwargs,
     ) -> AIVideoResult:
         """
         Generate video from image using the best available provider.
@@ -571,16 +561,12 @@ class AIVideoProviderRouter:
             AIVideoResult from the selected provider
         """
         provider = self.select_provider(
-            duration=duration,
-            prefer_quality=prefer_quality,
-            max_cost=max_cost
+            duration=duration, prefer_quality=prefer_quality, max_cost=max_cost
         )
 
         if not provider:
             return AIVideoResult(
-                success=False,
-                provider="none",
-                error="No suitable provider available"
+                success=False, provider="none", error="No suitable provider available"
             )
 
         return await provider.generate_from_image(
@@ -588,7 +574,7 @@ class AIVideoProviderRouter:
             motion_prompt=motion_prompt,
             output_file=output_file,
             duration=duration,
-            **kwargs
+            **kwargs,
         )
 
     async def generate_broll(
@@ -598,7 +584,7 @@ class AIVideoProviderRouter:
         output_file: Optional[str] = None,
         duration: int = 5,
         niche: str = "default",
-        **kwargs
+        **kwargs,
     ) -> AIVideoResult:
         """
         Generate B-roll footage for a script segment.
@@ -643,7 +629,7 @@ class AIVideoProviderRouter:
             output_file=output_file,
             duration=duration,
             aspect_ratio="16:9",
-            **kwargs
+            **kwargs,
         )
 
     def compare_costs(self, duration: int = 5) -> Dict[str, float]:
@@ -667,7 +653,7 @@ class AIVideoProviderRouter:
             "available_providers": list(self.providers.keys()),
             "preferred_order": self.preferred_providers,
             "budget_limit": self.budget_limit,
-            "provider_details": {}
+            "provider_details": {},
         }
 
         for name, provider in self.providers.items():
@@ -691,7 +677,7 @@ class AIVideoProviderRouter:
             return None
 
         cheapest = None
-        lowest_cost = float('inf')
+        lowest_cost = float("inf")
 
         for name, provider in self.providers.items():
             cost = provider.get_cost_per_second()
@@ -702,10 +688,7 @@ class AIVideoProviderRouter:
         return cheapest
 
     def estimate_batch_cost(
-        self,
-        clip_count: int,
-        provider_name: Optional[str] = None,
-        duration: int = 5
+        self, clip_count: int, provider_name: Optional[str] = None, duration: int = 5
     ) -> Dict[str, Any]:
         """
         Estimate cost for generating multiple clips.
@@ -733,12 +716,14 @@ class AIVideoProviderRouter:
         for name, provider in self.providers.items():
             cost_per_clip = provider.estimate_cost(duration)
             quality = PROVIDER_QUALITY.get(f"{name}_turbo", 5) / 10.0
-            estimates.append({
-                "provider": name,
-                "cost_per_clip": cost_per_clip,
-                "total_cost": cost_per_clip * clip_count,
-                "quality": quality,
-            })
+            estimates.append(
+                {
+                    "provider": name,
+                    "cost_per_clip": cost_per_clip,
+                    "total_cost": cost_per_clip * clip_count,
+                    "quality": quality,
+                }
+            )
 
         # Sort by cost
         estimates.sort(key=lambda x: x["cost_per_clip"])
@@ -746,7 +731,7 @@ class AIVideoProviderRouter:
         # Calculate savings
         savings = 0
         if len(estimates) >= 2:
-            savings = (estimates[-1]["total_cost"] - estimates[0]["total_cost"])
+            savings = estimates[-1]["total_cost"] - estimates[0]["total_cost"]
 
         return {
             "clip_count": clip_count,
@@ -760,6 +745,7 @@ class AIVideoProviderRouter:
 # =============================================================================
 # Compatibility functions for existing CLI commands in run.py
 # =============================================================================
+
 
 def get_smart_router(budget_limit: Optional[float] = None) -> AIVideoProviderRouter:
     """
@@ -793,9 +779,15 @@ def list_providers() -> List[Dict[str, Any]]:
         info = {
             "name": name,
             "available": provider.is_available if provider else False,
-            "cost_per_video": provider.estimate_cost(5) if (provider and provider.is_available) else None,
-            "cost_per_second": provider.get_cost_per_second() if (provider and provider.is_available) else None,
-            "quality_score": PROVIDER_QUALITY.get(f"{name}_turbo", 0.5) / 10.0 if provider else None,
+            "cost_per_video": (
+                provider.estimate_cost(5) if (provider and provider.is_available) else None
+            ),
+            "cost_per_second": (
+                provider.get_cost_per_second() if (provider and provider.is_available) else None
+            ),
+            "quality_score": (
+                PROVIDER_QUALITY.get(f"{name}_turbo", 0.5) / 10.0 if provider else None
+            ),
         }
 
         providers_info.append(info)
@@ -843,6 +835,7 @@ def print_provider_comparison():
 
 # Example usage and testing
 if __name__ == "__main__":
+
     async def test_providers():
         print("\n" + "=" * 60)
         print("AI VIDEO PROVIDERS TEST")

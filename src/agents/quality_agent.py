@@ -19,33 +19,24 @@ Usage:
     result = agent.suggest_improvements(script_text, niche="finance")
 """
 
-import os
 import json
+import os
+from dataclasses import asdict, dataclass, field
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, Any, List, Optional
-from dataclasses import dataclass, field, asdict
+from typing import Any, Dict, List, Optional
+
 from loguru import logger
 
-from ..utils.token_manager import (
-    get_token_manager,
-    get_cost_optimizer,
-    get_prompt_cache
-)
-from ..utils.best_practices import (
-    validate_title,
-    validate_hook,
-    get_best_practices,
-    suggest_improvements as get_suggestions,
-    pre_publish_checklist,
-    ValidationResult,
-    PrePublishChecklist
-)
+from ..utils.best_practices import suggest_improvements as get_suggestions
+from ..utils.best_practices import validate_hook, validate_title
+from ..utils.token_manager import get_cost_optimizer, get_prompt_cache, get_token_manager
 
 
 @dataclass
 class QualityCheckItem:
     """Single quality check result."""
+
     name: str
     passed: bool
     score: float  # 0.0 to 1.0
@@ -56,6 +47,7 @@ class QualityCheckItem:
 @dataclass
 class QualityResult:
     """Result from quality agent operations."""
+
     success: bool
     operation: str
     overall_score: int  # 0-100
@@ -80,7 +72,7 @@ class QualityResult:
             f"Quality Check: {status}",
             f"Score: {self.overall_score}/100",
             f"Checks: {sum(1 for c in self.checks if c.passed)}/{len(self.checks)} passed",
-            ""
+            "",
         ]
 
         # Group by priority
@@ -146,10 +138,7 @@ class QualityAgent:
         logger.info(f"QualityAgent initialized with provider: {provider}")
 
     def quick_check(
-        self,
-        script_text: str,
-        niche: str = "default",
-        is_short: bool = False
+        self, script_text: str, niche: str = "default", is_short: bool = False
     ) -> QualityResult:
         """
         Quick quality check using rule-based validation.
@@ -179,43 +168,51 @@ class QualityAgent:
         # Check 1: Title quality
         if title:
             title_result = validate_title(title, niche)
-            checks.append(QualityCheckItem(
-                name="Title Quality",
-                passed=title_result.is_valid,
-                score=title_result.score,
-                details=f"Score: {title_result.score:.0%}",
-                priority="high"
-            ))
+            checks.append(
+                QualityCheckItem(
+                    name="Title Quality",
+                    passed=title_result.is_valid,
+                    score=title_result.score,
+                    details=f"Score: {title_result.score:.0%}",
+                    priority="high",
+                )
+            )
             recommendations.extend(title_result.suggestions)
         else:
-            checks.append(QualityCheckItem(
-                name="Title Quality",
-                passed=False,
-                score=0.0,
-                details="No title found",
-                priority="high"
-            ))
+            checks.append(
+                QualityCheckItem(
+                    name="Title Quality",
+                    passed=False,
+                    score=0.0,
+                    details="No title found",
+                    priority="high",
+                )
+            )
             recommendations.append("Add a compelling title at the start")
 
         # Check 2: Hook quality
         if hook:
             hook_result = validate_hook(hook, niche)
-            checks.append(QualityCheckItem(
-                name="Hook Quality",
-                passed=hook_result.is_valid,
-                score=hook_result.score,
-                details=f"Score: {hook_result.score:.0%}",
-                priority="high"
-            ))
+            checks.append(
+                QualityCheckItem(
+                    name="Hook Quality",
+                    passed=hook_result.is_valid,
+                    score=hook_result.score,
+                    details=f"Score: {hook_result.score:.0%}",
+                    priority="high",
+                )
+            )
             recommendations.extend(hook_result.suggestions)
         else:
-            checks.append(QualityCheckItem(
-                name="Hook Quality",
-                passed=False,
-                score=0.0,
-                details="No hook found in first 50 words",
-                priority="high"
-            ))
+            checks.append(
+                QualityCheckItem(
+                    name="Hook Quality",
+                    passed=False,
+                    score=0.0,
+                    details="No hook found in first 50 words",
+                    priority="high",
+                )
+            )
 
         # Check 3: Script length
         if is_short:
@@ -227,53 +224,69 @@ class QualityAgent:
             length_ok = 500 <= word_count <= 3000
             length_details = f"{word_count} words (optimal: 800-2000)"
 
-        checks.append(QualityCheckItem(
-            name="Script Length",
-            passed=length_ok,
-            score=1.0 if length_ok else 0.5,
-            details=length_details,
-            priority="medium"
-        ))
+        checks.append(
+            QualityCheckItem(
+                name="Script Length",
+                passed=length_ok,
+                score=1.0 if length_ok else 0.5,
+                details=length_details,
+                priority="medium",
+            )
+        )
 
         # Check 4: Structure indicators
-        has_sections = any(line.strip().startswith(("#", "##", "Section", "SECTION")) for line in lines)
-        has_timestamps = any(":" in line and any(c.isdigit() for c in line.split(":")[0][-2:]) for line in lines)
+        has_sections = any(
+            line.strip().startswith(("#", "##", "Section", "SECTION")) for line in lines
+        )
+        has_timestamps = any(
+            ":" in line and any(c.isdigit() for c in line.split(":")[0][-2:]) for line in lines
+        )
 
-        checks.append(QualityCheckItem(
-            name="Structure",
-            passed=has_sections or has_timestamps,
-            score=1.0 if (has_sections or has_timestamps) else 0.3,
-            details="Sections/timestamps detected" if has_sections else "No clear structure",
-            priority="medium"
-        ))
+        checks.append(
+            QualityCheckItem(
+                name="Structure",
+                passed=has_sections or has_timestamps,
+                score=1.0 if (has_sections or has_timestamps) else 0.3,
+                details="Sections/timestamps detected" if has_sections else "No clear structure",
+                priority="medium",
+            )
+        )
 
         # Check 5: Engagement elements
         engagement_words = ["you", "your", "?", "imagine", "secret", "truth"]
-        engagement_count = sum(1 for word in engagement_words if word.lower() in script_text.lower())
+        engagement_count = sum(
+            1 for word in engagement_words if word.lower() in script_text.lower()
+        )
         engagement_ok = engagement_count >= 3
 
-        checks.append(QualityCheckItem(
-            name="Engagement Elements",
-            passed=engagement_ok,
-            score=min(engagement_count / 5, 1.0),
-            details=f"{engagement_count} engagement triggers found",
-            priority="medium"
-        ))
+        checks.append(
+            QualityCheckItem(
+                name="Engagement Elements",
+                passed=engagement_ok,
+                score=min(engagement_count / 5, 1.0),
+                details=f"{engagement_count} engagement triggers found",
+                priority="medium",
+            )
+        )
 
         if not engagement_ok:
-            recommendations.append("Add more engagement elements: questions, 'you' statements, curiosity triggers")
+            recommendations.append(
+                "Add more engagement elements: questions, 'you' statements, curiosity triggers"
+            )
 
         # Check 6: CTA presence
         cta_words = ["subscribe", "like", "comment", "share", "click", "link", "below"]
         has_cta = any(word in script_text.lower() for word in cta_words)
 
-        checks.append(QualityCheckItem(
-            name="Call to Action",
-            passed=has_cta,
-            score=1.0 if has_cta else 0.0,
-            details="CTA found" if has_cta else "No CTA detected",
-            priority="low"
-        ))
+        checks.append(
+            QualityCheckItem(
+                name="Call to Action",
+                passed=has_cta,
+                score=1.0 if has_cta else 0.0,
+                details="CTA found" if has_cta else "No CTA detected",
+                priority="low",
+            )
+        )
 
         if not has_cta:
             recommendations.append("Add a call to action (subscribe, like, comment)")
@@ -284,17 +297,20 @@ class QualityAgent:
         low_weight = 1
 
         total_weight = sum(
-            high_weight if c.priority == "high" else
-            medium_weight if c.priority == "medium" else
-            low_weight
+            (
+                high_weight
+                if c.priority == "high"
+                else medium_weight if c.priority == "medium" else low_weight
+            )
             for c in checks
         )
 
         weighted_score = sum(
-            c.score * (
-                high_weight if c.priority == "high" else
-                medium_weight if c.priority == "medium" else
-                low_weight
+            c.score
+            * (
+                high_weight
+                if c.priority == "high"
+                else medium_weight if c.priority == "medium" else low_weight
             )
             for c in checks
         )
@@ -311,17 +327,14 @@ class QualityAgent:
             recommendations=recommendations[:10],
             tokens_used=0,
             cost=0.0,
-            provider="rule_based"
+            provider="rule_based",
         )
 
         logger.info(f"[QualityAgent] Quick check complete: {overall_score}/100")
         return result
 
     def full_analysis(
-        self,
-        script_text: str,
-        niche: str = "default",
-        is_short: bool = False
+        self, script_text: str, niche: str = "default", is_short: bool = False
     ) -> QualityResult:
         """
         Full AI-powered quality analysis.
@@ -351,18 +364,19 @@ class QualityAgent:
                 logger.info("[QualityAgent] Using cached AI analysis")
 
                 # Merge cached AI analysis with quick check
-                quick_result.checks.extend([
-                    QualityCheckItem(**c) for c in cached_data.get("ai_checks", [])
-                ])
+                quick_result.checks.extend(
+                    [QualityCheckItem(**c) for c in cached_data.get("ai_checks", [])]
+                )
                 quick_result.recommendations.extend(cached_data.get("ai_recommendations", []))
                 quick_result.provider = "cache"
                 return quick_result
-            except:
+            except Exception:
                 pass
 
         # Get AI provider
         try:
             from ..content.script_writer import get_provider
+
             ai = get_provider(self.provider, self.api_key)
         except Exception as e:
             logger.warning(f"Could not load AI provider: {e}")
@@ -409,7 +423,7 @@ Analyze and respond with ONLY a JSON object:
                 provider=self.provider,
                 input_tokens=1000,
                 output_tokens=500,
-                operation="quality_full_analysis"
+                operation="quality_full_analysis",
             )
 
             # Add AI checks
@@ -418,40 +432,46 @@ Analyze and respond with ONLY a JSON object:
 
             if "hook_effectiveness" in analysis:
                 score = analysis["hook_effectiveness"].get("score", 5) / 10
-                ai_checks.append(QualityCheckItem(
-                    name="AI: Hook Effectiveness",
-                    passed=score >= 0.6,
-                    score=score,
-                    details=analysis["hook_effectiveness"].get("feedback", "")[:100],
-                    priority="high"
-                ))
+                ai_checks.append(
+                    QualityCheckItem(
+                        name="AI: Hook Effectiveness",
+                        passed=score >= 0.6,
+                        score=score,
+                        details=analysis["hook_effectiveness"].get("feedback", "")[:100],
+                        priority="high",
+                    )
+                )
 
             if "retention_structure" in analysis:
                 score = analysis["retention_structure"].get("score", 5) / 10
-                ai_checks.append(QualityCheckItem(
-                    name="AI: Retention Structure",
-                    passed=score >= 0.6,
-                    score=score,
-                    details=f"Open loops: {analysis['retention_structure'].get('open_loops_count', 0)}",
-                    priority="high"
-                ))
+                ai_checks.append(
+                    QualityCheckItem(
+                        name="AI: Retention Structure",
+                        passed=score >= 0.6,
+                        score=score,
+                        details=f"Open loops: {analysis['retention_structure'].get('open_loops_count', 0)}",
+                        priority="high",
+                    )
+                )
 
             if "engagement_potential" in analysis:
                 score = analysis["engagement_potential"].get("score", 5) / 10
-                ai_checks.append(QualityCheckItem(
-                    name="AI: Engagement Potential",
-                    passed=score >= 0.6,
-                    score=score,
-                    details=analysis["engagement_potential"].get("feedback", "")[:100],
-                    priority="medium"
-                ))
+                ai_checks.append(
+                    QualityCheckItem(
+                        name="AI: Engagement Potential",
+                        passed=score >= 0.6,
+                        score=score,
+                        details=analysis["engagement_potential"].get("feedback", "")[:100],
+                        priority="medium",
+                    )
+                )
 
             ai_recommendations = analysis.get("top_3_improvements", [])
 
             # Cache the AI analysis
             cache_data = {
                 "ai_checks": [asdict(c) for c in ai_checks],
-                "ai_recommendations": ai_recommendations
+                "ai_recommendations": ai_recommendations,
             }
             self.cache.set(cache_key, json.dumps(cache_data), self.provider)
 
@@ -464,10 +484,14 @@ Analyze and respond with ONLY a JSON object:
 
             # Recalculate overall score
             all_scores = [c.score for c in quick_result.checks]
-            quick_result.overall_score = int(sum(all_scores) / len(all_scores) * 100) if all_scores else 0
+            quick_result.overall_score = (
+                int(sum(all_scores) / len(all_scores) * 100) if all_scores else 0
+            )
             quick_result.is_valid = quick_result.overall_score >= 60
 
-            logger.success(f"[QualityAgent] Full analysis complete: {quick_result.overall_score}/100")
+            logger.success(
+                f"[QualityAgent] Full analysis complete: {quick_result.overall_score}/100"
+            )
             return quick_result
 
         except Exception as e:
@@ -476,10 +500,7 @@ Analyze and respond with ONLY a JSON object:
             return quick_result
 
     def check_video_file(
-        self,
-        video_file: str,
-        script_data: Optional[Dict] = None,
-        is_short: bool = False
+        self, video_file: str, script_data: Optional[Dict] = None, is_short: bool = False
     ) -> QualityResult:
         """
         Check video file quality.
@@ -505,30 +526,34 @@ Analyze and respond with ONLY a JSON object:
                 video_file=video_file,
                 script_data=script_data,
                 is_short=is_short,
-                skip_ai_checks=True  # Use separate AI checks
+                skip_ai_checks=True,  # Use separate AI checks
             )
 
             # Convert to QualityResult
             checks = []
             for key, value in report.file_checks.items():
                 if key in ["exists", "corrupted"]:
-                    checks.append(QualityCheckItem(
-                        name=f"File: {key}",
-                        passed=value if key == "exists" else not value,
-                        score=1.0 if (value if key == "exists" else not value) else 0.0,
-                        details=str(value),
-                        priority="high"
-                    ))
+                    checks.append(
+                        QualityCheckItem(
+                            name=f"File: {key}",
+                            passed=value if key == "exists" else not value,
+                            score=1.0 if (value if key == "exists" else not value) else 0.0,
+                            details=str(value),
+                            priority="high",
+                        )
+                    )
 
             for key, value in report.technical_checks.items():
                 if key in ["resolution_correct", "has_audio"]:
-                    checks.append(QualityCheckItem(
-                        name=f"Technical: {key}",
-                        passed=bool(value),
-                        score=1.0 if value else 0.0,
-                        details=str(value),
-                        priority="high" if key == "has_audio" else "medium"
-                    ))
+                    checks.append(
+                        QualityCheckItem(
+                            name=f"Technical: {key}",
+                            passed=bool(value),
+                            score=1.0 if value else 0.0,
+                            details=str(value),
+                            priority="high" if key == "has_audio" else "medium",
+                        )
+                    )
 
             result = QualityResult(
                 success=True,
@@ -539,7 +564,7 @@ Analyze and respond with ONLY a JSON object:
                 recommendations=report.recommendations[:5],
                 tokens_used=0,
                 cost=0.0,
-                provider="ffprobe"
+                provider="ffprobe",
             )
 
             return result
@@ -552,14 +577,10 @@ Analyze and respond with ONLY a JSON object:
                 overall_score=0,
                 is_valid=False,
                 error=str(e),
-                provider="ffprobe"
+                provider="ffprobe",
             )
 
-    def suggest_improvements(
-        self,
-        script_text: str,
-        niche: str = "default"
-    ) -> QualityResult:
+    def suggest_improvements(self, script_text: str, niche: str = "default") -> QualityResult:
         """
         Get improvement suggestions for a script.
 
@@ -598,7 +619,7 @@ Analyze and respond with ONLY a JSON object:
             recommendations=suggestions,
             tokens_used=0,
             cost=0.0,
-            provider="rule_based"
+            provider="rule_based",
         )
 
         return result
@@ -653,7 +674,7 @@ Analyze and respond with ONLY a JSON object:
         # Try direct parse
         try:
             return json.loads(content)
-        except:
+        except Exception:
             pass
 
         # Extract from markdown
@@ -663,7 +684,7 @@ Analyze and respond with ONLY a JSON object:
             if end > start:
                 try:
                     return json.loads(content[start:end].strip())
-                except:
+                except Exception:
                     pass
         elif "```" in content:
             start = content.find("```") + 3
@@ -671,7 +692,7 @@ Analyze and respond with ONLY a JSON object:
             if end > start:
                 try:
                     return json.loads(content[start:end].strip())
-                except:
+                except Exception:
                     pass
 
         # Try to find JSON object
@@ -680,7 +701,7 @@ Analyze and respond with ONLY a JSON object:
         if start != -1 and end > start:
             try:
                 return json.loads(content[start:end])
-            except:
+            except Exception:
                 pass
 
         return {}
@@ -692,7 +713,8 @@ def main():
     import sys
 
     if len(sys.argv) < 2:
-        print("""
+        print(
+            """
 Quality Agent - Script and Content Validation
 
 Usage:
@@ -710,7 +732,8 @@ Examples:
     python -m src.agents.quality_agent output/script.txt --niche finance
     python -m src.agents.quality_agent output/script.txt --full --niche psychology
     python -m src.agents.quality_agent output/short.txt --short
-        """)
+        """
+        )
         return
 
     # Parse arguments

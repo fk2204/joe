@@ -35,28 +35,29 @@ Usage:
     opportunities = await predictor.get_seasonal_opportunities(months_ahead=2)
 """
 
-import os
-import json
 import asyncio
+import json
 import sqlite3
-import math
-from dataclasses import dataclass, field, asdict
-from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Any, Tuple
-from pathlib import Path
-from enum import Enum
 from collections import Counter
+from dataclasses import asdict, dataclass, field
+from datetime import datetime, timedelta
+from enum import Enum
+from pathlib import Path
+from typing import Any, Dict, List, Optional, Tuple
+
 from loguru import logger
 
 try:
     from pytrends.request import TrendReq
+
     PYTRENDS_AVAILABLE = True
 except ImportError:
     logger.warning("pytrends not installed. Install with: pip install pytrends")
     PYTRENDS_AVAILABLE = False
 
 try:
-    import numpy as np
+    pass
+
     NUMPY_AVAILABLE = True
 except ImportError:
     logger.warning("numpy not installed. Some features may be limited.")
@@ -65,6 +66,7 @@ except ImportError:
 
 class TrendDirection(Enum):
     """Direction of trend movement."""
+
     RISING = "rising"
     STABLE = "stable"
     FALLING = "falling"
@@ -74,6 +76,7 @@ class TrendDirection(Enum):
 
 class SignalSource(Enum):
     """Data source for trend signals."""
+
     GOOGLE_TRENDS = "google_trends"
     REDDIT = "reddit"
     YOUTUBE_SUGGEST = "youtube_suggest"
@@ -84,6 +87,7 @@ class SignalSource(Enum):
 @dataclass
 class TrendSignal:
     """A signal from a single data source."""
+
     source: SignalSource
     topic: str
     score: float  # 0-100
@@ -105,6 +109,7 @@ class TrendSignal:
 @dataclass
 class TopicScore:
     """Viral potential score for a topic."""
+
     topic: str
     niche: str
     viral_score: float  # 0-100 overall score
@@ -122,7 +127,9 @@ class TopicScore:
     def to_dict(self) -> Dict[str, Any]:
         result = asdict(self)
         result["signals"] = [s.to_dict() for s in self.signals]
-        result["optimal_posting_time"] = self.optimal_posting_time.isoformat() if self.optimal_posting_time else None
+        result["optimal_posting_time"] = (
+            self.optimal_posting_time.isoformat() if self.optimal_posting_time else None
+        )
         result["analysis_time"] = self.analysis_time.isoformat()
         return result
 
@@ -130,6 +137,7 @@ class TopicScore:
 @dataclass
 class SeasonalEvent:
     """A seasonal event that affects content performance."""
+
     name: str
     start_date: str  # MM-DD format
     end_date: str  # MM-DD format
@@ -161,7 +169,7 @@ SEASONAL_EVENTS: List[SeasonalEvent] = [
         peak_date="01-01",
         boost_niches=["finance", "psychology", "self-improvement"],
         boost_topics=["goals", "habits", "money", "budgeting", "productivity", "motivation"],
-        historical_lift=1.8
+        historical_lift=1.8,
     ),
     SeasonalEvent(
         name="Valentine's Day",
@@ -170,7 +178,7 @@ SEASONAL_EVENTS: List[SeasonalEvent] = [
         peak_date="02-14",
         boost_niches=["psychology", "relationships"],
         boost_topics=["love", "dating", "relationships", "psychology", "attraction"],
-        historical_lift=1.4
+        historical_lift=1.4,
     ),
     SeasonalEvent(
         name="Tax Season",
@@ -179,7 +187,7 @@ SEASONAL_EVENTS: List[SeasonalEvent] = [
         peak_date="04-01",
         boost_niches=["finance"],
         boost_topics=["taxes", "deductions", "tax tips", "filing", "refund"],
-        historical_lift=2.2
+        historical_lift=2.2,
     ),
     SeasonalEvent(
         name="Summer Planning",
@@ -188,7 +196,7 @@ SEASONAL_EVENTS: List[SeasonalEvent] = [
         peak_date="05-15",
         boost_niches=["finance", "lifestyle"],
         boost_topics=["travel", "vacation", "budget", "saving"],
-        historical_lift=1.3
+        historical_lift=1.3,
     ),
     SeasonalEvent(
         name="Back to School",
@@ -197,7 +205,7 @@ SEASONAL_EVENTS: List[SeasonalEvent] = [
         peak_date="08-15",
         boost_niches=["finance", "psychology", "education"],
         boost_topics=["budgeting", "student", "learning", "productivity", "focus"],
-        historical_lift=1.5
+        historical_lift=1.5,
     ),
     SeasonalEvent(
         name="Halloween",
@@ -206,7 +214,7 @@ SEASONAL_EVENTS: List[SeasonalEvent] = [
         peak_date="10-31",
         boost_niches=["storytelling", "psychology"],
         boost_topics=["scary", "horror", "dark", "mystery", "creepy", "true crime"],
-        historical_lift=1.6
+        historical_lift=1.6,
     ),
     SeasonalEvent(
         name="Holiday Shopping",
@@ -215,7 +223,7 @@ SEASONAL_EVENTS: List[SeasonalEvent] = [
         peak_date="11-29",
         boost_niches=["finance"],
         boost_topics=["shopping", "deals", "black friday", "gifts", "budget", "saving"],
-        historical_lift=1.9
+        historical_lift=1.9,
     ),
     SeasonalEvent(
         name="Year End Review",
@@ -224,7 +232,7 @@ SEASONAL_EVENTS: List[SeasonalEvent] = [
         peak_date="12-20",
         boost_niches=["finance", "psychology", "storytelling"],
         boost_topics=["year review", "best of", "predictions", "lessons learned"],
-        historical_lift=1.4
+        historical_lift=1.4,
     ),
 ]
 
@@ -234,14 +242,12 @@ class GoogleTrendsAnalyzer:
 
     def __init__(self):
         if PYTRENDS_AVAILABLE:
-            self.pytrends = TrendReq(hl='en-US', tz=360)
+            self.pytrends = TrendReq(hl="en-US", tz=360)
         else:
             self.pytrends = None
 
     async def get_trend_data(
-        self,
-        topic: str,
-        timeframe: str = "today 3-m"
+        self, topic: str, timeframe: str = "today 3-m"
     ) -> Optional[TrendSignal]:
         """Get trend data from Google Trends."""
         if not self.pytrends:
@@ -291,7 +297,7 @@ class GoogleTrendsAnalyzer:
                 velocity=velocity,
                 confidence=0.8 if len(values) >= 10 else 0.5,
                 data_points=len(values),
-                metadata={"current": current, "average": avg, "max": max(values) if values else 0}
+                metadata={"current": current, "average": avg, "max": max(values) if values else 0},
             )
 
         except Exception as e:
@@ -320,9 +326,7 @@ class GoogleTrendsAnalyzer:
             return []
 
     async def compare_topics(
-        self,
-        topics: List[str],
-        timeframe: str = "today 3-m"
+        self, topics: List[str], timeframe: str = "today 3-m"
     ) -> Dict[str, float]:
         """Compare multiple topics and rank by interest."""
         if not self.pytrends or len(topics) > 5:
@@ -362,6 +366,7 @@ class RedditSignalAnalyzer:
         if self._reddit is None:
             try:
                 from src.research.reddit import RedditResearcher
+
                 researcher = RedditResearcher()
                 if researcher.reddit:
                     self._reddit = researcher
@@ -370,9 +375,7 @@ class RedditSignalAnalyzer:
         return self._reddit
 
     async def get_engagement_signal(
-        self,
-        topic: str,
-        subreddits: Optional[List[str]] = None
+        self, topic: str, subreddits: Optional[List[str]] = None
     ) -> Optional[TrendSignal]:
         """Get engagement signal from Reddit."""
         reddit = await self._get_reddit()
@@ -391,7 +394,7 @@ class RedditSignalAnalyzer:
                     direction=TrendDirection.STABLE,
                     velocity=0,
                     confidence=0.3,
-                    data_points=0
+                    data_points=0,
                 )
 
             # Calculate engagement metrics
@@ -436,8 +439,8 @@ class RedditSignalAnalyzer:
                     "total_score": total_score,
                     "total_comments": total_comments,
                     "avg_score": avg_score,
-                    "recent_posts": len(recent_posts)
-                }
+                    "recent_posts": len(recent_posts),
+                },
             )
 
         except Exception as e:
@@ -465,15 +468,10 @@ class YouTubeSuggestAnalyzer:
 
             # YouTube suggestion API
             url = "https://suggestqueries.google.com/complete/search"
-            params = {
-                "client": "youtube",
-                "q": query,
-                "hl": "en"
-            }
+            params = {"client": "youtube", "q": query, "hl": "en"}
 
             response = await asyncio.get_event_loop().run_in_executor(
-                None,
-                lambda: requests.get(url, params=params, timeout=10)
+                None, lambda: requests.get(url, params=params, timeout=10)
             )
 
             if response.status_code == 200:
@@ -534,10 +532,7 @@ class YouTubeSuggestAnalyzer:
             velocity=0,  # Hard to calculate for suggestions
             confidence=0.5,
             data_points=len(suggestions),
-            metadata={
-                "suggestions": suggestions[:10],
-                "top_keywords": word_counts.most_common(5)
-            }
+            metadata={"suggestions": suggestions[:10], "top_keywords": word_counts.most_common(5)},
         )
 
 
@@ -587,13 +582,16 @@ class SeasonalAnalyzer:
                 direction=TrendDirection.STABLE,
                 velocity=0,
                 confidence=0.7,
-                data_points=len(self.events)
+                data_points=len(self.events),
             )
 
         # Calculate seasonal score
         active_events = [e for e in matching_events if e.is_active(now)]
-        upcoming_events = [(e, e.days_until_peak(now)) for e in matching_events
-                         if not e.is_active(now) and e.days_until_peak(now) <= 45]
+        upcoming_events = [
+            (e, e.days_until_peak(now))
+            for e in matching_events
+            if not e.is_active(now) and e.days_until_peak(now) <= 45
+        ]
 
         if active_events:
             # During an active event
@@ -627,8 +625,8 @@ class SeasonalAnalyzer:
                 "matching_events": [e.name for e in matching_events],
                 "active_events": [e.name for e in active_events],
                 "upcoming_events": [(e.name, d) for e, d in upcoming_events],
-                "best_event_lift": best_event.historical_lift if best_event else 1.0
-            }
+                "best_event_lift": best_event.historical_lift if best_event else 1.0,
+            },
         )
 
 
@@ -664,7 +662,8 @@ class TrendPredictor:
     def _init_database(self):
         """Initialize database for caching and history."""
         with sqlite3.connect(self.db_path) as conn:
-            conn.execute("""
+            conn.execute(
+                """
                 CREATE TABLE IF NOT EXISTS topic_scores (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     topic TEXT NOT NULL,
@@ -678,22 +677,23 @@ class TrendPredictor:
                     analyzed_at TEXT,
                     signals TEXT
                 )
-            """)
-            conn.execute("""
+            """
+            )
+            conn.execute(
+                """
                 CREATE INDEX IF NOT EXISTS idx_topic_scores_topic
                 ON topic_scores(topic, niche)
-            """)
-            conn.execute("""
+            """
+            )
+            conn.execute(
+                """
                 CREATE INDEX IF NOT EXISTS idx_topic_scores_score
                 ON topic_scores(viral_score DESC)
-            """)
+            """
+            )
 
     async def score_topic(
-        self,
-        topic: str,
-        niche: str = "general",
-        use_cache: bool = True,
-        cache_hours: int = 6
+        self, topic: str, niche: str = "general", use_cache: bool = True, cache_hours: int = 6
     ) -> TopicScore:
         """
         Calculate viral potential score for a topic.
@@ -745,10 +745,10 @@ class TrendPredictor:
 
         # Calculate viral score (weighted average)
         viral_score = (
-            trend_score * 0.35 +
-            (100 - competition_score) * 0.25 +  # Invert: lower competition = higher score
-            seasonality_score * 0.20 +
-            freshness_score * 0.20
+            trend_score * 0.35
+            + (100 - competition_score) * 0.25
+            + seasonality_score * 0.20  # Invert: lower competition = higher score
+            + freshness_score * 0.20
         )
 
         # Calculate confidence based on signals
@@ -774,7 +774,7 @@ class TrendPredictor:
             optimal_posting_time=optimal_time,
             posting_urgency=urgency,
             confidence=confidence,
-            recommendations=recommendations
+            recommendations=recommendations,
         )
 
         # Cache result
@@ -808,11 +808,7 @@ class TrendPredictor:
 
         return min(100, weighted_sum / max(weight_total, 0.1))
 
-    def _calculate_competition_score(
-        self,
-        topic: str,
-        signals: List[TrendSignal]
-    ) -> float:
+    def _calculate_competition_score(self, topic: str, signals: List[TrendSignal]) -> float:
         """
         Calculate competition score (higher = more competition).
 
@@ -866,9 +862,7 @@ class TrendPredictor:
         return min(100, freshness)
 
     def _calculate_optimal_posting(
-        self,
-        signals: List[TrendSignal],
-        seasonal_signal: TrendSignal
+        self, signals: List[TrendSignal], seasonal_signal: TrendSignal
     ) -> Tuple[Optional[datetime], str]:
         """Calculate optimal posting time and urgency."""
         now = datetime.now()
@@ -891,8 +885,9 @@ class TrendPredictor:
                 return now + timedelta(days=days_until - 3), "this_week"
 
         # Check general trend direction
-        rising_count = sum(1 for s in signals if s.direction in
-                         [TrendDirection.RISING, TrendDirection.BREAKOUT])
+        rising_count = sum(
+            1 for s in signals if s.direction in [TrendDirection.RISING, TrendDirection.BREAKOUT]
+        )
 
         if rising_count >= 2:
             return now + timedelta(days=2), "this_week"
@@ -905,7 +900,7 @@ class TrendPredictor:
         niche: str,
         signals: List[TrendSignal],
         viral_score: float,
-        competition_score: float
+        competition_score: float,
     ) -> List[str]:
         """Generate actionable recommendations."""
         recommendations = []
@@ -927,7 +922,9 @@ class TrendPredictor:
         # Trend-specific recommendations
         for signal in signals:
             if signal.direction == TrendDirection.BREAKOUT:
-                recommendations.append(f"BREAKING: {signal.source.value} shows breakout trend - act fast")
+                recommendations.append(
+                    f"BREAKING: {signal.source.value} shows breakout trend - act fast"
+                )
             elif signal.direction == TrendDirection.RISING:
                 recommendations.append(f"Rising on {signal.source.value} - good timing window")
 
@@ -936,26 +933,26 @@ class TrendPredictor:
         if seasonal:
             events = seasonal.metadata.get("upcoming_events", [])
             if events:
-                recommendations.append(f"Seasonal opportunity: {events[0][0]} in {events[0][1]} days")
+                recommendations.append(
+                    f"Seasonal opportunity: {events[0][0]} in {events[0][1]} days"
+                )
 
         return recommendations
 
-    def _get_cached_score(
-        self,
-        topic: str,
-        niche: str,
-        cache_hours: int
-    ) -> Optional[TopicScore]:
+    def _get_cached_score(self, topic: str, niche: str, cache_hours: int) -> Optional[TopicScore]:
         """Get cached score if valid."""
         cutoff = datetime.now() - timedelta(hours=cache_hours)
 
         with sqlite3.connect(self.db_path) as conn:
             conn.row_factory = sqlite3.Row
-            row = conn.execute("""
+            row = conn.execute(
+                """
                 SELECT * FROM topic_scores
                 WHERE topic = ? AND niche = ? AND analyzed_at > ?
                 ORDER BY analyzed_at DESC LIMIT 1
-            """, (topic, niche, cutoff.isoformat())).fetchone()
+            """,
+                (topic, niche, cutoff.isoformat()),
+            ).fetchone()
 
             if row:
                 # Reconstruct TopicScore (simplified - signals not fully reconstructed)
@@ -971,7 +968,7 @@ class TrendPredictor:
                     optimal_posting_time=None,
                     posting_urgency="flexible",
                     confidence=row["confidence"],
-                    analysis_time=datetime.fromisoformat(row["analyzed_at"])
+                    analysis_time=datetime.fromisoformat(row["analyzed_at"]),
                 )
 
         return None
@@ -979,23 +976,29 @@ class TrendPredictor:
     def _cache_score(self, score: TopicScore):
         """Cache a topic score."""
         with sqlite3.connect(self.db_path) as conn:
-            conn.execute("""
+            conn.execute(
+                """
                 INSERT INTO topic_scores
                 (topic, niche, viral_score, trend_score, competition_score,
                  seasonality_score, freshness_score, confidence, analyzed_at, signals)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """, (
-                score.topic, score.niche, score.viral_score, score.trend_score,
-                score.competition_score, score.seasonality_score, score.freshness_score,
-                score.confidence, score.analysis_time.isoformat(),
-                json.dumps([s.to_dict() for s in score.signals])
-            ))
+            """,
+                (
+                    score.topic,
+                    score.niche,
+                    score.viral_score,
+                    score.trend_score,
+                    score.competition_score,
+                    score.seasonality_score,
+                    score.freshness_score,
+                    score.confidence,
+                    score.analysis_time.isoformat(),
+                    json.dumps([s.to_dict() for s in score.signals]),
+                ),
+            )
 
     async def predict_emerging_trends(
-        self,
-        niche: str,
-        seed_topics: Optional[List[str]] = None,
-        count: int = 10
+        self, niche: str, seed_topics: Optional[List[str]] = None, count: int = 10
     ) -> List[TopicScore]:
         """
         Predict emerging trends in a niche.
@@ -1027,7 +1030,7 @@ class TrendPredictor:
 
         # Score all topics
         scored_topics = []
-        for topic in list(expanded_topics)[:count * 2]:  # Analyze more than needed
+        for topic in list(expanded_topics)[: count * 2]:  # Analyze more than needed
             try:
                 score = await self.score_topic(topic, niche)
                 scored_topics.append(score)
@@ -1042,9 +1045,7 @@ class TrendPredictor:
         return scored_topics[:count]
 
     def get_seasonal_opportunities(
-        self,
-        months_ahead: int = 2,
-        niches: Optional[List[str]] = None
+        self, months_ahead: int = 2, niches: Optional[List[str]] = None
     ) -> List[Dict[str, Any]]:
         """
         Get upcoming seasonal opportunities.
@@ -1073,18 +1074,18 @@ class TrendPredictor:
                 "boost_niches": event.boost_niches,
                 "boost_topics": event.boost_topics,
                 "expected_lift": f"{(event.historical_lift - 1) * 100:.0f}%",
-                "start_planning_by": (datetime.now() + timedelta(days=max(0, days_until - 14))).strftime("%Y-%m-%d"),
-                "recommended_publish_date": (datetime.now() + timedelta(days=max(0, days_until - 3))).strftime("%Y-%m-%d"),
+                "start_planning_by": (
+                    datetime.now() + timedelta(days=max(0, days_until - 14))
+                ).strftime("%Y-%m-%d"),
+                "recommended_publish_date": (
+                    datetime.now() + timedelta(days=max(0, days_until - 3))
+                ).strftime("%Y-%m-%d"),
             }
             opportunities.append(opportunity)
 
         return opportunities
 
-    async def rank_topics(
-        self,
-        topics: List[str],
-        niche: str
-    ) -> List[TopicScore]:
+    async def rank_topics(self, topics: List[str], niche: str) -> List[TopicScore]:
         """
         Rank multiple topics by viral potential.
 
@@ -1112,16 +1113,20 @@ class TrendPredictor:
             conn.row_factory = sqlite3.Row
 
             # Top scoring topics
-            top_topics = conn.execute("""
+            top_topics = conn.execute(
+                """
                 SELECT topic, niche, viral_score, analyzed_at
                 FROM topic_scores
                 WHERE analyzed_at > ?
                 ORDER BY viral_score DESC
                 LIMIT 20
-            """, (cutoff.isoformat(),)).fetchall()
+            """,
+                (cutoff.isoformat(),),
+            ).fetchall()
 
             # Score distribution
-            score_dist = conn.execute("""
+            score_dist = conn.execute(
+                """
                 SELECT
                     CASE
                         WHEN viral_score >= 75 THEN 'high'
@@ -1132,7 +1137,9 @@ class TrendPredictor:
                 FROM topic_scores
                 WHERE analyzed_at > ?
                 GROUP BY category
-            """, (cutoff.isoformat(),)).fetchall()
+            """,
+                (cutoff.isoformat(),),
+            ).fetchall()
 
         return {
             "period_days": days,
@@ -1178,7 +1185,9 @@ if __name__ == "__main__":
 
                 print(f"VIRAL SCORE: {score.viral_score:.1f}/100")
                 print(f"  Trend Score: {score.trend_score:.1f}")
-                print(f"  Competition: {score.competition_score:.1f} ({'High' if score.competition_score > 60 else 'Low'})")
+                print(
+                    f"  Competition: {score.competition_score:.1f} ({'High' if score.competition_score > 60 else 'Low'})"
+                )
                 print(f"  Seasonality: {score.seasonality_score:.1f}")
                 print(f"  Freshness: {score.freshness_score:.1f}")
                 print(f"  Confidence: {score.confidence:.0%}")
@@ -1214,7 +1223,7 @@ if __name__ == "__main__":
                 report = predictor.get_trend_report(7)
                 print(f"Score Distribution: {report['score_distribution']}")
                 print("\nTop Topics:")
-                for t in report['top_topics'][:10]:
+                for t in report["top_topics"][:10]:
                     print(f"  {t['topic']} ({t['niche']}): {t['viral_score']:.1f}")
             else:
                 print("Unknown command")

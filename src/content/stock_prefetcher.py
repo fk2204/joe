@@ -19,49 +19,179 @@ from typing import Dict, List, Optional, Set
 
 from loguru import logger
 
-
 # Common stopwords to filter out
 STOPWORDS: Set[str] = {
-    "the", "a", "an", "and", "or", "but", "in", "on", "at", "to", "for",
-    "of", "with", "by", "from", "is", "are", "was", "were", "be", "been",
-    "being", "have", "has", "had", "do", "does", "did", "will", "would",
-    "could", "should", "may", "might", "must", "can", "this", "that",
-    "these", "those", "what", "which", "who", "whom", "whose", "when",
-    "where", "why", "how", "all", "each", "every", "both", "few", "more",
-    "most", "other", "some", "such", "no", "nor", "not", "only", "own",
-    "same", "so", "than", "too", "very", "just", "also", "now", "here",
-    "there", "then", "once", "always", "never", "often", "still", "already",
-    "about", "into", "through", "during", "before", "after", "above",
-    "below", "between", "under", "again", "further", "your", "you", "they",
-    "them", "their", "make", "made", "get", "got", "like", "need", "want",
+    "the",
+    "a",
+    "an",
+    "and",
+    "or",
+    "but",
+    "in",
+    "on",
+    "at",
+    "to",
+    "for",
+    "of",
+    "with",
+    "by",
+    "from",
+    "is",
+    "are",
+    "was",
+    "were",
+    "be",
+    "been",
+    "being",
+    "have",
+    "has",
+    "had",
+    "do",
+    "does",
+    "did",
+    "will",
+    "would",
+    "could",
+    "should",
+    "may",
+    "might",
+    "must",
+    "can",
+    "this",
+    "that",
+    "these",
+    "those",
+    "what",
+    "which",
+    "who",
+    "whom",
+    "whose",
+    "when",
+    "where",
+    "why",
+    "how",
+    "all",
+    "each",
+    "every",
+    "both",
+    "few",
+    "more",
+    "most",
+    "other",
+    "some",
+    "such",
+    "no",
+    "nor",
+    "not",
+    "only",
+    "own",
+    "same",
+    "so",
+    "than",
+    "too",
+    "very",
+    "just",
+    "also",
+    "now",
+    "here",
+    "there",
+    "then",
+    "once",
+    "always",
+    "never",
+    "often",
+    "still",
+    "already",
+    "about",
+    "into",
+    "through",
+    "during",
+    "before",
+    "after",
+    "above",
+    "below",
+    "between",
+    "under",
+    "again",
+    "further",
+    "your",
+    "you",
+    "they",
+    "them",
+    "their",
+    "make",
+    "made",
+    "get",
+    "got",
+    "like",
+    "need",
+    "want",
 }
 
 
 # Niche-specific visual keywords
 NICHE_KEYWORDS: Dict[str, List[str]] = {
     "finance": [
-        "money", "business", "stock market", "coins", "charts",
-        "office", "professional", "corporate", "banking", "investment",
+        "money",
+        "business",
+        "stock market",
+        "coins",
+        "charts",
+        "office",
+        "professional",
+        "corporate",
+        "banking",
+        "investment",
     ],
     "psychology": [
-        "brain", "person thinking", "meditation", "abstract art",
-        "mind", "therapy", "calm", "peaceful", "contemplation",
+        "brain",
+        "person thinking",
+        "meditation",
+        "abstract art",
+        "mind",
+        "therapy",
+        "calm",
+        "peaceful",
+        "contemplation",
     ],
     "storytelling": [
-        "documentary", "cinematic", "urban", "nature",
-        "dramatic sky", "landscape", "historical", "atmospheric",
+        "documentary",
+        "cinematic",
+        "urban",
+        "nature",
+        "dramatic sky",
+        "landscape",
+        "historical",
+        "atmospheric",
     ],
     "technology": [
-        "technology", "computer", "coding", "futuristic",
-        "digital", "innovation", "data", "network",
+        "technology",
+        "computer",
+        "coding",
+        "futuristic",
+        "digital",
+        "innovation",
+        "data",
+        "network",
     ],
     "health": [
-        "healthy lifestyle", "fitness", "wellness", "medical",
-        "nutrition", "exercise", "nature", "relaxation",
+        "healthy lifestyle",
+        "fitness",
+        "wellness",
+        "medical",
+        "nutrition",
+        "exercise",
+        "nature",
+        "relaxation",
     ],
     "general": [
-        "professional", "modern", "cinematic", "lifestyle",
-        "abstract", "background", "motion",
+        "professional",
+        "modern",
+        "cinematic",
+        "lifestyle",
+        "abstract",
+        "background",
+        "motion",
     ],
 }
 
@@ -96,10 +226,7 @@ class IntelligentStockFetcher:
     """
 
     def __init__(
-        self,
-        cache_dir: Optional[Path] = None,
-        clips_per_keyword: int = 2,
-        max_keywords: int = 5
+        self, cache_dir: Optional[Path] = None, clips_per_keyword: int = 2, max_keywords: int = 5
     ):
         """
         Initialize stock fetcher.
@@ -120,11 +247,7 @@ class IntelligentStockFetcher:
 
         logger.info(f"StockFetcher initialized: {clips_per_keyword} clips/keyword")
 
-    async def prefetch_from_topic(
-        self,
-        topic: str,
-        niche: str = "general"
-    ) -> List[str]:
+    async def prefetch_from_topic(self, topic: str, niche: str = "general") -> List[str]:
         """
         Start downloading footage based on topic.
 
@@ -141,10 +264,8 @@ class IntelligentStockFetcher:
 
         # Download clips in parallel
         download_tasks = []
-        for keyword in keywords[:self.max_keywords]:
-            task = asyncio.create_task(
-                self._download_clips_for_keyword(keyword)
-            )
+        for keyword in keywords[: self.max_keywords]:
+            task = asyncio.create_task(self._download_clips_for_keyword(keyword))
             download_tasks.append((keyword, task))
 
         # Gather results
@@ -160,11 +281,7 @@ class IntelligentStockFetcher:
         logger.info(f"Prefetch complete: {len(all_clips)} clips downloaded")
         return all_clips
 
-    def start_prefetch_task(
-        self,
-        topic: str,
-        niche: str = "general"
-    ) -> str:
+    def start_prefetch_task(self, topic: str, niche: str = "general") -> str:
         """
         Start background prefetch task.
 
@@ -176,6 +293,7 @@ class IntelligentStockFetcher:
             Task ID for tracking
         """
         import hashlib
+
         task_id = hashlib.md5(f"{topic}:{niche}".encode()).hexdigest()[:8]
 
         # Check if already running
@@ -187,16 +305,10 @@ class IntelligentStockFetcher:
 
         # Create task
         keywords = self._extract_keywords(topic, niche)
-        async_task = asyncio.create_task(
-            self.prefetch_from_topic(topic, niche)
-        )
+        async_task = asyncio.create_task(self.prefetch_from_topic(topic, niche))
 
         prefetch_task = PrefetchTask(
-            topic=topic,
-            niche=niche,
-            task=async_task,
-            keywords=keywords,
-            status="running"
+            topic=topic, niche=niche, task=async_task, keywords=keywords, status="running"
         )
 
         self._active_tasks[task_id] = prefetch_task
@@ -204,11 +316,7 @@ class IntelligentStockFetcher:
 
         return task_id
 
-    async def get_prefetched_clips(
-        self,
-        task_id: str,
-        timeout: float = 60.0
-    ) -> List[str]:
+    async def get_prefetched_clips(self, task_id: str, timeout: float = 60.0) -> List[str]:
         """
         Wait for and get results from prefetch task.
 
@@ -226,10 +334,7 @@ class IntelligentStockFetcher:
         prefetch_task = self._active_tasks[task_id]
 
         try:
-            clips = await asyncio.wait_for(
-                prefetch_task.task,
-                timeout=timeout
-            )
+            clips = await asyncio.wait_for(prefetch_task.task, timeout=timeout)
             prefetch_task.status = "completed"
             return clips
         except asyncio.TimeoutError:
@@ -276,22 +381,16 @@ class IntelligentStockFetcher:
             List of search keywords
         """
         # Get niche-specific base keywords
-        base_keywords = NICHE_KEYWORDS.get(
-            niche.lower(),
-            NICHE_KEYWORDS["general"]
-        )[:3]
+        base_keywords = NICHE_KEYWORDS.get(niche.lower(), NICHE_KEYWORDS["general"])[:3]
 
         # Extract topic-specific keywords
         # Remove punctuation and split
-        clean_topic = re.sub(r'[^\w\s]', ' ', topic.lower())
+        clean_topic = re.sub(r"[^\w\s]", " ", topic.lower())
         words = clean_topic.split()
 
         # Filter: keep words > 4 chars, not stopwords, alphabetic
         topic_keywords = [
-            word for word in words
-            if len(word) > 4
-            and word not in STOPWORDS
-            and word.isalpha()
+            word for word in words if len(word) > 4 and word not in STOPWORDS and word.isalpha()
         ][:3]
 
         # Combine base + topic keywords
@@ -305,12 +404,9 @@ class IntelligentStockFetcher:
                 seen.add(kw.lower())
                 unique_keywords.append(kw)
 
-        return unique_keywords[:self.max_keywords]
+        return unique_keywords[: self.max_keywords]
 
-    async def _download_clips_for_keyword(
-        self,
-        keyword: str
-    ) -> List[str]:
+    async def _download_clips_for_keyword(self, keyword: str) -> List[str]:
         """
         Download clips for a single keyword.
 
@@ -329,6 +425,7 @@ class IntelligentStockFetcher:
         # Try to use existing stock footage system
         try:
             from src.content.stock_cache import StockFootageCache
+
             cache = StockFootageCache()
             clips = await cache.get_footage(keyword, count=self.clips_per_keyword)
             return clips
@@ -338,11 +435,9 @@ class IntelligentStockFetcher:
         # Try multi_stock provider
         try:
             from src.content.multi_stock import MultiStockProvider
+
             provider = MultiStockProvider()
-            clips = await provider.search_and_download(
-                query=keyword,
-                count=self.clips_per_keyword
-            )
+            clips = await provider.search_and_download(query=keyword, count=self.clips_per_keyword)
             return clips
         except ImportError:
             pass
@@ -359,6 +454,7 @@ class IntelligentStockFetcher:
     def _check_cache(self, keyword: str) -> List[str]:
         """Check for cached clips for keyword."""
         import hashlib
+
         cache_key = hashlib.md5(keyword.lower().encode()).hexdigest()
         cache_subdir = self.cache_dir / cache_key
 
@@ -380,6 +476,7 @@ class IntelligentStockFetcher:
             List of clip paths
         """
         import os
+
         import aiohttp
 
         api_key = os.getenv("PEXELS_API_KEY")
@@ -389,6 +486,7 @@ class IntelligentStockFetcher:
 
         # Create cache directory for keyword
         import hashlib
+
         cache_key = hashlib.md5(keyword.lower().encode()).hexdigest()
         cache_subdir = self.cache_dir / cache_key
         cache_subdir.mkdir(exist_ok=True)
@@ -414,7 +512,7 @@ class IntelligentStockFetcher:
                 videos = data.get("videos", [])
 
             # Download videos
-            for i, video in enumerate(videos[:self.clips_per_keyword]):
+            for i, video in enumerate(videos[: self.clips_per_keyword]):
                 video_files = video.get("video_files", [])
                 if not video_files:
                     continue
@@ -442,6 +540,7 @@ class IntelligentStockFetcher:
 
 
 # Convenience functions
+
 
 async def prefetch_footage(topic: str, niche: str = "general") -> List[str]:
     """Quick prefetch function."""

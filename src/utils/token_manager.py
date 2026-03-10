@@ -4,14 +4,14 @@ Tracks API usage, costs, and optimizes provider selection
 """
 
 import sqlite3
-from datetime import datetime, timedelta
 from dataclasses import dataclass
+from datetime import datetime, timedelta
 from functools import wraps
-from typing import Dict, Optional, List, Callable, Any
 from pathlib import Path
-from loguru import logger
-import json
+from typing import Any, Callable, Dict, List, Optional
+
 import yaml
+from loguru import logger
 
 
 class BudgetExceededError(Exception):
@@ -22,16 +22,17 @@ class BudgetExceededError(Exception):
         self.limit = limit
         super().__init__(message)
 
+
 # Cost per 1M tokens (input/output) for each provider
 PROVIDER_COSTS = {
     "groq": {"input": 0.05, "output": 0.08},  # Free tier available
-    "ollama": {"input": 0.0, "output": 0.0},   # Free, local
+    "ollama": {"input": 0.0, "output": 0.0},  # Free, local
     "gemini": {"input": 0.075, "output": 0.30},
     "claude": {"input": 3.00, "output": 15.00},
     "openai": {"input": 2.50, "output": 10.00},
     "fish-audio": {"input": 0.0, "output": 0.01},  # Very cheap TTS
     "hailuo": {"input": 0.0, "output": 0.0},  # Flat-rate video: ~$0.28/video
-    "pika": {"input": 0.0, "output": 0.0},    # Flat-rate video: $0.20-0.45/video
+    "pika": {"input": 0.0, "output": 0.0},  # Flat-rate video: $0.20-0.45/video
 }
 
 
@@ -55,7 +56,8 @@ class TokenTracker:
 
     def _init_db(self):
         with sqlite3.connect(self.db_path) as conn:
-            conn.execute("""
+            conn.execute(
+                """
                 CREATE TABLE IF NOT EXISTS token_usage (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     provider TEXT NOT NULL,
@@ -65,43 +67,59 @@ class TokenTracker:
                     operation TEXT,
                     timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
                 )
-            """)
-            conn.execute("""
+            """
+            )
+            conn.execute(
+                """
                 CREATE TABLE IF NOT EXISTS daily_budgets (
                     date TEXT PRIMARY KEY,
                     budget REAL NOT NULL,
                     spent REAL DEFAULT 0
                 )
-            """)
+            """
+            )
             # Create indexes for optimized queries
-            conn.execute("""
+            conn.execute(
+                """
                 CREATE INDEX IF NOT EXISTS idx_usage_date ON token_usage(timestamp)
-            """)
-            conn.execute("""
+            """
+            )
+            conn.execute(
+                """
                 CREATE INDEX IF NOT EXISTS idx_usage_provider ON token_usage(provider)
-            """)
-            conn.execute("""
+            """
+            )
+            conn.execute(
+                """
                 CREATE INDEX IF NOT EXISTS idx_usage_operation ON token_usage(operation)
-            """)
-            conn.execute("""
+            """
+            )
+            conn.execute(
+                """
                 CREATE INDEX IF NOT EXISTS idx_usage_date_provider ON token_usage(timestamp, provider)
-            """)
+            """
+            )
 
-    def record_usage(self, provider: str, input_tokens: int, output_tokens: int, operation: str = ""):
+    def record_usage(
+        self, provider: str, input_tokens: int, output_tokens: int, operation: str = ""
+    ):
         """Record token usage and calculate cost"""
         cost = self.calculate_cost(provider, input_tokens, output_tokens)
         with sqlite3.connect(self.db_path) as conn:
             conn.execute(
                 "INSERT INTO token_usage (provider, input_tokens, output_tokens, cost, operation) VALUES (?, ?, ?, ?, ?)",
-                (provider, input_tokens, output_tokens, cost, operation)
+                (provider, input_tokens, output_tokens, cost, operation),
             )
             # Update daily spent
             today = datetime.now().strftime("%Y-%m-%d")
-            conn.execute("""
+            conn.execute(
+                """
                 INSERT INTO daily_budgets (date, budget, spent)
                 VALUES (?, 10.0, ?)
                 ON CONFLICT(date) DO UPDATE SET spent = spent + ?
-            """, (today, cost, cost))
+            """,
+                (today, cost, cost),
+            )
         logger.info(f"Token usage: {provider} - {input_tokens}in/{output_tokens}out = ${cost:.4f}")
         return cost
 
@@ -117,13 +135,13 @@ class TokenTracker:
         with sqlite3.connect(self.db_path) as conn:
             row = conn.execute(
                 "SELECT SUM(input_tokens), SUM(output_tokens), SUM(cost) FROM token_usage WHERE DATE(timestamp) = ?",
-                (date,)
+                (date,),
             ).fetchone()
         return {
             "date": date,
             "input_tokens": row[0] or 0,
             "output_tokens": row[1] or 0,
-            "cost": row[2] or 0
+            "cost": row[2] or 0,
         }
 
     def get_weekly_usage(self) -> Dict:
@@ -132,13 +150,13 @@ class TokenTracker:
         with sqlite3.connect(self.db_path) as conn:
             row = conn.execute(
                 "SELECT SUM(input_tokens), SUM(output_tokens), SUM(cost) FROM token_usage WHERE DATE(timestamp) >= ?",
-                (week_ago,)
+                (week_ago,),
             ).fetchone()
         return {
             "period": "7 days",
             "input_tokens": row[0] or 0,
             "output_tokens": row[1] or 0,
-            "cost": row[2] or 0
+            "cost": row[2] or 0,
         }
 
     def get_monthly_usage(self) -> Dict:
@@ -147,13 +165,13 @@ class TokenTracker:
         with sqlite3.connect(self.db_path) as conn:
             row = conn.execute(
                 "SELECT SUM(input_tokens), SUM(output_tokens), SUM(cost) FROM token_usage WHERE DATE(timestamp) >= ?",
-                (month_ago,)
+                (month_ago,),
             ).fetchone()
         return {
             "period": "30 days",
             "input_tokens": row[0] or 0,
             "output_tokens": row[1] or 0,
-            "cost": row[2] or 0
+            "cost": row[2] or 0,
         }
 
     def get_usage_by_provider(self) -> List[Dict]:
@@ -162,7 +180,10 @@ class TokenTracker:
             rows = conn.execute(
                 "SELECT provider, SUM(input_tokens), SUM(output_tokens), SUM(cost) FROM token_usage GROUP BY provider ORDER BY SUM(cost) DESC"
             ).fetchall()
-        return [{"provider": r[0], "input_tokens": r[1], "output_tokens": r[2], "cost": r[3]} for r in rows]
+        return [
+            {"provider": r[0], "input_tokens": r[1], "output_tokens": r[2], "cost": r[3]}
+            for r in rows
+        ]
 
     def get_usage_by_operation(self) -> List[Dict]:
         """Get total usage broken down by operation type"""
@@ -170,18 +191,28 @@ class TokenTracker:
             rows = conn.execute(
                 "SELECT operation, SUM(input_tokens), SUM(output_tokens), SUM(cost), COUNT(*) FROM token_usage WHERE operation != '' GROUP BY operation ORDER BY SUM(cost) DESC"
             ).fetchall()
-        return [{"operation": r[0], "input_tokens": r[1], "output_tokens": r[2], "cost": r[3], "count": r[4]} for r in rows]
+        return [
+            {
+                "operation": r[0],
+                "input_tokens": r[1],
+                "output_tokens": r[2],
+                "cost": r[3],
+                "count": r[4],
+            }
+            for r in rows
+        ]
 
     def get_cost_per_video(self) -> float:
         """Calculate average cost per video produced"""
         with sqlite3.connect(self.db_path) as conn:
             # Count unique video productions (assume each script_generation = 1 video)
-            video_count = conn.execute(
-                "SELECT COUNT(*) FROM token_usage WHERE operation LIKE '%script%'"
-            ).fetchone()[0] or 1
-            total_cost = conn.execute(
-                "SELECT SUM(cost) FROM token_usage"
-            ).fetchone()[0] or 0
+            video_count = (
+                conn.execute(
+                    "SELECT COUNT(*) FROM token_usage WHERE operation LIKE '%script%'"
+                ).fetchone()[0]
+                or 1
+            )
+            total_cost = conn.execute("SELECT SUM(cost) FROM token_usage").fetchone()[0] or 0
         return total_cost / max(video_count, 1)
 
     def check_budget(self, daily_budget: float = 10.0, warning_threshold: float = 0.8) -> Dict:
@@ -212,7 +243,9 @@ class TokenTracker:
         if exceeded:
             logger.error(f"BUDGET EXCEEDED: Spent ${spent:.4f} of ${daily_budget:.2f} daily limit")
         elif warning:
-            logger.warning(f"Budget warning: {usage_percent:.1f}% used (${spent:.4f} of ${daily_budget:.2f})")
+            logger.warning(
+                f"Budget warning: {usage_percent:.1f}% used (${spent:.4f} of ${daily_budget:.2f})"
+            )
 
         return {
             "daily_budget": daily_budget,
@@ -220,7 +253,7 @@ class TokenTracker:
             "remaining": max(0, remaining),
             "exceeded": exceeded,
             "warning": warning,
-            "usage_percent": usage_percent
+            "usage_percent": usage_percent,
         }
 
 
@@ -239,21 +272,19 @@ class CostOptimizer:
         "tag_generation": "simple",
         "thumbnail_text": "simple",
         "seo_keywords": "simple",
-
         # UPDATED: These tasks now use Groq (moved from medium to simple)
-        "script_outline": "simple",      # Use Groq - outlines don't need premium
-        "hook_generation": "simple",     # Use Groq - hooks are short
-        "script_revision": "simple",     # Use Groq - revisions are iterative
-        "content_summary": "simple",     # Use Groq - summaries are straightforward
-        "seo_optimization": "simple",    # Use Groq - SEO is formulaic
-        "competitor_analysis": "simple", # Use Groq - analysis can be done incrementally
-
+        "script_outline": "simple",  # Use Groq - outlines don't need premium
+        "hook_generation": "simple",  # Use Groq - hooks are short
+        "script_revision": "simple",  # Use Groq - revisions are iterative
+        "content_summary": "simple",  # Use Groq - summaries are straightforward
+        "seo_optimization": "simple",  # Use Groq - SEO is formulaic
+        "competitor_analysis": "simple",  # Use Groq - analysis can be done incrementally
         # Complex tasks - ONLY these use paid providers when budget allows
         "script_full": "complex",
-        "full_script": "complex",        # Only full scripts justify paid providers
+        "full_script": "complex",  # Only full scripts justify paid providers
         "research_synthesis": "medium",  # Medium complexity, use Gemini if available
-        "creative_writing": "medium",    # Medium complexity for creative tasks
-        "technical_explanation": "medium", # Medium complexity for technical content
+        "creative_writing": "medium",  # Medium complexity for creative tasks
+        "technical_explanation": "medium",  # Medium complexity for technical content
     }
 
     # Provider quality ratings (1-10)
@@ -305,9 +336,10 @@ class CostOptimizer:
         """Check if Ollama is running locally"""
         try:
             import requests
+
             r = requests.get("http://localhost:11434/api/tags", timeout=2)
             return r.status_code == 200
-        except:
+        except Exception:
             return False
 
     def get_recommendations(self) -> List[str]:
@@ -352,17 +384,20 @@ class PromptCache:
 
     def _init_db(self):
         with sqlite3.connect(self.db_path) as conn:
-            conn.execute("""
+            conn.execute(
+                """
                 CREATE TABLE IF NOT EXISTS cache (
                     prompt_hash TEXT PRIMARY KEY,
                     response TEXT NOT NULL,
                     provider TEXT,
                     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
                 )
-            """)
+            """
+            )
 
     def _hash_prompt(self, prompt: str) -> str:
         import hashlib
+
         return hashlib.sha256(prompt.encode()).hexdigest()[:32]
 
     def get(self, prompt: str) -> Optional[str]:
@@ -373,7 +408,7 @@ class PromptCache:
         with sqlite3.connect(self.db_path) as conn:
             row = conn.execute(
                 "SELECT response FROM cache WHERE prompt_hash = ? AND created_at > ?",
-                (prompt_hash, cutoff)
+                (prompt_hash, cutoff),
             ).fetchone()
 
         if row:
@@ -388,7 +423,7 @@ class PromptCache:
         with sqlite3.connect(self.db_path) as conn:
             conn.execute(
                 "INSERT OR REPLACE INTO cache (prompt_hash, response, provider) VALUES (?, ?, ?)",
-                (prompt_hash, response, provider)
+                (prompt_hash, response, provider),
             )
         logger.debug(f"Cached response for prompt hash {prompt_hash[:8]}...")
 
@@ -442,30 +477,40 @@ def print_usage_report():
     cost_per_video = tracker.get_cost_per_video()
     budget = tracker.check_budget()
 
-    print("\n" + "="*50)
+    print("\n" + "=" * 50)
     print("       TOKEN USAGE & COST REPORT")
-    print("="*50)
+    print("=" * 50)
 
     print(f"\n{'Period':<15} {'Input Tokens':>15} {'Output Tokens':>15} {'Cost':>10}")
-    print("-"*55)
-    print(f"{'Today':<15} {daily['input_tokens']:>15,} {daily['output_tokens']:>15,} ${daily['cost']:>8.4f}")
-    print(f"{'This Week':<15} {weekly['input_tokens']:>15,} {weekly['output_tokens']:>15,} ${weekly['cost']:>8.4f}")
-    print(f"{'This Month':<15} {monthly['input_tokens']:>15,} {monthly['output_tokens']:>15,} ${monthly['cost']:>8.4f}")
+    print("-" * 55)
+    print(
+        f"{'Today':<15} {daily['input_tokens']:>15,} {daily['output_tokens']:>15,} ${daily['cost']:>8.4f}"
+    )
+    print(
+        f"{'This Week':<15} {weekly['input_tokens']:>15,} {weekly['output_tokens']:>15,} ${weekly['cost']:>8.4f}"
+    )
+    print(
+        f"{'This Month':<15} {monthly['input_tokens']:>15,} {monthly['output_tokens']:>15,} ${monthly['cost']:>8.4f}"
+    )
 
     print(f"\n{'Provider':<15} {'Input Tokens':>15} {'Output Tokens':>15} {'Cost':>10}")
-    print("-"*55)
+    print("-" * 55)
     for p in by_provider:
-        print(f"{p['provider']:<15} {p['input_tokens']:>15,} {p['output_tokens']:>15,} ${p['cost']:>8.4f}")
+        print(
+            f"{p['provider']:<15} {p['input_tokens']:>15,} {p['output_tokens']:>15,} ${p['cost']:>8.4f}"
+        )
 
     if by_operation:
         print(f"\n{'Operation':<25} {'Count':>8} {'Cost':>10}")
-        print("-"*45)
+        print("-" * 45)
         for op in by_operation[:10]:
             print(f"{op['operation']:<25} {op['count']:>8} ${op['cost']:>8.4f}")
 
     print(f"\n--- Summary ---")
     print(f"Average cost per video: ${cost_per_video:.4f}")
-    print(f"Daily budget: ${budget['daily_budget']:.2f} | Spent: ${budget['spent_today']:.4f} | Remaining: ${budget['remaining']:.4f}")
+    print(
+        f"Daily budget: ${budget['daily_budget']:.2f} | Spent: ${budget['spent_today']:.4f} | Remaining: ${budget['remaining']:.4f}"
+    )
 
     if budget["warning"]:
         print("\n[WARNING] Daily budget is 80% depleted!")
@@ -480,7 +525,7 @@ def print_usage_report():
         for i, rec in enumerate(recommendations, 1):
             print(f"{i}. {rec}")
 
-    print("\n" + "="*50)
+    print("\n" + "=" * 50)
 
 
 def load_budget_config() -> Dict[str, Any]:
@@ -494,11 +539,7 @@ def load_budget_config() -> Dict[str, Any]:
         - enforce: Whether to enforce budget (raise exceptions)
     """
     config_path = Path(__file__).parent.parent.parent / "config" / "config.yaml"
-    defaults = {
-        "daily_limit": 10.0,
-        "warning_threshold": 0.8,
-        "enforce": True
-    }
+    defaults = {"daily_limit": 10.0, "warning_threshold": 0.8, "enforce": True}
 
     try:
         if config_path.exists():
@@ -507,8 +548,10 @@ def load_budget_config() -> Dict[str, Any]:
                 budget_config = config.get("budget", {})
                 return {
                     "daily_limit": budget_config.get("daily_limit", defaults["daily_limit"]),
-                    "warning_threshold": budget_config.get("warning_threshold", defaults["warning_threshold"]),
-                    "enforce": budget_config.get("enforce", defaults["enforce"])
+                    "warning_threshold": budget_config.get(
+                        "warning_threshold", defaults["warning_threshold"]
+                    ),
+                    "enforce": budget_config.get("enforce", defaults["enforce"]),
                 }
     except Exception as e:
         logger.warning(f"Failed to load budget config: {e}. Using defaults.")
@@ -516,7 +559,9 @@ def load_budget_config() -> Dict[str, Any]:
     return defaults
 
 
-def check_budget_status(daily_budget: float = None, warning_threshold: float = None) -> Dict[str, Any]:
+def check_budget_status(
+    daily_budget: float = None, warning_threshold: float = None
+) -> Dict[str, Any]:
     """
     Standalone function to check budget status.
 
@@ -558,6 +603,7 @@ def enforce_budget(daily_budget: float = None, raise_on_warning: bool = False):
             # Custom budget limit
             pass
     """
+
     def decorator(func: Callable) -> Callable:
         @wraps(func)
         def wrapper(*args, **kwargs):
@@ -576,7 +622,7 @@ def enforce_budget(daily_budget: float = None, raise_on_warning: bool = False):
                 raise BudgetExceededError(
                     f"Daily budget ${budget:.2f} exceeded. Spent: ${status['spent_today']:.4f}",
                     spent=status["spent_today"],
-                    limit=budget
+                    limit=budget,
                 )
 
             if status["warning"]:
@@ -588,11 +634,13 @@ def enforce_budget(daily_budget: float = None, raise_on_warning: bool = False):
                     raise BudgetExceededError(
                         f"Budget at warning threshold ({status['usage_percent']:.1f}% used)",
                         spent=status["spent_today"],
-                        limit=budget
+                        limit=budget,
                     )
 
             return func(*args, **kwargs)
+
         return wrapper
+
     return decorator
 
 
@@ -609,6 +657,7 @@ def require_budget(min_remaining: float = 0.0):
             # Only runs if at least $2 remaining
             pass
     """
+
     def decorator(func: Callable) -> Callable:
         @wraps(func)
         def wrapper(*args, **kwargs):
@@ -624,11 +673,13 @@ def require_budget(min_remaining: float = 0.0):
                     f"Insufficient budget: ${status['remaining']:.4f} remaining, "
                     f"${min_remaining:.2f} required for {func.__name__}",
                     spent=status["spent_today"],
-                    limit=config["daily_limit"]
+                    limit=config["daily_limit"],
                 )
 
             return func(*args, **kwargs)
+
         return wrapper
+
     return decorator
 
 
@@ -665,14 +716,14 @@ class BudgetGuard:
                     f"Cannot afford estimated cost ${self.estimated_cost:.4f}. "
                     f"Only ${self.status['remaining']:.4f} remaining.",
                     spent=self.status["spent_today"],
-                    limit=self.config["daily_limit"]
+                    limit=self.config["daily_limit"],
                 )
 
             if self.status["exceeded"]:
                 raise BudgetExceededError(
                     f"Daily budget exceeded. Spent: ${self.status['spent_today']:.4f}",
                     spent=self.status["spent_today"],
-                    limit=self.config["daily_limit"]
+                    limit=self.config["daily_limit"],
                 )
 
         return self

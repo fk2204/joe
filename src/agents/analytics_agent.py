@@ -19,26 +19,24 @@ Usage:
     result = agent.generate_strategy("psychology")
 """
 
-import os
 import json
+import os
 import sqlite3
+from dataclasses import asdict, dataclass, field
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Dict, Any, List, Optional
-from dataclasses import dataclass, field, asdict
+from typing import Any, Dict, List, Optional
+
 from loguru import logger
 
-from ..utils.token_manager import (
-    get_token_manager,
-    get_cost_optimizer,
-    get_prompt_cache
-)
 from ..utils.best_practices import get_best_practices, get_niche_metrics
+from ..utils.token_manager import get_cost_optimizer, get_prompt_cache, get_token_manager
 
 
 @dataclass
 class PerformanceMetrics:
     """Performance metrics for a video or channel."""
+
     total_views: int = 0
     avg_views: float = 0.0
     avg_retention: float = 0.0
@@ -51,6 +49,7 @@ class PerformanceMetrics:
 @dataclass
 class AnalyticsResult:
     """Result from analytics agent operations."""
+
     success: bool
     operation: str
     metrics: PerformanceMetrics = field(default_factory=PerformanceMetrics)
@@ -81,7 +80,7 @@ class AnalyticsResult:
             f"Avg Views: {self.metrics.avg_views:,.0f}",
             f"Avg Retention: {self.metrics.avg_retention:.1f}%",
             f"Avg CTR: {self.metrics.avg_ctr:.1f}%",
-            ""
+            "",
         ]
 
         if self.insights:
@@ -161,7 +160,8 @@ class AnalyticsAgent:
         self.performance_db.parent.mkdir(parents=True, exist_ok=True)
 
         with sqlite3.connect(self.performance_db) as conn:
-            conn.execute("""
+            conn.execute(
+                """
                 CREATE TABLE IF NOT EXISTS video_performance (
                     video_id TEXT PRIMARY KEY,
                     channel TEXT,
@@ -175,22 +175,31 @@ class AnalyticsAgent:
                     uploaded_at DATETIME,
                     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
                 )
-            """)
+            """
+            )
 
             # Create indexes for performance optimization
             # These indexes speed up common queries by channel, niche, date, and views
-            conn.execute("""
+            conn.execute(
+                """
                 CREATE INDEX IF NOT EXISTS idx_channel ON video_performance(channel)
-            """)
-            conn.execute("""
+            """
+            )
+            conn.execute(
+                """
                 CREATE INDEX IF NOT EXISTS idx_niche ON video_performance(niche)
-            """)
-            conn.execute("""
+            """
+            )
+            conn.execute(
+                """
                 CREATE INDEX IF NOT EXISTS idx_uploaded_at ON video_performance(uploaded_at)
-            """)
-            conn.execute("""
+            """
+            )
+            conn.execute(
+                """
                 CREATE INDEX IF NOT EXISTS idx_views ON video_performance(views)
-            """)
+            """
+            )
 
     def record_video(
         self,
@@ -202,7 +211,7 @@ class AnalyticsAgent:
         likes: int = 0,
         comments: int = 0,
         retention: float = 0.0,
-        ctr: float = 0.0
+        ctr: float = 0.0,
     ):
         """
         Record video performance data.
@@ -222,19 +231,18 @@ class AnalyticsAgent:
             niche = self.CHANNEL_NICHE_MAP.get(channel, "default")
 
         with sqlite3.connect(self.performance_db) as conn:
-            conn.execute("""
+            conn.execute(
+                """
                 INSERT OR REPLACE INTO video_performance
                 (video_id, channel, title, niche, views, likes, comments, retention, ctr, uploaded_at, updated_at)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
-            """, (video_id, channel, title, niche, views, likes, comments, retention, ctr))
+            """,
+                (video_id, channel, title, niche, views, likes, comments, retention, ctr),
+            )
 
         logger.info(f"Recorded performance for video: {video_id}")
 
-    def analyze_channel(
-        self,
-        channel: str,
-        period: str = "30d"
-    ) -> AnalyticsResult:
+    def analyze_channel(self, channel: str, period: str = "30d") -> AnalyticsResult:
         """
         Analyze channel performance.
 
@@ -251,18 +259,21 @@ class AnalyticsAgent:
         logger.info(f"[AnalyticsAgent] Analyzing channel: {channel} ({period})")
 
         # Parse period
-        days = {"7d": 7, "30d": 30, "90d": 90, "all": 365*10}.get(period, 30)
+        days = {"7d": 7, "30d": 30, "90d": 90, "all": 365 * 10}.get(period, 30)
         cutoff = (datetime.now() - timedelta(days=days)).isoformat()
 
         # Query database
         with sqlite3.connect(self.performance_db) as conn:
             # Get video stats
-            rows = conn.execute("""
+            rows = conn.execute(
+                """
                 SELECT title, views, likes, comments, retention, ctr, uploaded_at
                 FROM video_performance
                 WHERE channel = ? AND uploaded_at > ?
                 ORDER BY views DESC
-            """, (channel, cutoff)).fetchall()
+            """,
+                (channel, cutoff),
+            ).fetchall()
 
         if not rows:
             # No data - use estimated metrics based on niche
@@ -277,11 +288,11 @@ class AnalyticsAgent:
                 recommendations=[
                     f"Start uploading {niche} content",
                     f"Target CPM: ${niche_metrics['cpm_range'][0]}-${niche_metrics['cpm_range'][1]}",
-                    f"Optimal video length: {niche_metrics['optimal_video_length'][0]}-{niche_metrics['optimal_video_length'][1]} minutes"
+                    f"Optimal video length: {niche_metrics['optimal_video_length'][0]}-{niche_metrics['optimal_video_length'][1]} minutes",
                 ],
                 tokens_used=0,
                 cost=0.0,
-                provider="database"
+                provider="database",
             )
 
         # Calculate metrics
@@ -298,14 +309,11 @@ class AnalyticsAgent:
             avg_ctr=avg_ctr,
             total_likes=total_likes,
             total_comments=total_comments,
-            video_count=len(rows)
+            video_count=len(rows),
         )
 
         # Identify top and under performers
-        top_performers = [
-            {"title": r[0], "views": r[1], "retention": r[4]}
-            for r in rows[:3]
-        ]
+        top_performers = [{"title": r[0], "views": r[1], "retention": r[4]} for r in rows[:3]]
 
         underperformers = [
             {"title": r[0], "views": r[1], "retention": r[4]}
@@ -326,17 +334,13 @@ class AnalyticsAgent:
             underperformers=underperformers,
             tokens_used=0,
             cost=0.0,
-            provider="database"
+            provider="database",
         )
 
         logger.success(f"[AnalyticsAgent] Channel analysis complete: {len(rows)} videos")
         return result
 
-    def find_patterns(
-        self,
-        niche: str = None,
-        channel: str = None
-    ) -> AnalyticsResult:
+    def find_patterns(self, niche: str = None, channel: str = None) -> AnalyticsResult:
         """
         Find patterns in successful videos.
 
@@ -355,31 +359,35 @@ class AnalyticsAgent:
         # Query videos
         with sqlite3.connect(self.performance_db) as conn:
             if channel:
-                rows = conn.execute("""
+                rows = conn.execute(
+                    """
                     SELECT title, views, retention, ctr, niche
                     FROM video_performance
                     WHERE channel = ?
                     ORDER BY views DESC
-                """, (channel,)).fetchall()
+                """,
+                    (channel,),
+                ).fetchall()
             elif niche:
-                rows = conn.execute("""
+                rows = conn.execute(
+                    """
                     SELECT title, views, retention, ctr, niche
                     FROM video_performance
                     WHERE niche = ?
                     ORDER BY views DESC
-                """, (niche,)).fetchall()
+                """,
+                    (niche,),
+                ).fetchall()
             else:
-                rows = conn.execute("""
+                rows = conn.execute(
+                    """
                     SELECT title, views, retention, ctr, niche
                     FROM video_performance
                     ORDER BY views DESC
-                """).fetchall()
+                """
+                ).fetchall()
 
-        patterns = {
-            "title_patterns": [],
-            "timing_patterns": [],
-            "content_patterns": []
-        }
+        patterns = {"title_patterns": [], "timing_patterns": [], "content_patterns": []}
 
         if not rows:
             # Use best practices as fallback patterns
@@ -395,7 +403,7 @@ class AnalyticsAgent:
                 recommendations=["Start uploading videos to build analytics data"],
                 tokens_used=0,
                 cost=0.0,
-                provider="best_practices"
+                provider="best_practices",
             )
 
         # Analyze titles of top performers
@@ -411,7 +419,9 @@ class AnalyticsAgent:
         numbers_in_titles = sum(1 for t in top_titles if any(c.isdigit() for c in t))
         if numbers_in_titles > len(top_titles) * 0.5:
             patterns["content_patterns"].append("Numbers in titles perform well")
-            insights.append(f"{numbers_in_titles}/{len(top_titles)} top videos have numbers in titles")
+            insights.append(
+                f"{numbers_in_titles}/{len(top_titles)} top videos have numbers in titles"
+            )
 
         # Check for question marks
         questions = sum(1 for t in top_titles if "?" in t)
@@ -427,16 +437,12 @@ class AnalyticsAgent:
             recommendations=recommendations,
             tokens_used=0,
             cost=0.0,
-            provider="pattern_analysis"
+            provider="pattern_analysis",
         )
 
         return result
 
-    def generate_strategy(
-        self,
-        niche: str,
-        use_ai: bool = False
-    ) -> AnalyticsResult:
+    def generate_strategy(self, niche: str, use_ai: bool = False) -> AnalyticsResult:
         """
         Generate content strategy recommendations.
 
@@ -474,7 +480,7 @@ class AnalyticsAgent:
         insights = [
             f"{niche.title()} niche characteristics analyzed",
             f"Competitor best practices incorporated",
-            "Recommendations based on top performer analysis"
+            "Recommendations based on top performer analysis",
         ]
 
         # AI enhancement if requested
@@ -492,7 +498,7 @@ class AnalyticsAgent:
                     provider=self.provider,
                     input_tokens=700,
                     output_tokens=300,
-                    operation="analytics_ai_strategy"
+                    operation="analytics_ai_strategy",
                 )
                 provider = self.provider
 
@@ -503,7 +509,7 @@ class AnalyticsAgent:
             recommendations=recommendations,
             tokens_used=tokens_used,
             cost=cost,
-            provider=provider
+            provider=provider,
         )
 
         return result
@@ -535,7 +541,7 @@ class AnalyticsAgent:
 
         # Find most expensive operations
         if by_operation:
-            expensive_ops = sorted(by_operation, key=lambda x: x['cost'], reverse=True)[:3]
+            expensive_ops = sorted(by_operation, key=lambda x: x["cost"], reverse=True)[:3]
             for op in expensive_ops:
                 insights.append(f"{op['operation']}: ${op['cost']:.4f} ({op['count']} calls)")
 
@@ -543,14 +549,16 @@ class AnalyticsAgent:
 
         # Provider optimization
         for p in by_provider:
-            if p['provider'] in ['claude', 'openai'] and p['cost'] > 1.0:
-                recommendations.append(f"Consider using Groq for {p['provider']} tasks - save ${p['cost']:.2f}")
+            if p["provider"] in ["claude", "openai"] and p["cost"] > 1.0:
+                recommendations.append(
+                    f"Consider using Groq for {p['provider']} tasks - save ${p['cost']:.2f}"
+                )
 
         # Budget check
         budget = self.tracker.check_budget()
-        if budget['warning']:
+        if budget["warning"]:
             recommendations.append("WARNING: Daily budget 80% used")
-        if budget['exceeded']:
+        if budget["exceeded"]:
             recommendations.append("ALERT: Daily budget exceeded!")
 
         result = AnalyticsResult(
@@ -560,16 +568,12 @@ class AnalyticsAgent:
             recommendations=recommendations,
             tokens_used=0,
             cost=0.0,
-            provider="token_tracker"
+            provider="token_tracker",
         )
 
         return result
 
-    def _generate_insights(
-        self,
-        rows: List,
-        channel: str
-    ) -> List[str]:
+    def _generate_insights(self, rows: List, channel: str) -> List[str]:
         """Generate insights from video data."""
         insights = []
 
@@ -604,11 +608,7 @@ class AnalyticsAgent:
 
         return insights
 
-    def _generate_recommendations(
-        self,
-        metrics: PerformanceMetrics,
-        channel: str
-    ) -> List[str]:
+    def _generate_recommendations(self, metrics: PerformanceMetrics, channel: str) -> List[str]:
         """Generate recommendations based on metrics."""
         recommendations = []
         niche = self.CHANNEL_NICHE_MAP.get(channel, "default")
@@ -672,14 +672,11 @@ class AnalyticsAgent:
 
         return patterns
 
-    def _ai_generate_strategy(
-        self,
-        niche: str,
-        practices: Dict
-    ) -> Optional[Dict]:
+    def _ai_generate_strategy(self, niche: str, practices: Dict) -> Optional[Dict]:
         """Use AI to generate strategic insights."""
         try:
             from ..content.script_writer import get_provider
+
             ai = get_provider(self.provider, self.api_key)
 
             prompt = f"""Generate content strategy insights for a {niche} YouTube channel.
@@ -742,7 +739,7 @@ Respond with ONLY a JSON object:
         return AnalyticsResult(
             success=False,
             operation="unknown",
-            error="Specify --channel, --niche, --strategy, or --cost"
+            error="Specify --channel, --niche, --strategy, or --cost",
         )
 
 
@@ -752,7 +749,8 @@ def main():
     import sys
 
     if len(sys.argv) < 2:
-        print("""
+        print(
+            """
 Analytics Agent - Video Performance Analysis
 
 Usage:
@@ -774,7 +772,8 @@ Examples:
     python -m src.agents.analytics_agent --channel money_blueprints --period 7d
     python -m src.agents.analytics_agent --niche psychology --strategy
     python -m src.agents.analytics_agent --cost
-        """)
+        """
+        )
         return
 
     # Parse arguments

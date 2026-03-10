@@ -34,55 +34,56 @@ CLI:
 """
 
 import re
+from dataclasses import asdict, dataclass, field
 from pathlib import Path
-from typing import Dict, Any, List, Optional, Tuple
-from dataclasses import dataclass, field, asdict
+from typing import Any, Dict, List, Tuple
+
 from loguru import logger
 
-from .base_agent import BaseAgent, AgentResult
-
+from .base_agent import AgentResult, BaseAgent
 
 # Hook strength patterns and weights
 HOOK_PATTERNS = {
     "pattern_interrupt": {
         "patterns": [r"^stop", r"^wait", r"^hold on", r"^listen", r"^forget everything"],
         "weight": 0.15,
-        "description": "Pattern interrupt opener"
+        "description": "Pattern interrupt opener",
     },
     "curiosity_gap": {
         "patterns": [r"you don't know", r"nobody tells", r"secret", r"hidden", r"truth"],
         "weight": 0.12,
-        "description": "Curiosity gap"
+        "description": "Curiosity gap",
     },
     "specific_numbers": {
-        "patterns": [r"\$[\d,]+", r"\d+%", r"\d+\s*(?:million|billion|thousand)", r"\d+\s*(?:steps?|ways?|tips?)"],
+        "patterns": [
+            r"\$[\d,]+",
+            r"\d+%",
+            r"\d+\s*(?:million|billion|thousand)",
+            r"\d+\s*(?:steps?|ways?|tips?)",
+        ],
         "weight": 0.10,
-        "description": "Specific numbers/stats"
+        "description": "Specific numbers/stats",
     },
     "direct_address": {
         "patterns": [r"\byou\b", r"\byour\b"],
         "weight": 0.08,
-        "description": "Direct address (you/your)"
+        "description": "Direct address (you/your)",
     },
     "urgency": {
         "patterns": [r"right now", r"immediately", r"today", r"before it's too late"],
         "weight": 0.08,
-        "description": "Urgency trigger"
+        "description": "Urgency trigger",
     },
     "bold_claim": {
         "patterns": [r"never", r"always", r"everyone", r"nobody", r"every single"],
         "weight": 0.07,
-        "description": "Bold claim/absolute"
+        "description": "Bold claim/absolute",
     },
-    "question": {
-        "patterns": [r"\?"],
-        "weight": 0.06,
-        "description": "Question hook"
-    },
+    "question": {"patterns": [r"\?"], "weight": 0.06, "description": "Question hook"},
     "tension": {
         "patterns": [r"but\b", r"however", r"except", r"the catch", r"there's a problem"],
         "weight": 0.08,
-        "description": "Tension/conflict"
+        "description": "Tension/conflict",
     },
 }
 
@@ -136,6 +137,7 @@ class RetentionResult:
         visual_cues_added: Number of visual cue markers added
         hook_analysis: Detailed hook analysis
     """
+
     hook_strength: float = 0.0
     open_loop_count: int = 0
     predicted_retention: float = 0.0
@@ -192,6 +194,7 @@ class RetentionOptimizerAgent(BaseAgent):
         if self._retention_optimizer is None:
             try:
                 from ..content.script_writer import RetentionOptimizer
+
                 self._retention_optimizer = RetentionOptimizer()
             except ImportError as e:
                 logger.warning(f"Could not import RetentionOptimizer: {e}")
@@ -202,6 +205,7 @@ class RetentionOptimizerAgent(BaseAgent):
         if self._natural_pacer is None:
             try:
                 from ..content.script_writer import NaturalPacingInjector
+
                 self._natural_pacer = NaturalPacingInjector()
             except ImportError as e:
                 logger.warning(f"Could not import NaturalPacingInjector: {e}")
@@ -219,7 +223,7 @@ class RetentionOptimizerAgent(BaseAgent):
         add_natural_pacing: bool = True,
         target_open_loops: int = None,
         payoff_interval: int = None,
-        **kwargs
+        **kwargs,
     ) -> AgentResult:
         """
         Analyze and optimize a script for maximum viewer retention.
@@ -240,14 +244,12 @@ class RetentionOptimizerAgent(BaseAgent):
         Returns:
             AgentResult containing optimized script and RetentionResult metrics
         """
-        logger.info(f"[RetentionOptimizerAgent] Analyzing script ({len(script_text)} chars, {duration_seconds}s)")
+        logger.info(
+            f"[RetentionOptimizerAgent] Analyzing script ({len(script_text)} chars, {duration_seconds}s)"
+        )
 
         if not script_text or not script_text.strip():
-            return AgentResult(
-                success=False,
-                error="Empty script provided",
-                data={}
-            )
+            return AgentResult(success=False, error="Empty script provided", data={})
 
         original_word_count = len(script_text.split())
         improvements = []
@@ -259,12 +261,16 @@ class RetentionOptimizerAgent(BaseAgent):
             return AgentResult(
                 success=False,
                 error="RetentionOptimizer not available",
-                data={"script_text": script_text}
+                data={"script_text": script_text},
             )
 
         # Calculate targets based on duration
-        open_loop_target = target_open_loops or max(self.TARGET_OPEN_LOOPS, 3 + (duration_seconds - 300) // 120)
-        payoff_int = payoff_interval or (45 if duration_seconds < 300 else 60 if duration_seconds < 600 else 75)
+        open_loop_target = target_open_loops or max(
+            self.TARGET_OPEN_LOOPS, 3 + (duration_seconds - 300) // 120
+        )
+        payoff_int = payoff_interval or (
+            45 if duration_seconds < 300 else 60 if duration_seconds < 600 else 75
+        )
 
         # Phase 1: Analyze hook strength BEFORE optimization
         hook_text = self._extract_hook(script_text, word_count=50)
@@ -272,7 +278,9 @@ class RetentionOptimizerAgent(BaseAgent):
         hook_strength = hook_analysis.get("score", 0.0)
 
         if hook_strength < self.MIN_HOOK_STRENGTH:
-            warnings.append(f"Hook strength ({hook_strength:.0%}) below target ({self.MIN_HOOK_STRENGTH:.0%})")
+            warnings.append(
+                f"Hook strength ({hook_strength:.0%}) below target ({self.MIN_HOOK_STRENGTH:.0%})"
+            )
 
         # Phase 2: Count existing open loops
         existing_open_loops = self._count_open_loops(script_text)
@@ -288,16 +296,22 @@ class RetentionOptimizerAgent(BaseAgent):
             if inject_open_loops:
                 loops_to_add = max(0, open_loop_target - existing_open_loops)
                 if loops_to_add > 0:
-                    optimized_script = optimizer.inject_open_loops(optimized_script, count=loops_to_add)
+                    optimized_script = optimizer.inject_open_loops(
+                        optimized_script, count=loops_to_add
+                    )
                     improvements.append(f"Injected {loops_to_add} open loops")
 
             if inject_payoffs:
                 before_len = len(optimized_script)
-                optimized_script = optimizer.inject_micro_payoffs(optimized_script, interval_seconds=payoff_int)
+                optimized_script = optimizer.inject_micro_payoffs(
+                    optimized_script, interval_seconds=payoff_int
+                )
                 # Estimate payoffs added
                 micro_payoffs_added = max(0, (len(optimized_script) - before_len) // 50)
                 if micro_payoffs_added > 0:
-                    improvements.append(f"Injected ~{micro_payoffs_added} micro-payoffs (every {payoff_int}s)")
+                    improvements.append(
+                        f"Injected ~{micro_payoffs_added} micro-payoffs (every {payoff_int}s)"
+                    )
 
             if inject_interrupts:
                 before_len = len(optimized_script)
@@ -308,9 +322,7 @@ class RetentionOptimizerAgent(BaseAgent):
 
             if inject_visual_cues:
                 optimized_script, visual_cues_added = self._inject_visual_cues(
-                    optimized_script,
-                    duration_seconds,
-                    target_per_minute=self.TARGET_VISUAL_CHANGES
+                    optimized_script, duration_seconds, target_per_minute=self.TARGET_VISUAL_CHANGES
                 )
                 if visual_cues_added > 0:
                     improvements.append(f"Added {visual_cues_added} visual cue markers")
@@ -340,7 +352,7 @@ class RetentionOptimizerAgent(BaseAgent):
             micro_payoffs=micro_payoffs_added,
             pattern_interrupts=pattern_interrupts_added,
             duration_seconds=duration_seconds,
-            drop_off_risks=drop_off_risks
+            drop_off_risks=drop_off_risks,
         )
 
         # Create retention result
@@ -355,7 +367,7 @@ class RetentionOptimizerAgent(BaseAgent):
             micro_payoffs_added=micro_payoffs_added,
             pattern_interrupts_added=pattern_interrupts_added,
             visual_cues_added=visual_cues_added,
-            hook_analysis=hook_analysis
+            hook_analysis=hook_analysis,
         )
 
         # Log operation
@@ -368,17 +380,10 @@ class RetentionOptimizerAgent(BaseAgent):
 
         return AgentResult(
             success=True,
-            data={
-                "optimized_script": optimized_script,
-                **retention_result.to_dict()
-            },
+            data={"optimized_script": optimized_script, **retention_result.to_dict()},
             tokens_used=0,
             cost=0.0,
-            metadata={
-                "niche": niche,
-                "duration_seconds": duration_seconds,
-                "warnings": warnings
-            }
+            metadata={"niche": niche, "duration_seconds": duration_seconds, "warnings": warnings},
         )
 
     def _extract_hook(self, script_text: str, word_count: int = 50) -> str:
@@ -406,11 +411,13 @@ class RetentionOptimizerAgent(BaseAgent):
             for regex in pattern_info["patterns"]:
                 if re.search(regex, hook_lower, re.IGNORECASE):
                     score += pattern_info["weight"]
-                    patterns_found.append({
-                        "name": pattern_name,
-                        "description": pattern_info["description"],
-                        "weight": pattern_info["weight"]
-                    })
+                    patterns_found.append(
+                        {
+                            "name": pattern_name,
+                            "description": pattern_info["description"],
+                            "weight": pattern_info["weight"],
+                        }
+                    )
                     break  # Only count each pattern type once
 
         # Penalize weak hooks
@@ -430,7 +437,7 @@ class RetentionOptimizerAgent(BaseAgent):
             "score": score,
             "patterns_found": patterns_found,
             "recommendations": recommendations,
-            "word_count": len(hook_text.split())
+            "word_count": len(hook_text.split()),
         }
 
     def _count_open_loops(self, script_text: str) -> int:
@@ -464,10 +471,7 @@ class RetentionOptimizerAgent(BaseAgent):
         return count
 
     def _inject_visual_cues(
-        self,
-        script_text: str,
-        duration_seconds: int,
-        target_per_minute: int = 15
+        self, script_text: str, duration_seconds: int, target_per_minute: int = 15
     ) -> Tuple[str, int]:
         """
         Inject visual cue markers for video editors.
@@ -488,7 +492,7 @@ class RetentionOptimizerAgent(BaseAgent):
         max_cues = min(target_cues // 3, 20)  # Only add ~1/3 as actual markers
 
         # Split into sentences
-        sentences = re.split(r'(?<=[.!?])\s+', script_text)
+        sentences = re.split(r"(?<=[.!?])\s+", script_text)
         if len(sentences) < max_cues * 2:
             return script_text, 0
 
@@ -506,12 +510,10 @@ class RetentionOptimizerAgent(BaseAgent):
                 result_sentences.append(f"\n{cue}\n")
                 cues_added += 1
 
-        return ' '.join(result_sentences), cues_added
+        return " ".join(result_sentences), cues_added
 
     def _analyze_drop_off_risks(
-        self,
-        script_text: str,
-        duration_seconds: int
+        self, script_text: str, duration_seconds: int
     ) -> List[Dict[str, Any]]:
         """
         Analyze script for potential viewer drop-off points.
@@ -537,7 +539,7 @@ class RetentionOptimizerAgent(BaseAgent):
             "timestamp": "0:00 - 0:30",
             "risk_level": "low",
             "factors": [],
-            "impact": DROP_OFF_INDICATORS["early_drop"]["impact"]
+            "impact": DROP_OFF_INDICATORS["early_drop"]["impact"],
         }
 
         # Check for weak hook
@@ -566,11 +568,13 @@ class RetentionOptimizerAgent(BaseAgent):
                 "timestamp": "0:30 - 3:00",
                 "risk_level": "low",
                 "factors": [],
-                "impact": DROP_OFF_INDICATORS["middle_drop"]["impact"]
+                "impact": DROP_OFF_INDICATORS["middle_drop"]["impact"],
             }
 
             # Check for open loops in middle section
-            mid_loops = sum(1 for p in [r"but first", r"coming up", r"stay with me"] if p in mid_text)
+            mid_loops = sum(
+                1 for p in [r"but first", r"coming up", r"stay with me"] if p in mid_text
+            )
             if mid_loops < 1:
                 mid_risk["factors"].append("No open loops to maintain curiosity")
                 mid_risk["risk_level"] = "medium"
@@ -596,7 +600,7 @@ class RetentionOptimizerAgent(BaseAgent):
                 "timestamp": "3:00+",
                 "risk_level": "low",
                 "factors": [],
-                "impact": DROP_OFF_INDICATORS["late_drop"]["impact"]
+                "impact": DROP_OFF_INDICATORS["late_drop"]["impact"],
             }
 
             # Check for CTA
@@ -624,7 +628,7 @@ class RetentionOptimizerAgent(BaseAgent):
         micro_payoffs: int,
         pattern_interrupts: int,
         duration_seconds: int,
-        drop_off_risks: List[Dict[str, Any]]
+        drop_off_risks: List[Dict[str, Any]],
     ) -> float:
         """
         Predict average viewer retention based on script elements.
@@ -668,16 +672,21 @@ class RetentionOptimizerAgent(BaseAgent):
                 risk_penalty -= risk["impact"] * 0.25
 
         # Calculate final retention
-        predicted = base_retention + hook_impact + loop_impact + payoff_impact + interrupt_impact + duration_penalty + risk_penalty
+        predicted = (
+            base_retention
+            + hook_impact
+            + loop_impact
+            + payoff_impact
+            + interrupt_impact
+            + duration_penalty
+            + risk_penalty
+        )
 
         # Clamp to realistic range (20% to 70%)
         return max(0.20, min(0.70, predicted))
 
     def analyze_only(
-        self,
-        script_text: str,
-        duration_seconds: int = 600,
-        niche: str = "default"
+        self, script_text: str, duration_seconds: int = 600, niche: str = "default"
     ) -> AgentResult:
         """
         Analyze script without modifying it.
@@ -700,18 +709,19 @@ class RetentionOptimizerAgent(BaseAgent):
             inject_payoffs=False,
             inject_interrupts=False,
             inject_visual_cues=False,
-            add_natural_pacing=False
+            add_natural_pacing=False,
         )
 
 
 # CLI entry point
 def main():
     """CLI entry point for retention optimizer agent."""
-    import sys
     import argparse
+    import sys
 
     if len(sys.argv) < 2:
-        print("""
+        print(
+            """
 Retention Optimizer Agent - Script Retention Optimization
 
 Usage:
@@ -733,7 +743,8 @@ Options:
     --no-visual-cues        Skip visual cue markers
     --output <path>         Save optimized script to file
     --json                  Output as JSON
-        """)
+        """
+        )
         return
 
     parser = argparse.ArgumentParser(description="Optimize script retention")
@@ -768,9 +779,7 @@ Options:
 
     if args.analyze_only:
         result = agent.analyze_only(
-            script_text=script_text,
-            duration_seconds=args.duration,
-            niche=args.niche
+            script_text=script_text, duration_seconds=args.duration, niche=args.niche
         )
     else:
         result = agent.run(
@@ -780,12 +789,13 @@ Options:
             inject_open_loops=not args.no_open_loops,
             inject_payoffs=not args.no_payoffs,
             inject_interrupts=not args.no_interrupts,
-            inject_visual_cues=not args.no_visual_cues
+            inject_visual_cues=not args.no_visual_cues,
         )
 
     # Output
     if args.json:
         import json
+
         print(json.dumps(result.data, indent=2))
     else:
         print("\n" + "=" * 60)
@@ -801,25 +811,25 @@ Options:
             print(f"Original Words: {data.get('original_word_count', 0)}")
             print(f"Optimized Words: {data.get('optimized_word_count', 0)}")
 
-            improvements = data.get('improvements', [])
+            improvements = data.get("improvements", [])
             if improvements:
                 print(f"\nImprovements Made:")
                 for imp in improvements:
                     print(f"  - {imp}")
 
-            hook_analysis = data.get('hook_analysis', {})
-            if hook_analysis.get('recommendations'):
+            hook_analysis = data.get("hook_analysis", {})
+            if hook_analysis.get("recommendations"):
                 print(f"\nHook Recommendations:")
-                for rec in hook_analysis['recommendations'][:3]:
+                for rec in hook_analysis["recommendations"][:3]:
                     print(f"  - {rec}")
 
-            risks = data.get('drop_off_risks', [])
-            high_risks = [r for r in risks if r.get('risk_level') in ['high', 'medium']]
+            risks = data.get("drop_off_risks", [])
+            high_risks = [r for r in risks if r.get("risk_level") in ["high", "medium"]]
             if high_risks:
                 print(f"\nDrop-off Risks:")
                 for risk in high_risks:
                     print(f"  [{risk['risk_level'].upper()}] {risk['timestamp']}")
-                    for factor in risk.get('factors', []):
+                    for factor in risk.get("factors", []):
                         print(f"    - {factor}")
         else:
             print(f"\nError: {result.error}")

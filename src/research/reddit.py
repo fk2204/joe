@@ -15,9 +15,10 @@ Usage:
 """
 
 import os
-from typing import List, Dict, Optional
 from dataclasses import dataclass
-from datetime import datetime, timedelta
+from datetime import datetime
+from typing import List, Optional
+
 from loguru import logger
 
 try:
@@ -29,25 +30,27 @@ except ImportError:
 @dataclass
 class RedditPost:
     """Represents a Reddit post that could be a video idea."""
+
     title: str
     subreddit: str
-    score: int              # Upvotes
+    score: int  # Upvotes
     num_comments: int
     url: str
     created_utc: datetime
     flair: Optional[str]
-    is_question: bool       # Likely a question/tutorial request
+    is_question: bool  # Likely a question/tutorial request
 
 
 @dataclass
 class VideoIdea:
     """A potential video idea extracted from Reddit."""
+
     topic: str
     source_title: str
     source_url: str
     subreddit: str
-    popularity_score: int   # Combined score based on upvotes/comments
-    idea_type: str          # question, discussion, request, tutorial
+    popularity_score: int  # Combined score based on upvotes/comments
+    idea_type: str  # question, discussion, request, tutorial
 
 
 class RedditResearcher:
@@ -70,18 +73,35 @@ class RedditResearcher:
 
     # Keywords that indicate a question/request
     QUESTION_KEYWORDS = [
-        "how to", "how do", "how can", "what is", "what are",
-        "why does", "why is", "explain", "help", "tutorial",
-        "guide", "learn", "beginner", "newbie", "stuck",
-        "can someone", "eli5", "please help", "need help",
-        "best way to", "should i", "difference between"
+        "how to",
+        "how do",
+        "how can",
+        "what is",
+        "what are",
+        "why does",
+        "why is",
+        "explain",
+        "help",
+        "tutorial",
+        "guide",
+        "learn",
+        "beginner",
+        "newbie",
+        "stuck",
+        "can someone",
+        "eli5",
+        "please help",
+        "need help",
+        "best way to",
+        "should i",
+        "difference between",
     ]
 
     def __init__(
         self,
         client_id: Optional[str] = None,
         client_secret: Optional[str] = None,
-        user_agent: Optional[str] = None
+        user_agent: Optional[str] = None,
     ):
         """
         Initialize Reddit researcher.
@@ -93,10 +113,7 @@ class RedditResearcher:
         """
         self.client_id = client_id or os.getenv("REDDIT_CLIENT_ID")
         self.client_secret = client_secret or os.getenv("REDDIT_CLIENT_SECRET")
-        self.user_agent = user_agent or os.getenv(
-            "REDDIT_USER_AGENT",
-            "joe-bot/1.0"
-        )
+        self.user_agent = user_agent or os.getenv("REDDIT_USER_AGENT", "joe-bot/1.0")
 
         if not self.client_id or not self.client_secret:
             logger.warning(
@@ -108,7 +125,7 @@ class RedditResearcher:
             self.reddit = praw.Reddit(
                 client_id=self.client_id,
                 client_secret=self.client_secret,
-                user_agent=self.user_agent
+                user_agent=self.user_agent,
             )
             logger.info("Reddit researcher initialized")
 
@@ -130,10 +147,7 @@ class RedditResearcher:
         return int(score)
 
     def get_hot_posts(
-        self,
-        subreddits: Optional[List[str]] = None,
-        limit: int = 50,
-        time_filter: str = "week"
+        self, subreddits: Optional[List[str]] = None, limit: int = 50, time_filter: str = "week"
     ) -> List[RedditPost]:
         """
         Get hot/popular posts from subreddits.
@@ -166,7 +180,7 @@ class RedditResearcher:
                         url=f"https://reddit.com{post.permalink}",
                         created_utc=datetime.fromtimestamp(post.created_utc),
                         flair=post.link_flair_text,
-                        is_question=self._is_question(post.title)
+                        is_question=self._is_question(post.title),
                     )
                     posts.append(reddit_post)
 
@@ -184,7 +198,7 @@ class RedditResearcher:
         subreddits: Optional[List[str]] = None,
         limit: int = 20,
         min_score: int = 50,
-        questions_only: bool = True
+        questions_only: bool = True,
     ) -> List[VideoIdea]:
         """
         Extract video ideas from Reddit posts.
@@ -237,7 +251,7 @@ class RedditResearcher:
                         source_url=f"https://reddit.com{post.permalink}",
                         subreddit=subreddit_name,
                         popularity_score=self._calculate_popularity(post),
-                        idea_type=idea_type
+                        idea_type=idea_type,
                     )
                     ideas.append(idea)
 
@@ -256,14 +270,20 @@ class RedditResearcher:
         """Clean a Reddit title into a video topic."""
         # Remove common prefixes
         prefixes = [
-            "[Question]", "[Help]", "[Tutorial]", "[Beginner]",
-            "Question:", "Help:", "ELI5:", "How to"
+            "[Question]",
+            "[Help]",
+            "[Tutorial]",
+            "[Beginner]",
+            "Question:",
+            "Help:",
+            "ELI5:",
+            "How to",
         ]
 
         topic = title
         for prefix in prefixes:
             if topic.lower().startswith(prefix.lower()):
-                topic = topic[len(prefix):].strip()
+                topic = topic[len(prefix) :].strip()
 
         # Remove trailing punctuation
         topic = topic.rstrip("?!.")
@@ -280,7 +300,7 @@ class RedditResearcher:
         subreddits: Optional[List[str]] = None,
         limit: int = 20,
         sort: str = "relevance",
-        time_filter: str = "month"
+        time_filter: str = "month",
     ) -> List[RedditPost]:
         """
         Search Reddit for specific topics.
@@ -310,12 +330,7 @@ class RedditResearcher:
             else:
                 subreddit = self.reddit.subreddit("all")
 
-            for post in subreddit.search(
-                query,
-                sort=sort,
-                time_filter=time_filter,
-                limit=limit
-            ):
+            for post in subreddit.search(query, sort=sort, time_filter=time_filter, limit=limit):
                 reddit_post = RedditPost(
                     title=post.title,
                     subreddit=post.subreddit.display_name,
@@ -324,7 +339,7 @@ class RedditResearcher:
                     url=f"https://reddit.com{post.permalink}",
                     created_utc=datetime.fromtimestamp(post.created_utc),
                     flair=post.link_flair_text,
-                    is_question=self._is_question(post.title)
+                    is_question=self._is_question(post.title),
                 )
                 posts.append(reddit_post)
 
@@ -335,9 +350,7 @@ class RedditResearcher:
         return posts
 
     def get_trending_topics(
-        self,
-        subreddits: Optional[List[str]] = None,
-        limit: int = 10
+        self, subreddits: Optional[List[str]] = None, limit: int = 10
     ) -> List[str]:
         """
         Get currently trending topics/keywords.
@@ -357,6 +370,7 @@ class RedditResearcher:
 
         # Extract common words/phrases
         from collections import Counter
+
         words = []
 
         for post in posts:
@@ -364,17 +378,92 @@ class RedditResearcher:
             title_words = post.title.lower().split()
             # Filter out common words
             stopwords = {
-                "the", "a", "an", "is", "are", "was", "were", "be", "been",
-                "being", "have", "has", "had", "do", "does", "did", "will",
-                "would", "could", "should", "may", "might", "must", "shall",
-                "can", "need", "to", "of", "in", "for", "on", "with", "at",
-                "by", "from", "as", "into", "through", "during", "before",
-                "after", "above", "below", "between", "under", "again",
-                "further", "then", "once", "here", "there", "when", "where",
-                "why", "how", "all", "each", "few", "more", "most", "other",
-                "some", "such", "no", "nor", "not", "only", "own", "same",
-                "so", "than", "too", "very", "just", "i", "me", "my", "we",
-                "our", "you", "your", "it", "its", "this", "that", "these"
+                "the",
+                "a",
+                "an",
+                "is",
+                "are",
+                "was",
+                "were",
+                "be",
+                "been",
+                "being",
+                "have",
+                "has",
+                "had",
+                "do",
+                "does",
+                "did",
+                "will",
+                "would",
+                "could",
+                "should",
+                "may",
+                "might",
+                "must",
+                "shall",
+                "can",
+                "need",
+                "to",
+                "of",
+                "in",
+                "for",
+                "on",
+                "with",
+                "at",
+                "by",
+                "from",
+                "as",
+                "into",
+                "through",
+                "during",
+                "before",
+                "after",
+                "above",
+                "below",
+                "between",
+                "under",
+                "again",
+                "further",
+                "then",
+                "once",
+                "here",
+                "there",
+                "when",
+                "where",
+                "why",
+                "how",
+                "all",
+                "each",
+                "few",
+                "more",
+                "most",
+                "other",
+                "some",
+                "such",
+                "no",
+                "nor",
+                "not",
+                "only",
+                "own",
+                "same",
+                "so",
+                "than",
+                "too",
+                "very",
+                "just",
+                "i",
+                "me",
+                "my",
+                "we",
+                "our",
+                "you",
+                "your",
+                "it",
+                "its",
+                "this",
+                "that",
+                "these",
             }
             words.extend([w for w in title_words if w not in stopwords and len(w) > 3])
 
@@ -390,14 +479,11 @@ if __name__ == "__main__":
     researcher = RedditResearcher()
 
     if researcher.reddit:
-        print("\n" + "="*60)
+        print("\n" + "=" * 60)
         print("VIDEO IDEAS FROM REDDIT")
-        print("="*60 + "\n")
+        print("=" * 60 + "\n")
 
-        ideas = researcher.get_video_ideas(
-            subreddits=["learnprogramming", "Python"],
-            limit=10
-        )
+        ideas = researcher.get_video_ideas(subreddits=["learnprogramming", "Python"], limit=10)
 
         for i, idea in enumerate(ideas, 1):
             print(f"{i}. {idea.topic}")

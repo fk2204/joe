@@ -33,22 +33,23 @@ Usage:
     )
 """
 
-import os
 import asyncio
 import json
-import subprocess
-from dataclasses import dataclass, field, asdict
+import os
+from dataclasses import asdict, dataclass, field
 from datetime import datetime, timedelta
-from pathlib import Path
-from typing import Dict, List, Optional, Any, Tuple
 from enum import Enum
+from pathlib import Path
+from typing import Any, Dict, List, Optional, Tuple
+
 from loguru import logger
 
 try:
     from moviepy.editor import (
-        VideoFileClip, AudioFileClip, CompositeVideoClip,
-        TextClip, ColorClip, concatenate_videoclips
+        CompositeVideoClip,
+        VideoFileClip,
     )
+
     MOVIEPY_AVAILABLE = True
 except ImportError:
     logger.warning("MoviePy not installed. Install with: pip install moviepy")
@@ -57,6 +58,7 @@ except ImportError:
 
 class Platform(Enum):
     """Supported distribution platforms."""
+
     YOUTUBE_SHORTS = "youtube_shorts"
     TIKTOK = "tiktok"
     INSTAGRAM_REELS = "instagram_reels"
@@ -65,14 +67,16 @@ class Platform(Enum):
 
 class AspectRatio(Enum):
     """Video aspect ratios."""
-    LANDSCAPE = "16:9"    # 1920x1080
-    PORTRAIT = "9:16"     # 1080x1920
-    SQUARE = "1:1"        # 1080x1080
+
+    LANDSCAPE = "16:9"  # 1920x1080
+    PORTRAIT = "9:16"  # 1080x1920
+    SQUARE = "1:1"  # 1080x1080
 
 
 @dataclass
 class PlatformSpec:
     """Platform-specific specifications."""
+
     platform: Platform
     aspect_ratio: AspectRatio
     max_duration: int  # seconds
@@ -139,6 +143,7 @@ PLATFORM_SPECS: Dict[Platform, PlatformSpec] = {
 @dataclass
 class ShortSegment:
     """A segment extracted for short-form content."""
+
     start_time: float
     end_time: float
     duration: float
@@ -153,6 +158,7 @@ class ShortSegment:
 @dataclass
 class PlatformExport:
     """Result of exporting for a platform."""
+
     platform: Platform
     video_path: str
     thumbnail_path: Optional[str]
@@ -174,6 +180,7 @@ class PlatformExport:
 @dataclass
 class MetadataTemplate:
     """Platform-specific metadata template."""
+
     platform: Platform
     title_template: str
     description_template: str
@@ -186,11 +193,7 @@ class MetadataTemplate:
 
     def generate_description(self, base_title: str, niche: str, video_url: str = "") -> str:
         """Generate platform-specific description."""
-        return self.description_template.format(
-            title=base_title,
-            niche=niche,
-            video_url=video_url
-        )
+        return self.description_template.format(title=base_title, niche=niche, video_url=video_url)
 
     def get_hashtags(self, niche: str, count: int = 10) -> List[str]:
         """Get relevant hashtags for niche."""
@@ -198,7 +201,7 @@ class MetadataTemplate:
         general_tags = self.hashtag_sets.get("general", [])
 
         # Combine niche-specific and general tags
-        combined = niche_tags[:count//2] + general_tags[:count//2]
+        combined = niche_tags[: count // 2] + general_tags[: count // 2]
         return combined[:count]
 
 
@@ -209,8 +212,21 @@ METADATA_TEMPLATES: Dict[Platform, MetadataTemplate] = {
         title_template="{title} #shorts",
         description_template="{title}\n\nFull video: {video_url}\n\n#shorts",
         hashtag_sets={
-            "finance": ["money", "finance", "investing", "wealthbuilding", "passiveincome", "financialfreedom"],
-            "psychology": ["psychology", "mindset", "mentalhealth", "selfimprovement", "motivation"],
+            "finance": [
+                "money",
+                "finance",
+                "investing",
+                "wealthbuilding",
+                "passiveincome",
+                "financialfreedom",
+            ],
+            "psychology": [
+                "psychology",
+                "mindset",
+                "mentalhealth",
+                "selfimprovement",
+                "motivation",
+            ],
             "storytelling": ["story", "truecrime", "mystery", "documentary", "storytelling"],
             "general": ["viral", "trending", "fyp", "shorts", "youtubeshorts"],
         },
@@ -226,7 +242,13 @@ METADATA_TEMPLATES: Dict[Platform, MetadataTemplate] = {
         description_template="{title} #fyp #viral #trending",
         hashtag_sets={
             "finance": ["moneytok", "financetok", "investing", "wealthtok", "money", "financetips"],
-            "psychology": ["psychologyfacts", "mindset", "mentalhealthawareness", "selfimprovement", "psychtok"],
+            "psychology": [
+                "psychologyfacts",
+                "mindset",
+                "mentalhealthawareness",
+                "selfimprovement",
+                "psychtok",
+            ],
             "storytelling": ["storytimetiktok", "truecrime", "mysterytok", "storytime", "scary"],
             "general": ["fyp", "foryou", "viral", "trending", "tiktok"],
         },
@@ -241,7 +263,14 @@ METADATA_TEMPLATES: Dict[Platform, MetadataTemplate] = {
         title_template="{title}",
         description_template="{title}\n\nSave this for later!\n\n.",
         hashtag_sets={
-            "finance": ["finance", "money", "investing", "wealth", "financialeducation", "moneytips"],
+            "finance": [
+                "finance",
+                "money",
+                "investing",
+                "wealth",
+                "financialeducation",
+                "moneytips",
+            ],
             "psychology": ["psychology", "mindset", "personalgrowth", "selfcare", "motivation"],
             "storytelling": ["storytelling", "truecrime", "mystery", "stories", "viral"],
             "general": ["reels", "reelsinstagram", "viral", "trending", "explore"],
@@ -258,6 +287,7 @@ METADATA_TEMPLATES: Dict[Platform, MetadataTemplate] = {
 @dataclass
 class CrossPostSchedule:
     """Schedule for cross-posting across platforms."""
+
     video_title: str
     source_video: str
     platform_exports: Dict[str, PlatformExport]
@@ -288,7 +318,7 @@ class VideoResizer:
         input_path: str,
         target_resolution: Tuple[int, int],
         output_path: Optional[str] = None,
-        crop_mode: str = "center"  # center, top, bottom, smart
+        crop_mode: str = "center",  # center, top, bottom, smart
     ) -> str:
         """
         Resize video to target resolution with cropping.
@@ -309,7 +339,9 @@ class VideoResizer:
 
         if not output_path:
             input_name = Path(input_path).stem
-            output_path = str(self.output_dir / f"{input_name}_{target_resolution[0]}x{target_resolution[1]}.mp4")
+            output_path = str(
+                self.output_dir / f"{input_name}_{target_resolution[0]}x{target_resolution[1]}.mp4"
+            )
 
         clip = VideoFileClip(input_path)
 
@@ -358,7 +390,7 @@ class VideoResizer:
             bitrate="8M",
             fps=30,
             preset="medium",
-            threads=4
+            threads=4,
         )
 
         clip.close()
@@ -369,10 +401,7 @@ class VideoResizer:
         return output_path
 
     def convert_landscape_to_portrait(
-        self,
-        input_path: str,
-        output_path: Optional[str] = None,
-        add_blur_background: bool = True
+        self, input_path: str, output_path: Optional[str] = None, add_blur_background: bool = True
     ) -> str:
         """
         Convert 16:9 video to 9:16 with optional blur background.
@@ -412,20 +441,23 @@ class VideoResizer:
             # Apply blur (using PIL via moviepy)
             def blur_frame(frame):
                 from PIL import Image, ImageFilter
+
                 img = Image.fromarray(frame)
                 blurred = img.filter(ImageFilter.GaussianBlur(radius=30))
                 # Darken
                 from PIL import ImageEnhance
+
                 enhancer = ImageEnhance.Brightness(blurred)
                 darkened = enhancer.enhance(0.5)
                 return np.array(darkened)
 
             try:
                 import numpy as np
+
                 bg_blurred = bg_final.fl_image(blur_frame)
             except Exception:
                 # Fallback to just darkened background
-                bg_blurred = bg_final.fl_image(lambda f: (f * 0.3).astype('uint8'))
+                bg_blurred = bg_final.fl_image(lambda f: (f * 0.3).astype("uint8"))
 
             # Scale main content to fit height-wise centered
             main_scale = min(target_w / clip.w, target_h * 0.6 / clip.h)
@@ -436,10 +468,9 @@ class VideoResizer:
             main_y = (target_h - main_clip.h) // 2
 
             # Composite
-            final = CompositeVideoClip([
-                bg_blurred,
-                main_clip.set_position((main_x, main_y))
-            ], size=(target_w, target_h))
+            final = CompositeVideoClip(
+                [bg_blurred, main_clip.set_position((main_x, main_y))], size=(target_w, target_h)
+            )
         else:
             # Simple crop from center
             final = self.resize_video(input_path, (target_w, target_h))
@@ -454,7 +485,7 @@ class VideoResizer:
             bitrate="8M",
             fps=30,
             preset="medium",
-            threads=4
+            threads=4,
         )
 
         clip.close()
@@ -490,7 +521,7 @@ class SegmentExtractor:
         transcript: Optional[str] = None,
         num_segments: int = 3,
         min_duration: int = 15,
-        max_duration: int = 60
+        max_duration: int = 60,
     ) -> List[ShortSegment]:
         """
         Find the best segments for short-form content.
@@ -529,14 +560,14 @@ class SegmentExtractor:
         video_path: str,
         num_segments: int,
         min_duration: int,
-        max_duration: int
+        max_duration: int,
     ) -> List[ShortSegment]:
         """Find segments based on transcript analysis."""
         segments = []
 
         # Parse transcript for timestamps and text
         # Expected format: "[00:00] text" or SRT format
-        lines = transcript.split('\n')
+        lines = transcript.split("\n")
 
         potential_segments = []
 
@@ -550,12 +581,14 @@ class SegmentExtractor:
                     timestamp = self._extract_timestamp(line)
                     if timestamp is not None:
                         score = self._calculate_segment_score(line, i, len(lines))
-                        potential_segments.append({
-                            "start_time": timestamp,
-                            "hook_text": line,
-                            "score": score,
-                            "line_index": i
-                        })
+                        potential_segments.append(
+                            {
+                                "start_time": timestamp,
+                                "hook_text": line,
+                                "score": score,
+                                "line_index": i,
+                            }
+                        )
 
         # Sort by score and take top segments
         potential_segments.sort(key=lambda x: x["score"], reverse=True)
@@ -563,11 +596,15 @@ class SegmentExtractor:
         for seg_info in potential_segments[:num_segments]:
             segment = ShortSegment(
                 start_time=seg_info["start_time"],
-                end_time=min(seg_info["start_time"] + max_duration, self._get_video_duration(video_path)),
-                duration=min(max_duration, self._get_video_duration(video_path) - seg_info["start_time"]),
+                end_time=min(
+                    seg_info["start_time"] + max_duration, self._get_video_duration(video_path)
+                ),
+                duration=min(
+                    max_duration, self._get_video_duration(video_path) - seg_info["start_time"]
+                ),
                 score=seg_info["score"],
                 hook_text=seg_info["hook_text"][:100],
-                source_video=video_path
+                source_video=video_path,
             )
             segments.append(segment)
 
@@ -578,7 +615,7 @@ class SegmentExtractor:
                 num_segments - len(segments),
                 min_duration,
                 max_duration,
-                exclude_times=[s.start_time for s in segments]
+                exclude_times=[s.start_time for s in segments],
             )
             segments.extend(additional)
 
@@ -590,7 +627,7 @@ class SegmentExtractor:
         num_segments: int,
         min_duration: int,
         max_duration: int,
-        exclude_times: List[float] = None
+        exclude_times: List[float] = None,
     ) -> List[ShortSegment]:
         """Find segments at evenly spaced intervals."""
         segments = []
@@ -600,14 +637,16 @@ class SegmentExtractor:
 
         if video_duration <= max_duration:
             # Video is short enough to be one segment
-            return [ShortSegment(
-                start_time=0,
-                end_time=video_duration,
-                duration=video_duration,
-                score=50.0,
-                hook_text="Full video",
-                source_video=video_path
-            )]
+            return [
+                ShortSegment(
+                    start_time=0,
+                    end_time=video_duration,
+                    duration=video_duration,
+                    score=50.0,
+                    hook_text="Full video",
+                    source_video=video_path,
+                )
+            ]
 
         # Calculate segment positions
         # Good positions: intro (5-10%), middle hooks (30%, 50%, 70%), climax (80-90%)
@@ -626,7 +665,7 @@ class SegmentExtractor:
                 duration=min(max_duration, video_duration - start_time),
                 score=70.0 - (i * 5),  # Earlier segments score higher
                 hook_text=f"Segment at {int(pos*100)}%",
-                source_video=video_path
+                source_video=video_path,
             )
             segments.append(segment)
 
@@ -638,8 +677,8 @@ class SegmentExtractor:
 
         # Pattern: [00:00] or [00:00:00] or 00:00 or 00:00:00
         patterns = [
-            r'\[(\d{1,2}):(\d{2})(?::(\d{2}))?\]',
-            r'(\d{1,2}):(\d{2})(?::(\d{2}))?',
+            r"\[(\d{1,2}):(\d{2})(?::(\d{2}))?\]",
+            r"(\d{1,2}):(\d{2})(?::(\d{2}))?",
         ]
 
         for pattern in patterns:
@@ -673,7 +712,8 @@ class SegmentExtractor:
 
         # Bonus for numbers/statistics
         import re
-        if re.search(r'\d+', text):
+
+        if re.search(r"\d+", text):
             score += 5
 
         # Bonus for questions
@@ -730,7 +770,7 @@ class MultiPlatformDistributor:
         title: str,
         niche: str,
         num_shorts: int = 3,
-        transcript: Optional[str] = None
+        transcript: Optional[str] = None,
     ) -> List[Dict[str, Any]]:
         """
         Create YouTube Shorts from a long-form video.
@@ -749,9 +789,7 @@ class MultiPlatformDistributor:
 
         # Find best segments
         segments = asyncio.run(
-            self.segment_extractor.find_best_segments(
-                video_path, transcript, num_shorts, 15, 60
-            )
+            self.segment_extractor.find_best_segments(video_path, transcript, num_shorts, 15, 60)
         )
 
         shorts = []
@@ -767,8 +805,7 @@ class MultiPlatformDistributor:
 
                 # Resize to portrait
                 portrait_path = self.resizer.convert_landscape_to_portrait(
-                    segment_path,
-                    add_blur_background=True
+                    segment_path, add_blur_background=True
                 )
 
                 # Generate metadata
@@ -779,13 +816,15 @@ class MultiPlatformDistributor:
                     "hashtags": template.get_hashtags(niche, 10),
                 }
 
-                shorts.append({
-                    "video_path": portrait_path,
-                    "segment": segment.to_dict(),
-                    "metadata": metadata,
-                    "platform": Platform.YOUTUBE_SHORTS.value,
-                    "index": i + 1,
-                })
+                shorts.append(
+                    {
+                        "video_path": portrait_path,
+                        "segment": segment.to_dict(),
+                        "metadata": metadata,
+                        "platform": Platform.YOUTUBE_SHORTS.value,
+                        "index": i + 1,
+                    }
+                )
 
                 logger.info(f"Created Short {i+1}: {portrait_path}")
 
@@ -795,28 +834,21 @@ class MultiPlatformDistributor:
         return shorts
 
     def _extract_segment(
-        self,
-        video_path: str,
-        start_time: float,
-        end_time: float,
-        index: int
+        self, video_path: str, start_time: float, end_time: float, index: int
     ) -> str:
         """Extract a segment from a video."""
         if not MOVIEPY_AVAILABLE:
             raise ImportError("MoviePy required for segment extraction")
 
-        output_path = str(self.output_dir / f"segment_{index}_{int(start_time)}_{int(end_time)}.mp4")
+        output_path = str(
+            self.output_dir / f"segment_{index}_{int(start_time)}_{int(end_time)}.mp4"
+        )
 
         clip = VideoFileClip(video_path)
         segment = clip.subclip(start_time, min(end_time, clip.duration))
 
         segment.write_videofile(
-            output_path,
-            codec="libx264",
-            audio_codec="aac",
-            bitrate="8M",
-            fps=30,
-            preset="medium"
+            output_path, codec="libx264", audio_codec="aac", bitrate="8M", fps=30, preset="medium"
         )
 
         clip.close()
@@ -830,7 +862,7 @@ class MultiPlatformDistributor:
         platform: Platform,
         title: str,
         niche: str,
-        custom_metadata: Optional[Dict[str, Any]] = None
+        custom_metadata: Optional[Dict[str, Any]] = None,
     ) -> PlatformExport:
         """
         Export a video for a specific platform.
@@ -863,7 +895,9 @@ class MultiPlatformDistributor:
 
         # Check duration
         if source_duration > spec.max_duration:
-            warnings.append(f"Video duration ({source_duration:.1f}s) exceeds platform max ({spec.max_duration}s)")
+            warnings.append(
+                f"Video duration ({source_duration:.1f}s) exceeds platform max ({spec.max_duration}s)"
+            )
 
         # Resize if needed
         target_resolution = spec.resolution
@@ -872,14 +906,10 @@ class MultiPlatformDistributor:
 
             if spec.aspect_ratio == AspectRatio.PORTRAIT:
                 output_path = self.resizer.convert_landscape_to_portrait(
-                    video_path,
-                    add_blur_background=True
+                    video_path, add_blur_background=True
                 )
             else:
-                output_path = self.resizer.resize_video(
-                    video_path,
-                    target_resolution
-                )
+                output_path = self.resizer.resize_video(video_path, target_resolution)
         else:
             output_path = video_path
 
@@ -901,12 +931,18 @@ class MultiPlatformDistributor:
 
         # Check title length
         if len(generated_title) > spec.caption_limit:
-            warnings.append(f"Title too long for platform ({len(generated_title)} > {spec.caption_limit})")
+            warnings.append(
+                f"Title too long for platform ({len(generated_title)} > {spec.caption_limit})"
+            )
 
         # Get file size
-        file_size_mb = os.path.getsize(output_path) / (1024 * 1024) if os.path.exists(output_path) else 0
+        file_size_mb = (
+            os.path.getsize(output_path) / (1024 * 1024) if os.path.exists(output_path) else 0
+        )
         if file_size_mb > spec.max_file_size_mb:
-            warnings.append(f"File size ({file_size_mb:.1f}MB) exceeds platform max ({spec.max_file_size_mb}MB)")
+            warnings.append(
+                f"File size ({file_size_mb:.1f}MB) exceeds platform max ({spec.max_file_size_mb}MB)"
+            )
 
         export = PlatformExport(
             platform=platform,
@@ -919,18 +955,14 @@ class MultiPlatformDistributor:
             resolution=target_resolution,
             file_size_mb=file_size_mb,
             ready_to_upload=len(warnings) == 0,
-            warnings=warnings
+            warnings=warnings,
         )
 
         logger.success(f"Export complete for {platform.value}: {output_path}")
         return export
 
     async def export_all_platforms(
-        self,
-        video_path: str,
-        title: str,
-        niche: str,
-        platforms: Optional[List[Platform]] = None
+        self, video_path: str, title: str, niche: str, platforms: Optional[List[Platform]] = None
     ) -> Dict[str, PlatformExport]:
         """
         Export video for all specified platforms.
@@ -955,9 +987,7 @@ class MultiPlatformDistributor:
 
         for platform in platforms:
             try:
-                export = await self.export_for_platform(
-                    video_path, platform, title, niche
-                )
+                export = await self.export_for_platform(video_path, platform, title, niche)
                 exports[platform.value] = export
             except Exception as e:
                 logger.error(f"Failed to export for {platform.value}: {e}")
@@ -970,7 +1000,7 @@ class MultiPlatformDistributor:
         title: str,
         niche: str,
         base_time: Optional[datetime] = None,
-        platform_delays: Optional[Dict[str, int]] = None
+        platform_delays: Optional[Dict[str, int]] = None,
     ) -> CrossPostSchedule:
         """
         Create a cross-posting schedule for multiple platforms.
@@ -993,9 +1023,9 @@ class MultiPlatformDistributor:
         # Default delays: stagger posts over 2 hours
         if platform_delays is None:
             platform_delays = {
-                Platform.YOUTUBE_SHORTS.value: 0,      # Immediate
-                Platform.TIKTOK.value: 30,             # 30 minutes later
-                Platform.INSTAGRAM_REELS.value: 90,    # 1.5 hours later
+                Platform.YOUTUBE_SHORTS.value: 0,  # Immediate
+                Platform.TIKTOK.value: 30,  # 30 minutes later
+                Platform.INSTAGRAM_REELS.value: 90,  # 1.5 hours later
             }
 
         # Export for all platforms
@@ -1016,14 +1046,16 @@ class MultiPlatformDistributor:
             source_video=video_path,
             platform_exports=exports,
             schedule=schedule,
-            status=status
+            status=status,
         )
 
         self.schedules.append(cross_post)
 
         # Save schedule to file
-        schedule_path = self.output_dir / f"schedule_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
-        with open(schedule_path, 'w') as f:
+        schedule_path = (
+            self.output_dir / f"schedule_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
+        )
+        with open(schedule_path, "w") as f:
             json.dump(cross_post.to_dict(), f, indent=2)
 
         logger.success(f"Cross-post schedule created: {schedule_path}")
@@ -1058,7 +1090,9 @@ class MultiPlatformDistributor:
         # Check file size
         file_size_mb = os.path.getsize(video_path) / (1024 * 1024)
         if file_size_mb > spec.max_file_size_mb:
-            issues.append(f"File size ({file_size_mb:.1f}MB) exceeds max ({spec.max_file_size_mb}MB)")
+            issues.append(
+                f"File size ({file_size_mb:.1f}MB) exceeds max ({spec.max_file_size_mb}MB)"
+            )
 
         # Check duration and resolution with MoviePy
         if MOVIEPY_AVAILABLE:
@@ -1074,7 +1108,9 @@ class MultiPlatformDistributor:
                     issues.append(f"Duration ({duration:.1f}s) below min ({spec.min_duration}s)")
 
                 if resolution != spec.resolution:
-                    warnings.append(f"Resolution {resolution} differs from optimal {spec.resolution}")
+                    warnings.append(
+                        f"Resolution {resolution} differs from optimal {spec.resolution}"
+                    )
 
             except Exception as e:
                 warnings.append(f"Could not analyze video: {e}")
@@ -1090,10 +1126,7 @@ class MultiPlatformDistributor:
 
 # Convenience functions
 def create_shorts_from_video(
-    video_path: str,
-    title: str,
-    niche: str,
-    num_shorts: int = 3
+    video_path: str, title: str, niche: str, num_shorts: int = 3
 ) -> List[Dict[str, Any]]:
     """Convenience function to create Shorts from a video."""
     distributor = MultiPlatformDistributor()
@@ -1101,9 +1134,7 @@ def create_shorts_from_video(
 
 
 async def export_for_all_platforms(
-    video_path: str,
-    title: str,
-    niche: str
+    video_path: str, title: str, niche: str
 ) -> Dict[str, PlatformExport]:
     """Convenience function to export for all platforms."""
     distributor = MultiPlatformDistributor()

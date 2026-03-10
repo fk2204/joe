@@ -17,7 +17,7 @@ import shutil
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Optional
 
 from loguru import logger
 
@@ -108,10 +108,7 @@ class IntelligentContentCache:
     # ==================== Research Cache ====================
 
     def get_cached_research(
-        self,
-        topic: str,
-        niche: str,
-        max_age_hours: int = RESEARCH_TTL_HOURS
+        self, topic: str, niche: str, max_age_hours: int = RESEARCH_TTL_HOURS
     ) -> Optional[Dict]:
         """
         Get cached research data for a topic.
@@ -156,12 +153,7 @@ class IntelligentContentCache:
             self._stats["research"].misses += 1
             return None
 
-    def save_research(
-        self,
-        topic: str,
-        niche: str,
-        research_data: Dict
-    ) -> str:
+    def save_research(self, topic: str, niche: str, research_data: Dict) -> str:
         """
         Save research data to cache.
 
@@ -197,10 +189,7 @@ class IntelligentContentCache:
     # ==================== Outline Cache ====================
 
     def get_cached_outline(
-        self,
-        topic: str,
-        niche: str,
-        max_age_days: int = OUTLINE_TTL_DAYS
+        self, topic: str, niche: str, max_age_days: int = OUTLINE_TTL_DAYS
     ) -> Optional[Dict]:
         """
         Get cached script outline.
@@ -241,12 +230,7 @@ class IntelligentContentCache:
             self._stats["outline"].misses += 1
             return None
 
-    def save_outline(
-        self,
-        topic: str,
-        niche: str,
-        outline_data: Dict
-    ) -> str:
+    def save_outline(self, topic: str, niche: str, outline_data: Dict) -> str:
         """
         Save script outline to cache.
 
@@ -276,11 +260,7 @@ class IntelligentContentCache:
 
     # ==================== Render Cache ====================
 
-    def get_cached_render(
-        self,
-        script_hash: str,
-        settings_hash: str
-    ) -> Optional[str]:
+    def get_cached_render(self, script_hash: str, settings_hash: str) -> Optional[str]:
         """
         Check if video was already rendered with same script and settings.
 
@@ -317,11 +297,7 @@ class IntelligentContentCache:
             return None
 
     def save_render_reference(
-        self,
-        script_hash: str,
-        settings_hash: str,
-        video_path: str,
-        metadata: Optional[Dict] = None
+        self, script_hash: str, settings_hash: str, video_path: str, metadata: Optional[Dict] = None
     ) -> str:
         """
         Save reference to rendered video.

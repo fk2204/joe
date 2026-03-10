@@ -20,10 +20,10 @@ Usage:
     print(f"Algorithm Score: {video_stats.get_algorithm_score()}")
 """
 
-import os
-from datetime import datetime, timedelta
-from typing import Optional, List, Dict, Any, Tuple
 from dataclasses import dataclass, field
+from datetime import datetime, timedelta
+from typing import Dict, List, Optional, Tuple
+
 from loguru import logger
 
 try:
@@ -46,6 +46,7 @@ class VideoAnalytics:
     Contains all key metrics that affect YouTube algorithm ranking
     and video performance assessment.
     """
+
     video_id: str
     views: int = 0
     watch_time_minutes: float = 0.0
@@ -184,9 +185,7 @@ class VideoAnalytics:
             lines.append("")
             lines.append("Traffic Sources:")
             for source, percentage in sorted(
-                self.traffic_source_breakdown.items(),
-                key=lambda x: x[1],
-                reverse=True
+                self.traffic_source_breakdown.items(), key=lambda x: x[1], reverse=True
             )[:5]:
                 lines.append(f"  {source}: {percentage:.1f}%")
 
@@ -196,6 +195,7 @@ class VideoAnalytics:
 @dataclass
 class RetentionDropoff:
     """Represents a significant audience retention dropoff point."""
+
     timestamp_seconds: int
     percentage_drop: float
     retention_before: float
@@ -212,6 +212,7 @@ class RetentionDropoff:
 @dataclass
 class ChannelComparison:
     """Comparison of video performance against channel averages."""
+
     video_id: str
     channel_id: str
     days_analyzed: int
@@ -251,10 +252,10 @@ class ChannelComparison:
 
         # Overall assessment
         avg_percentile = (
-            self.views_percentile +
-            self.ctr_percentile +
-            self.retention_percentile +
-            self.engagement_percentile
+            self.views_percentile
+            + self.ctr_percentile
+            + self.retention_percentile
+            + self.engagement_percentile
         ) / 4
 
         if avg_percentile >= 75:
@@ -286,7 +287,7 @@ class YouTubeAnalyticsAPI:
     # Analytics API scopes
     ANALYTICS_SCOPES = [
         "https://www.googleapis.com/auth/yt-analytics.readonly",
-        "https://www.googleapis.com/auth/yt-analytics-monetary.readonly"
+        "https://www.googleapis.com/auth/yt-analytics-monetary.readonly",
     ]
 
     API_SERVICE_NAME = "youtubeAnalytics"
@@ -325,9 +326,7 @@ class YouTubeAnalyticsAPI:
         if self._analytics_service is None:
             credentials = self.auth.get_credentials()
             self._analytics_service = build(
-                self.API_SERVICE_NAME,
-                self.API_VERSION,
-                credentials=credentials
+                self.API_SERVICE_NAME, self.API_VERSION, credentials=credentials
             )
             logger.info("YouTube Analytics API service created")
         return self._analytics_service
@@ -338,9 +337,7 @@ class YouTubeAnalyticsAPI:
         if self._data_service is None:
             credentials = self.auth.get_credentials()
             self._data_service = build(
-                self.DATA_API_SERVICE,
-                self.DATA_API_VERSION,
-                credentials=credentials
+                self.DATA_API_SERVICE, self.DATA_API_VERSION, credentials=credentials
             )
             logger.info("YouTube Data API service created")
         return self._data_service
@@ -348,10 +345,7 @@ class YouTubeAnalyticsAPI:
     def _get_channel_id(self) -> Optional[str]:
         """Get the authenticated user's channel ID."""
         try:
-            response = self.youtube.channels().list(
-                part="id",
-                mine=True
-            ).execute()
+            response = self.youtube.channels().list(part="id", mine=True).execute()
 
             if response.get("items"):
                 return response["items"][0]["id"]
@@ -359,11 +353,7 @@ class YouTubeAnalyticsAPI:
             logger.error(f"Failed to get channel ID: {e}")
         return None
 
-    def get_video_analytics(
-        self,
-        video_id: str,
-        days: int = 28
-    ) -> VideoAnalytics:
+    def get_video_analytics(self, video_id: str, days: int = 28) -> VideoAnalytics:
         """
         Get comprehensive analytics for a specific video.
 
@@ -391,13 +381,17 @@ class YouTubeAnalyticsAPI:
 
         try:
             # Query 1: Basic metrics
-            basic_response = self.analytics.reports().query(
-                ids=f"channel=={channel_id}",
-                startDate=start_date,
-                endDate=end_date,
-                metrics="views,estimatedMinutesWatched,averageViewDuration,averageViewPercentage,likes,comments,shares,subscribersGained",
-                filters=f"video=={video_id}"
-            ).execute()
+            basic_response = (
+                self.analytics.reports()
+                .query(
+                    ids=f"channel=={channel_id}",
+                    startDate=start_date,
+                    endDate=end_date,
+                    metrics="views,estimatedMinutesWatched,averageViewDuration,averageViewPercentage,likes,comments,shares,subscribersGained",
+                    filters=f"video=={video_id}",
+                )
+                .execute()
+            )
 
             if basic_response.get("rows"):
                 row = basic_response["rows"][0]
@@ -412,13 +406,17 @@ class YouTubeAnalyticsAPI:
 
             # Query 2: Impressions and CTR
             try:
-                impressions_response = self.analytics.reports().query(
-                    ids=f"channel=={channel_id}",
-                    startDate=start_date,
-                    endDate=end_date,
-                    metrics="impressions,impressionClickThroughRate",
-                    filters=f"video=={video_id}"
-                ).execute()
+                impressions_response = (
+                    self.analytics.reports()
+                    .query(
+                        ids=f"channel=={channel_id}",
+                        startDate=start_date,
+                        endDate=end_date,
+                        metrics="impressions,impressionClickThroughRate",
+                        filters=f"video=={video_id}",
+                    )
+                    .execute()
+                )
 
                 if impressions_response.get("rows"):
                     row = impressions_response["rows"][0]
@@ -429,15 +427,19 @@ class YouTubeAnalyticsAPI:
 
             # Query 3: Traffic sources
             try:
-                traffic_response = self.analytics.reports().query(
-                    ids=f"channel=={channel_id}",
-                    startDate=start_date,
-                    endDate=end_date,
-                    dimensions="insightTrafficSourceType",
-                    metrics="views",
-                    filters=f"video=={video_id}",
-                    sort="-views"
-                ).execute()
+                traffic_response = (
+                    self.analytics.reports()
+                    .query(
+                        ids=f"channel=={channel_id}",
+                        startDate=start_date,
+                        endDate=end_date,
+                        dimensions="insightTrafficSourceType",
+                        metrics="views",
+                        filters=f"video=={video_id}",
+                        sort="-views",
+                    )
+                    .execute()
+                )
 
                 if traffic_response.get("rows"):
                     total_views = sum(int(row[1]) for row in traffic_response["rows"])
@@ -452,15 +454,19 @@ class YouTubeAnalyticsAPI:
 
             # Query 4: Audience retention curve (if available)
             try:
-                retention_response = self.analytics.reports().query(
-                    ids=f"channel=={channel_id}",
-                    startDate=start_date,
-                    endDate=end_date,
-                    dimensions="elapsedVideoTimeRatio",
-                    metrics="audienceWatchRatio",
-                    filters=f"video=={video_id}",
-                    sort="elapsedVideoTimeRatio"
-                ).execute()
+                retention_response = (
+                    self.analytics.reports()
+                    .query(
+                        ids=f"channel=={channel_id}",
+                        startDate=start_date,
+                        endDate=end_date,
+                        dimensions="elapsedVideoTimeRatio",
+                        metrics="audienceWatchRatio",
+                        filters=f"video=={video_id}",
+                        sort="elapsedVideoTimeRatio",
+                    )
+                    .execute()
+                )
 
                 if retention_response.get("rows"):
                     analytics.audience_retention_curve = [
@@ -471,13 +477,17 @@ class YouTubeAnalyticsAPI:
 
             # Query 5: Card and annotation metrics (optional)
             try:
-                engagement_response = self.analytics.reports().query(
-                    ids=f"channel=={channel_id}",
-                    startDate=start_date,
-                    endDate=end_date,
-                    metrics="cardClickRate,cardTeaserClickRate",
-                    filters=f"video=={video_id}"
-                ).execute()
+                engagement_response = (
+                    self.analytics.reports()
+                    .query(
+                        ids=f"channel=={channel_id}",
+                        startDate=start_date,
+                        endDate=end_date,
+                        metrics="cardClickRate,cardTeaserClickRate",
+                        filters=f"video=={video_id}",
+                    )
+                    .execute()
+                )
 
                 if engagement_response.get("rows"):
                     row = engagement_response["rows"][0]
@@ -495,9 +505,7 @@ class YouTubeAnalyticsAPI:
         return analytics
 
     def get_retention_dropoff_points(
-        self,
-        video_id: str,
-        threshold: float = 5.0
+        self, video_id: str, threshold: float = 5.0
     ) -> List[RetentionDropoff]:
         """
         Identify significant audience retention dropoff points.
@@ -547,13 +555,15 @@ class YouTubeAnalyticsAPI:
                 else:
                     severity = "minor"
 
-                dropoffs.append(RetentionDropoff(
-                    timestamp_seconds=timestamp_seconds,
-                    percentage_drop=drop,
-                    retention_before=retention[i - 1],
-                    retention_after=retention[i],
-                    severity=severity
-                ))
+                dropoffs.append(
+                    RetentionDropoff(
+                        timestamp_seconds=timestamp_seconds,
+                        percentage_drop=drop,
+                        retention_before=retention[i - 1],
+                        retention_after=retention[i],
+                        severity=severity,
+                    )
+                )
 
         # Sort by severity (severe first) then by drop percentage
         severity_order = {"severe": 0, "moderate": 1, "minor": 2}
@@ -565,10 +575,7 @@ class YouTubeAnalyticsAPI:
     def _get_video_duration(self, video_id: str) -> int:
         """Get video duration in seconds from Data API."""
         try:
-            response = self.youtube.videos().list(
-                part="contentDetails",
-                id=video_id
-            ).execute()
+            response = self.youtube.videos().list(part="contentDetails", id=video_id).execute()
 
             if response.get("items"):
                 duration_str = response["items"][0]["contentDetails"]["duration"]
@@ -586,9 +593,9 @@ class YouTubeAnalyticsAPI:
         minutes = 0
         seconds = 0
 
-        hour_match = re.search(r'(\d+)H', duration_str)
-        min_match = re.search(r'(\d+)M', duration_str)
-        sec_match = re.search(r'(\d+)S', duration_str)
+        hour_match = re.search(r"(\d+)H", duration_str)
+        min_match = re.search(r"(\d+)M", duration_str)
+        sec_match = re.search(r"(\d+)S", duration_str)
 
         if hour_match:
             hours = int(hour_match.group(1))
@@ -600,10 +607,7 @@ class YouTubeAnalyticsAPI:
         return hours * 3600 + minutes * 60 + seconds
 
     def compare_to_channel_average(
-        self,
-        video_id: str,
-        channel_id: Optional[str] = None,
-        days: int = 90
+        self, video_id: str, channel_id: Optional[str] = None, days: int = 90
     ) -> ChannelComparison:
         """
         Compare a video's performance to the channel average.
@@ -631,9 +635,18 @@ class YouTubeAnalyticsAPI:
                 video_id=video_id,
                 channel_id="unknown",
                 days_analyzed=days,
-                video_views=0, video_ctr=0, video_retention=0, video_engagement_rate=0,
-                channel_avg_views=0, channel_avg_ctr=0, channel_avg_retention=0, channel_avg_engagement_rate=0,
-                views_percentile=0, ctr_percentile=0, retention_percentile=0, engagement_percentile=0
+                video_views=0,
+                video_ctr=0,
+                video_retention=0,
+                video_engagement_rate=0,
+                channel_avg_views=0,
+                channel_avg_ctr=0,
+                channel_avg_retention=0,
+                channel_avg_engagement_rate=0,
+                views_percentile=0,
+                ctr_percentile=0,
+                retention_percentile=0,
+                engagement_percentile=0,
             )
 
         # Get video metrics
@@ -643,10 +656,10 @@ class YouTubeAnalyticsAPI:
         video_engagement_rate = 0.0
         if video_analytics.views > 0:
             video_engagement_rate = (
-                video_analytics.likes +
-                video_analytics.comments * 5 +
-                video_analytics.shares * 10
-            ) / video_analytics.views * 100
+                (video_analytics.likes + video_analytics.comments * 5 + video_analytics.shares * 10)
+                / video_analytics.views
+                * 100
+            )
 
         # Get channel-wide metrics
         end_date = datetime.now().strftime("%Y-%m-%d")
@@ -654,15 +667,19 @@ class YouTubeAnalyticsAPI:
 
         try:
             # Get all videos' metrics for the channel
-            channel_response = self.analytics.reports().query(
-                ids=f"channel=={channel_id}",
-                startDate=start_date,
-                endDate=end_date,
-                dimensions="video",
-                metrics="views,estimatedMinutesWatched,averageViewPercentage,likes,comments,shares",
-                maxResults=200,
-                sort="-views"
-            ).execute()
+            channel_response = (
+                self.analytics.reports()
+                .query(
+                    ids=f"channel=={channel_id}",
+                    startDate=start_date,
+                    endDate=end_date,
+                    dimensions="video",
+                    metrics="views,estimatedMinutesWatched,averageViewPercentage,likes,comments,shares",
+                    maxResults=200,
+                    sort="-views",
+                )
+                .execute()
+            )
 
             videos_data = []
             if channel_response.get("rows"):
@@ -679,24 +696,30 @@ class YouTubeAnalyticsAPI:
                     if views > 0:
                         engagement = (likes + comments * 5 + shares * 10) / views * 100
 
-                    videos_data.append({
-                        "video_id": vid,
-                        "views": views,
-                        "retention": retention,
-                        "engagement": engagement
-                    })
+                    videos_data.append(
+                        {
+                            "video_id": vid,
+                            "views": views,
+                            "retention": retention,
+                            "engagement": engagement,
+                        }
+                    )
 
             # Get CTR data separately (may not be available for all videos)
             ctr_data = {}
             try:
-                ctr_response = self.analytics.reports().query(
-                    ids=f"channel=={channel_id}",
-                    startDate=start_date,
-                    endDate=end_date,
-                    dimensions="video",
-                    metrics="impressionClickThroughRate",
-                    maxResults=200
-                ).execute()
+                ctr_response = (
+                    self.analytics.reports()
+                    .query(
+                        ids=f"channel=={channel_id}",
+                        startDate=start_date,
+                        endDate=end_date,
+                        dimensions="video",
+                        metrics="impressionClickThroughRate",
+                        maxResults=200,
+                    )
+                    .execute()
+                )
 
                 if ctr_response.get("rows"):
                     for row in ctr_response["rows"]:
@@ -712,7 +735,9 @@ class YouTubeAnalyticsAPI:
             if videos_data:
                 channel_avg_views = sum(v["views"] for v in videos_data) / len(videos_data)
                 channel_avg_retention = sum(v["retention"] for v in videos_data) / len(videos_data)
-                channel_avg_engagement = sum(v["engagement"] for v in videos_data) / len(videos_data)
+                channel_avg_engagement = sum(v["engagement"] for v in videos_data) / len(
+                    videos_data
+                )
                 ctrs = [v["ctr"] for v in videos_data if v["ctr"] > 0]
                 channel_avg_ctr = sum(ctrs) / len(ctrs) if ctrs else 0.0
             else:
@@ -735,9 +760,13 @@ class YouTubeAnalyticsAPI:
             ctr_list = [v["ctr"] for v in videos_data if v["ctr"] > 0]
 
             views_percentile = calculate_percentile(video_analytics.views, views_list)
-            retention_percentile = calculate_percentile(video_analytics.avg_percentage_viewed, retention_list)
+            retention_percentile = calculate_percentile(
+                video_analytics.avg_percentage_viewed, retention_list
+            )
             engagement_percentile = calculate_percentile(video_engagement_rate, engagement_list)
-            ctr_percentile = calculate_percentile(video_analytics.ctr, ctr_list) if ctr_list else 50.0
+            ctr_percentile = (
+                calculate_percentile(video_analytics.ctr, ctr_list) if ctr_list else 50.0
+            )
 
             comparison = ChannelComparison(
                 video_id=video_id,
@@ -754,7 +783,7 @@ class YouTubeAnalyticsAPI:
                 views_percentile=views_percentile,
                 ctr_percentile=ctr_percentile,
                 retention_percentile=retention_percentile,
-                engagement_percentile=engagement_percentile
+                engagement_percentile=engagement_percentile,
             )
 
             logger.success(f"Comparison complete for video {video_id}")
@@ -770,15 +799,18 @@ class YouTubeAnalyticsAPI:
                 video_ctr=video_analytics.ctr,
                 video_retention=video_analytics.avg_percentage_viewed,
                 video_engagement_rate=video_engagement_rate,
-                channel_avg_views=0, channel_avg_ctr=0, channel_avg_retention=0, channel_avg_engagement_rate=0,
-                views_percentile=50, ctr_percentile=50, retention_percentile=50, engagement_percentile=50
+                channel_avg_views=0,
+                channel_avg_ctr=0,
+                channel_avg_retention=0,
+                channel_avg_engagement_rate=0,
+                views_percentile=50,
+                ctr_percentile=50,
+                retention_percentile=50,
+                engagement_percentile=50,
             )
 
     def get_top_performing_videos(
-        self,
-        days: int = 30,
-        limit: int = 10,
-        metric: str = "views"
+        self, days: int = 30, limit: int = 10, metric: str = "views"
     ) -> List[Tuple[str, VideoAnalytics]]:
         """
         Get top performing videos by a specific metric.
@@ -805,20 +837,24 @@ class YouTubeAnalyticsAPI:
             "views": "views",
             "watchTime": "estimatedMinutesWatched",
             "ctr": "impressionClickThroughRate",
-            "engagement": "likes"
+            "engagement": "likes",
         }
         api_metric = metric_map.get(metric, "views")
 
         try:
-            response = self.analytics.reports().query(
-                ids=f"channel=={channel_id}",
-                startDate=start_date,
-                endDate=end_date,
-                dimensions="video",
-                metrics=f"{api_metric}",
-                maxResults=limit,
-                sort=f"-{api_metric}"
-            ).execute()
+            response = (
+                self.analytics.reports()
+                .query(
+                    ids=f"channel=={channel_id}",
+                    startDate=start_date,
+                    endDate=end_date,
+                    dimensions="video",
+                    metrics=f"{api_metric}",
+                    maxResults=limit,
+                    sort=f"-{api_metric}",
+                )
+                .execute()
+            )
 
             results = []
             if response.get("rows"):
@@ -858,9 +894,11 @@ if __name__ == "__main__":
         if dropoffs:
             print(f"\nFound {len(dropoffs)} significant dropoff points:")
             for dropoff in dropoffs[:5]:  # Show top 5
-                print(f"  {dropoff.get_timestamp_str()} - {dropoff.severity.upper()}: "
-                      f"{dropoff.percentage_drop:.1f}% drop "
-                      f"({dropoff.retention_before:.1f}% -> {dropoff.retention_after:.1f}%)")
+                print(
+                    f"  {dropoff.get_timestamp_str()} - {dropoff.severity.upper()}: "
+                    f"{dropoff.percentage_drop:.1f}% drop "
+                    f"({dropoff.retention_before:.1f}% -> {dropoff.retention_after:.1f}%)"
+                )
         else:
             print("No significant dropoffs found")
         print()

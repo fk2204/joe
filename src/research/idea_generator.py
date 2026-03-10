@@ -9,27 +9,25 @@ Usage:
     ideas = generator.generate_ideas(niche="python programming", count=5)
 """
 
-import os
 import json
-from typing import List, Dict, Optional, Any
-from dataclasses import dataclass, asdict
+import os
+from dataclasses import dataclass
 from datetime import datetime
-from loguru import logger
+from typing import Any, Dict, List, Optional
+
 from dotenv import load_dotenv
+from loguru import logger
 
 # Load environment variables
 load_dotenv()
 
-from .trends import TrendResearcher, TrendTopic
-from .reddit import RedditResearcher, VideoIdea
+from .reddit import RedditResearcher
+from .trends import TrendResearcher
 
 # Import new enhanced researcher (optional - falls back to basic if unavailable)
 try:
-    from .reddit_researcher import (
-        RedditResearcher as EnhancedRedditResearcher,
-        RedditResearchReport,
-        VideoIdea as EnhancedVideoIdea,
-    )
+    from .reddit_researcher import RedditResearcher as EnhancedRedditResearcher
+
     ENHANCED_REDDIT_AVAILABLE = True
 except ImportError:
     ENHANCED_REDDIT_AVAILABLE = False
@@ -39,16 +37,17 @@ except ImportError:
 @dataclass
 class ScoredIdea:
     """A video idea with scoring and metadata."""
+
     title: str
     description: str
     keywords: List[str]
     niche: str
-    score: int              # 0-100 overall score
-    trend_score: int        # 0-100 trending potential
+    score: int  # 0-100 overall score
+    trend_score: int  # 0-100 trending potential
     competition_score: int  # 0-100 (higher = less competition)
-    engagement_score: int   # 0-100 predicted engagement
-    source: str             # Where the idea came from
-    reasoning: str          # Why this is a good idea
+    engagement_score: int  # 0-100 predicted engagement
+    source: str  # Where the idea came from
+    reasoning: str  # Why this is a good idea
 
 
 # ============================================================
@@ -95,12 +94,55 @@ VIRAL_TOPIC_TEMPLATES = {
             "{number} Investing Rules That Changed My Life",
         ],
         "variables": {
-            "company": ["Apple", "Tesla", "Amazon", "Microsoft", "Netflix", "Nvidia", "Meta", "Google", "Costco", "Berkshire Hathaway"],
+            "company": [
+                "Apple",
+                "Tesla",
+                "Amazon",
+                "Microsoft",
+                "Netflix",
+                "Nvidia",
+                "Meta",
+                "Google",
+                "Costco",
+                "Berkshire Hathaway",
+            ],
             "competitor": ["Apple", "Microsoft", "Amazon", "Google", "Tesla", "Meta"],
-            "stock": ["NVIDIA", "TSMC", "AMD", "Tesla", "Amazon", "Apple", "Microsoft", "Palantir", "Snowflake"],
-            "financial_trend": ["Dividend Investing", "Index Funds", "Real Estate", "Crypto", "AI Stocks", "ETFs", "Bonds", "REITs"],
-            "investment_type": ["Stocks", "ETFs", "REITs", "Dividend Stocks", "Growth Stocks", "Blue Chip Stocks"],
-            "strategy": ["Dividend Investing", "Index Funds", "Real Estate Crowdfunding", "Side Hustles", "Value Investing"],
+            "stock": [
+                "NVIDIA",
+                "TSMC",
+                "AMD",
+                "Tesla",
+                "Amazon",
+                "Apple",
+                "Microsoft",
+                "Palantir",
+                "Snowflake",
+            ],
+            "financial_trend": [
+                "Dividend Investing",
+                "Index Funds",
+                "Real Estate",
+                "Crypto",
+                "AI Stocks",
+                "ETFs",
+                "Bonds",
+                "REITs",
+            ],
+            "investment_type": [
+                "Stocks",
+                "ETFs",
+                "REITs",
+                "Dividend Stocks",
+                "Growth Stocks",
+                "Blue Chip Stocks",
+            ],
+            "strategy": [
+                "Dividend Investing",
+                "Index Funds",
+                "Real Estate Crowdfunding",
+                "Side Hustles",
+                "Value Investing",
+            ],
             "number": ["3", "5", "7", "10", "12"],
             "multiplier": ["2", "3", "5", "10"],
             "amount": ["1,000", "5,000", "10,000", "50,000", "100,000"],
@@ -135,7 +177,6 @@ VIRAL_TOPIC_TEMPLATES = {
             "Target 8-15 minute videos for optimal retention",
         ],
     },
-
     # mind_unlocked channel (Psychology)
     # Key insight: "What if" hooks and dark psychology content drive highest engagement
     # Avg video length: 8-12 minutes | Best performing: Personality type content, manipulation awareness
@@ -173,16 +214,100 @@ VIRAL_TOPIC_TEMPLATES = {
             "{number} Habits of Highly Manipulative People",
         ],
         "variables": {
-            "personality_type": ["a Narcissist", "a Manipulator", "High Intelligence", "an Introvert", "a Psychopath", "an Empath", "Emotional Intelligence", "a Covert Narcissist", "an INFJ", "a Sociopath"],
-            "brain_action": ["Hates Change", "Remembers Embarrassing Moments", "Sabotages Your Success", "Fears Rejection", "Creates False Memories", "Craves Validation", "Procrastinates", "Gets Addicted"],
-            "group": ["Salespeople", "Politicians", "Advertisers", "Narcissists", "Manipulators", "Social Media Companies", "Toxic Parents", "Gaslighters", "Marketing Teams"],
+            "personality_type": [
+                "a Narcissist",
+                "a Manipulator",
+                "High Intelligence",
+                "an Introvert",
+                "a Psychopath",
+                "an Empath",
+                "Emotional Intelligence",
+                "a Covert Narcissist",
+                "an INFJ",
+                "a Sociopath",
+            ],
+            "brain_action": [
+                "Hates Change",
+                "Remembers Embarrassing Moments",
+                "Sabotages Your Success",
+                "Fears Rejection",
+                "Creates False Memories",
+                "Craves Validation",
+                "Procrastinates",
+                "Gets Addicted",
+            ],
+            "group": [
+                "Salespeople",
+                "Politicians",
+                "Advertisers",
+                "Narcissists",
+                "Manipulators",
+                "Social Media Companies",
+                "Toxic Parents",
+                "Gaslighters",
+                "Marketing Teams",
+            ],
             "target": ["You", "Their Children", "Their Partners", "Their Employees", "Customers"],
-            "behavior": ["Procrastination", "Jealousy", "Attraction", "Fear", "Addiction", "Motivation", "Anxiety", "Depression", "Love Bombing"],
-            "cognitive_bias": ["Confirmation Bias", "Sunk Cost Fallacy", "Anchoring Effect", "Halo Effect", "Dunning-Kruger Effect", "Negativity Bias", "Availability Heuristic"],
-            "trait": ["Handwriting", "Eye Color", "Sleep Position", "Favorite Color", "Walking Style", "Laugh", "Phone Wallpaper", "Music Taste"],
-            "action": ["Remember Embarrassing Moments", "Procrastinate", "Fear Success", "Self-Sabotage", "Compare Yourself to Others", "Overthink", "People Please", "Avoid Conflict"],
-            "emotion": ["Lying", "Attracted to You", "Hiding Something", "Nervous", "Confident", "Insecure", "Jealous", "Guilty"],
-            "topic": ["Success", "Money", "Attraction", "Influence", "Fear", "Persuasion", "Charisma", "Power"],
+            "behavior": [
+                "Procrastination",
+                "Jealousy",
+                "Attraction",
+                "Fear",
+                "Addiction",
+                "Motivation",
+                "Anxiety",
+                "Depression",
+                "Love Bombing",
+            ],
+            "cognitive_bias": [
+                "Confirmation Bias",
+                "Sunk Cost Fallacy",
+                "Anchoring Effect",
+                "Halo Effect",
+                "Dunning-Kruger Effect",
+                "Negativity Bias",
+                "Availability Heuristic",
+            ],
+            "trait": [
+                "Handwriting",
+                "Eye Color",
+                "Sleep Position",
+                "Favorite Color",
+                "Walking Style",
+                "Laugh",
+                "Phone Wallpaper",
+                "Music Taste",
+            ],
+            "action": [
+                "Remember Embarrassing Moments",
+                "Procrastinate",
+                "Fear Success",
+                "Self-Sabotage",
+                "Compare Yourself to Others",
+                "Overthink",
+                "People Please",
+                "Avoid Conflict",
+            ],
+            "emotion": [
+                "Lying",
+                "Attracted to You",
+                "Hiding Something",
+                "Nervous",
+                "Confident",
+                "Insecure",
+                "Jealous",
+                "Guilty",
+            ],
+            "topic": [
+                "Success",
+                "Money",
+                "Attraction",
+                "Influence",
+                "Fear",
+                "Persuasion",
+                "Charisma",
+                "Power",
+            ],
             "number": ["3", "5", "7", "10", "8", "12"],
             "percentage": ["73", "87", "92", "96", "85", "78"],
         },
@@ -210,7 +335,6 @@ VIRAL_TOPIC_TEMPLATES = {
             "Animation or stock footage with calm voiceover works best",
         ],
     },
-
     # untold_stories channel (Storytelling)
     # Key insight: Documentary-style with dramatic tension, 30+ min episodes perform well
     # Best performing: Company rise/fall, true crime adjacent, unsolved mysteries
@@ -249,22 +373,130 @@ VIRAL_TOPIC_TEMPLATES = {
             "The Truth They Don't Want You to Know About {subject}",
         ],
         "variables": {
-            "company_person": ["Enron", "WeWork", "Theranos", "Bernie Madoff", "Elon Musk", "Steve Jobs", "FTX", "Lehman Brothers", "Elizabeth Holmes", "Sam Bankman-Fried", "Adam Neumann"],
-            "company": ["Amazon", "Apple", "Netflix", "Google", "Tesla", "Uber", "Airbnb", "SpaceX", "Meta", "Twitter", "TikTok"],
-            "brand": ["Blockbuster", "Kodak", "Nokia", "BlackBerry", "Toys R Us", "Sears", "RadioShack", "Vine", "MySpace", "Yahoo"],
-            "forgotten_entity": ["MySpace", "AOL", "Yahoo", "Vine", "Palm", "Compaq", "Circuit City", "Borders", "Tower Records"],
-            "person": ["Man", "Woman", "Teenager", "Dropout", "Immigrant", "Founder", "Genius", "Scammer", "Whistleblower"],
-            "famous_person": ["Elon Musk", "Jeff Bezos", "Mark Zuckerberg", "Steve Jobs", "Elizabeth Holmes", "Adam Neumann"],
-            "famous_criminal": ["Bernie Madoff", "Elizabeth Holmes", "The Zodiac Killer", "D.B. Cooper"],
-            "achievement": ["Fooled Wall Street", "Predicted the Crash", "Broke the Internet", "Built a Billion Dollar Company", "Changed an Industry", "Stole Millions", "Escaped Justice"],
-            "adjective": ["Terrifying", "Genius", "Evil", "Doomed", "Unstoppable", "Dangerous", "Brilliant"],
-            "successful_entity": ["Amazon", "Facebook", "Google", "Tesla", "Apple", "Disney", "Netflix", "Microsoft"],
+            "company_person": [
+                "Enron",
+                "WeWork",
+                "Theranos",
+                "Bernie Madoff",
+                "Elon Musk",
+                "Steve Jobs",
+                "FTX",
+                "Lehman Brothers",
+                "Elizabeth Holmes",
+                "Sam Bankman-Fried",
+                "Adam Neumann",
+            ],
+            "company": [
+                "Amazon",
+                "Apple",
+                "Netflix",
+                "Google",
+                "Tesla",
+                "Uber",
+                "Airbnb",
+                "SpaceX",
+                "Meta",
+                "Twitter",
+                "TikTok",
+            ],
+            "brand": [
+                "Blockbuster",
+                "Kodak",
+                "Nokia",
+                "BlackBerry",
+                "Toys R Us",
+                "Sears",
+                "RadioShack",
+                "Vine",
+                "MySpace",
+                "Yahoo",
+            ],
+            "forgotten_entity": [
+                "MySpace",
+                "AOL",
+                "Yahoo",
+                "Vine",
+                "Palm",
+                "Compaq",
+                "Circuit City",
+                "Borders",
+                "Tower Records",
+            ],
+            "person": [
+                "Man",
+                "Woman",
+                "Teenager",
+                "Dropout",
+                "Immigrant",
+                "Founder",
+                "Genius",
+                "Scammer",
+                "Whistleblower",
+            ],
+            "famous_person": [
+                "Elon Musk",
+                "Jeff Bezos",
+                "Mark Zuckerberg",
+                "Steve Jobs",
+                "Elizabeth Holmes",
+                "Adam Neumann",
+            ],
+            "famous_criminal": [
+                "Bernie Madoff",
+                "Elizabeth Holmes",
+                "The Zodiac Killer",
+                "D.B. Cooper",
+            ],
+            "achievement": [
+                "Fooled Wall Street",
+                "Predicted the Crash",
+                "Broke the Internet",
+                "Built a Billion Dollar Company",
+                "Changed an Industry",
+                "Stole Millions",
+                "Escaped Justice",
+            ],
+            "adjective": [
+                "Terrifying",
+                "Genius",
+                "Evil",
+                "Doomed",
+                "Unstoppable",
+                "Dangerous",
+                "Brilliant",
+            ],
+            "successful_entity": [
+                "Amazon",
+                "Facebook",
+                "Google",
+                "Tesla",
+                "Apple",
+                "Disney",
+                "Netflix",
+                "Microsoft",
+            ],
             "valuation": ["1 Billion", "10 Billion", "100 Billion", "1 Trillion"],
             "amount": ["1 Billion", "10 Billion", "100 Million", "500 Million"],
             "year": ["2008", "2020", "2001", "2019", "2023", "2022", "2024"],
             "time_period": ["24 Hours", "One Week", "30 Days", "One Decision"],
-            "event": ["Crash", "Scandal", "Decision", "Mistake", "Discovery", "Betrayal", "Collapse"],
-            "famous_thing": ["the iPhone", "Netflix", "Bitcoin", "Amazon Prime", "the Tesla Roadster", "Facebook", "ChatGPT"],
+            "event": [
+                "Crash",
+                "Scandal",
+                "Decision",
+                "Mistake",
+                "Discovery",
+                "Betrayal",
+                "Collapse",
+            ],
+            "famous_thing": [
+                "the iPhone",
+                "Netflix",
+                "Bitcoin",
+                "Amazon Prime",
+                "the Tesla Roadster",
+                "Facebook",
+                "ChatGPT",
+            ],
             "noun": ["Strategy", "Failure", "Success", "Scandal", "Project", "Deal", "Plan"],
             "subject": ["WeWork", "Theranos", "FTX", "Enron", "Lehman Brothers", "Crypto"],
             "location": ["Wall Street", "Silicon Valley", "Hollywood", "Washington"],
@@ -293,7 +525,7 @@ VIRAL_TOPIC_TEMPLATES = {
             "Longer videos (12-30 min) have better retention in this niche",
             "Historical crime content averages 2.3M views for established channels",
         ],
-    }
+    },
 }
 
 # ============================================================
@@ -371,10 +603,7 @@ Return a JSON array with exactly {count} ideas:
 Generate the ideas now:"""
 
     def __init__(
-        self,
-        provider: str = None,
-        api_key: Optional[str] = None,
-        model: Optional[str] = None
+        self, provider: str = None, api_key: Optional[str] = None, model: Optional[str] = None
     ):
         """
         Initialize the idea generator.
@@ -397,11 +626,7 @@ Generate the ideas now:"""
 
         logger.info(f"IdeaGenerator initialized with {provider}")
 
-    def gather_research(
-        self,
-        niche: str,
-        subreddits: Optional[List[str]] = None
-    ) -> Dict[str, Any]:
+    def gather_research(self, niche: str, subreddits: Optional[List[str]] = None) -> Dict[str, Any]:
         """
         Gather research data from all sources.
 
@@ -428,18 +653,30 @@ Generate the ideas now:"""
             if trend_results and isinstance(trend_results, list):
                 for t in trend_results:
                     # Validate each trend object before accessing
-                    if t and hasattr(t, 'keyword') and hasattr(t, 'interest_score'):
+                    if t and hasattr(t, "keyword") and hasattr(t, "interest_score"):
                         related_queries = []
-                        if hasattr(t, 'related_queries') and t.related_queries:
+                        if hasattr(t, "related_queries") and t.related_queries:
                             # Safe slice with bounds check
-                            related_queries = list(t.related_queries)[:5] if isinstance(t.related_queries, (list, tuple)) else []
+                            related_queries = (
+                                list(t.related_queries)[:5]
+                                if isinstance(t.related_queries, (list, tuple))
+                                else []
+                            )
 
-                        trends.append({
-                            "keyword": str(t.keyword) if t.keyword else niche,
-                            "interest": int(t.interest_score) if t.interest_score is not None else 50,
-                            "direction": str(t.trend_direction) if hasattr(t, 'trend_direction') and t.trend_direction else "stable",
-                            "related": related_queries
-                        })
+                        trends.append(
+                            {
+                                "keyword": str(t.keyword) if t.keyword else niche,
+                                "interest": (
+                                    int(t.interest_score) if t.interest_score is not None else 50
+                                ),
+                                "direction": (
+                                    str(t.trend_direction)
+                                    if hasattr(t, "trend_direction") and t.trend_direction
+                                    else "stable"
+                                ),
+                                "related": related_queries,
+                            }
+                        )
         except (AttributeError, TypeError, IndexError) as e:
             logger.warning(f"Trends research data parsing failed: {e}")
         except Exception as e:
@@ -448,31 +685,44 @@ Generate the ideas now:"""
         # Get Reddit ideas
         reddit_ideas = []
         try:
-            if self.reddit_researcher and hasattr(self.reddit_researcher, 'reddit') and self.reddit_researcher.reddit:
-                ideas = self.reddit_researcher.get_video_ideas(
-                    subreddits=subreddits,
-                    limit=20
-                )
+            if (
+                self.reddit_researcher
+                and hasattr(self.reddit_researcher, "reddit")
+                and self.reddit_researcher.reddit
+            ):
+                ideas = self.reddit_researcher.get_video_ideas(subreddits=subreddits, limit=20)
                 # Defensive check - ensure we have a list
                 if ideas and isinstance(ideas, list):
                     for idea in ideas:
                         # Validate each idea object before accessing
-                        if idea and hasattr(idea, 'topic'):
-                            reddit_ideas.append({
-                                "topic": str(idea.topic) if idea.topic else "",
-                                "subreddit": str(idea.subreddit) if hasattr(idea, 'subreddit') and idea.subreddit else "unknown",
-                                "popularity": int(idea.popularity_score) if hasattr(idea, 'popularity_score') and idea.popularity_score is not None else 0,
-                                "type": str(idea.idea_type) if hasattr(idea, 'idea_type') and idea.idea_type else "general"
-                            })
+                        if idea and hasattr(idea, "topic"):
+                            reddit_ideas.append(
+                                {
+                                    "topic": str(idea.topic) if idea.topic else "",
+                                    "subreddit": (
+                                        str(idea.subreddit)
+                                        if hasattr(idea, "subreddit") and idea.subreddit
+                                        else "unknown"
+                                    ),
+                                    "popularity": (
+                                        int(idea.popularity_score)
+                                        if hasattr(idea, "popularity_score")
+                                        and idea.popularity_score is not None
+                                        else 0
+                                    ),
+                                    "type": (
+                                        str(idea.idea_type)
+                                        if hasattr(idea, "idea_type") and idea.idea_type
+                                        else "general"
+                                    ),
+                                }
+                            )
         except (AttributeError, TypeError, IndexError) as e:
             logger.warning(f"Reddit research data parsing failed: {e}")
         except Exception as e:
             logger.warning(f"Reddit research failed: {e}")
 
-        return {
-            "trends": trends,
-            "reddit": reddit_ideas
-        }
+        return {"trends": trends, "reddit": reddit_ideas}
 
     def _get_fallback_ideas(self, niche: str, count: int = 5) -> List[ScoredIdea]:
         """
@@ -493,7 +743,7 @@ Generate the ideas now:"""
                 "trend_score": 70,
                 "competition_score": 60,
                 "engagement_score": 75,
-                "reasoning": "Beginner tutorials have consistent demand and good engagement."
+                "reasoning": "Beginner tutorials have consistent demand and good engagement.",
             },
             {
                 "title": f"Top 10 {niche} Tips You Need to Know",
@@ -502,7 +752,7 @@ Generate the ideas now:"""
                 "trend_score": 65,
                 "competition_score": 55,
                 "engagement_score": 70,
-                "reasoning": "List-based content performs well and is easy to consume."
+                "reasoning": "List-based content performs well and is easy to consume.",
             },
             {
                 "title": f"{niche} in {datetime.now().year}: What's Changed",
@@ -511,7 +761,7 @@ Generate the ideas now:"""
                 "trend_score": 75,
                 "competition_score": 50,
                 "engagement_score": 65,
-                "reasoning": "Time-sensitive content attracts viewers looking for current information."
+                "reasoning": "Time-sensitive content attracts viewers looking for current information.",
             },
             {
                 "title": f"Common {niche} Mistakes to Avoid",
@@ -520,7 +770,7 @@ Generate the ideas now:"""
                 "trend_score": 60,
                 "competition_score": 65,
                 "engagement_score": 70,
-                "reasoning": "Problem-solving content addresses viewer pain points directly."
+                "reasoning": "Problem-solving content addresses viewer pain points directly.",
             },
             {
                 "title": f"Advanced {niche} Techniques Explained",
@@ -529,7 +779,7 @@ Generate the ideas now:"""
                 "trend_score": 55,
                 "competition_score": 70,
                 "engagement_score": 60,
-                "reasoning": "Advanced content targets dedicated learners with high retention."
+                "reasoning": "Advanced content targets dedicated learners with high retention.",
             },
         ]
 
@@ -540,26 +790,27 @@ Generate the ideas now:"""
             engagement = template.get("engagement_score", 50)
             overall = int((trend + competition + engagement) / 3)
 
-            ideas.append(ScoredIdea(
-                title=template["title"],
-                description=template["description"],
-                keywords=template.get("keywords", [niche]),
-                niche=niche,
-                score=overall,
-                trend_score=trend,
-                competition_score=competition,
-                engagement_score=engagement,
-                source="fallback",
-                reasoning=template.get("reasoning", "Fallback idea generated due to API failure.")
-            ))
+            ideas.append(
+                ScoredIdea(
+                    title=template["title"],
+                    description=template["description"],
+                    keywords=template.get("keywords", [niche]),
+                    niche=niche,
+                    score=overall,
+                    trend_score=trend,
+                    competition_score=competition,
+                    engagement_score=engagement,
+                    source="fallback",
+                    reasoning=template.get(
+                        "reasoning", "Fallback idea generated due to API failure."
+                    ),
+                )
+            )
 
         return ideas
 
     def generate_ideas(
-        self,
-        niche: str,
-        count: int = 5,
-        subreddits: Optional[List[str]] = None
+        self, niche: str, count: int = 5, subreddits: Optional[List[str]] = None
     ) -> List[ScoredIdea]:
         """
         Generate scored video ideas.
@@ -607,10 +858,7 @@ Generate the ideas now:"""
 
         # Generate ideas with AI
         prompt = self.IDEA_GENERATION_PROMPT.format(
-            niche=niche,
-            count=count,
-            trends_data=trends_data,
-            reddit_data=reddit_data
+            niche=niche, count=count, trends_data=trends_data, reddit_data=reddit_data
         )
 
         try:
@@ -674,7 +922,7 @@ Generate the ideas now:"""
                         competition_score=competition,
                         engagement_score=engagement,
                         source="ai_generated",
-                        reasoning=reasoning
+                        reasoning=reasoning,
                     )
                     ideas.append(idea)
                 except (TypeError, ValueError, AttributeError) as e:
@@ -705,11 +953,12 @@ Generate the ideas now:"""
     def _fix_json(self, json_str: str) -> str:
         """Fix common JSON issues from LLM outputs."""
         import re
+
         # Remove trailing commas before ] or }
-        json_str = re.sub(r',\s*]', ']', json_str)
-        json_str = re.sub(r',\s*}', '}', json_str)
+        json_str = re.sub(r",\s*]", "]", json_str)
+        json_str = re.sub(r",\s*}", "}", json_str)
         # Fix missing quotes around keys
-        json_str = re.sub(r'(\w+)(?=\s*:)', r'"\1"', json_str)
+        json_str = re.sub(r"(\w+)(?=\s*:)", r'"\1"', json_str)
         # Remove duplicate quotes
         json_str = re.sub(r'""(\w+)""', r'"\1"', json_str)
         return json_str
@@ -788,9 +1037,7 @@ Generate the ideas now:"""
         raise ValueError("Could not parse JSON from response")
 
     def get_best_idea(
-        self,
-        niche: str,
-        subreddits: Optional[List[str]] = None
+        self, niche: str, subreddits: Optional[List[str]] = None
     ) -> Optional[ScoredIdea]:
         """
         Get the single best video idea for a niche.
@@ -834,9 +1081,9 @@ Generate the ideas now:"""
         title = "Untitled"
         description = ""
         try:
-            if hasattr(idea, 'title') and idea.title:
+            if hasattr(idea, "title") and idea.title:
                 title = str(idea.title)
-            if hasattr(idea, 'description') and idea.description:
+            if hasattr(idea, "description") and idea.description:
                 description = str(idea.description)
         except (AttributeError, TypeError):
             pass
@@ -884,9 +1131,7 @@ Return as JSON."""
     # ============================================================
 
     def generate_viral_topic(
-        self,
-        channel_id: Optional[str] = None,
-        niche: Optional[str] = None
+        self, channel_id: Optional[str] = None, niche: Optional[str] = None
     ) -> str:
         """
         Generate a viral video topic from proven templates.
@@ -930,10 +1175,7 @@ Return as JSON."""
         return result
 
     def generate_viral_ideas(
-        self,
-        channel_id: Optional[str] = None,
-        niche: Optional[str] = None,
-        count: int = 5
+        self, channel_id: Optional[str] = None, niche: Optional[str] = None, count: int = 5
     ) -> List[ScoredIdea]:
         """
         Generate multiple viral video ideas from templates.
@@ -1002,7 +1244,7 @@ Return as JSON."""
                 competition_score=competition_score,
                 engagement_score=engagement_score,
                 source="viral_template",
-                reasoning=f"Based on proven viral template format for {niche} content"
+                reasoning=f"Based on proven viral template format for {niche} content",
             )
             ideas.append(idea)
 
@@ -1039,12 +1281,15 @@ Return as JSON."""
             List of content type descriptions
         """
         niche_data = VIRAL_TOPIC_TEMPLATES.get(niche, {})
-        return niche_data.get("content_types", [
-            "Educational tutorials",
-            "Explainer videos",
-            "Tips and tricks",
-            "Analysis content",
-        ])
+        return niche_data.get(
+            "content_types",
+            [
+                "Educational tutorials",
+                "Explainer videos",
+                "Tips and tricks",
+                "Analysis content",
+            ],
+        )
 
     # ============================================================
     # ENHANCED REDDIT INTEGRATION (New Methods)
@@ -1124,18 +1369,20 @@ Return as JSON."""
             # Convert to ScoredIdea format
             ideas = []
             for q in questions:
-                ideas.append(ScoredIdea(
-                    title=q.title_suggestion,
-                    description=f"FAQ video based on Reddit question: {q.source_title}",
-                    keywords=q.keywords if q.keywords else [niche, "questions", "faq"],
-                    niche=niche,
-                    score=int(min(100, q.viral_score / 10)),  # Normalize score
-                    trend_score=int(min(100, q.popularity_score / 10)),
-                    competition_score=60,  # Questions usually have moderate competition
-                    engagement_score=75,   # Questions drive high engagement
-                    source=f"reddit_question:{q.subreddit}",
-                    reasoning=f"Popular question from r/{q.subreddit} with {q.popularity_score} upvotes"
-                ))
+                ideas.append(
+                    ScoredIdea(
+                        title=q.title_suggestion,
+                        description=f"FAQ video based on Reddit question: {q.source_title}",
+                        keywords=q.keywords if q.keywords else [niche, "questions", "faq"],
+                        niche=niche,
+                        score=int(min(100, q.viral_score / 10)),  # Normalize score
+                        trend_score=int(min(100, q.popularity_score / 10)),
+                        competition_score=60,  # Questions usually have moderate competition
+                        engagement_score=75,  # Questions drive high engagement
+                        source=f"reddit_question:{q.subreddit}",
+                        reasoning=f"Popular question from r/{q.subreddit} with {q.popularity_score} upvotes",
+                    )
+                )
 
             return ideas
 
@@ -1171,18 +1418,20 @@ Return as JSON."""
                 # Calculate scores based on viral metrics
                 viral_normalized = min(100, int(v.viral_score / 20))
 
-                ideas.append(ScoredIdea(
-                    title=v.title_suggestion,
-                    description=f"Viral topic from Reddit: {v.source_title[:100]}",
-                    keywords=v.keywords if v.keywords else [niche, "viral", "trending"],
-                    niche=niche,
-                    score=viral_normalized,
-                    trend_score=viral_normalized,
-                    competition_score=50,  # Viral topics usually have competition
-                    engagement_score=viral_normalized,
-                    source=f"reddit_viral:{v.subreddit}",
-                    reasoning=f"High-engagement post from r/{v.subreddit} (Score: {v.viral_score:.0f})"
-                ))
+                ideas.append(
+                    ScoredIdea(
+                        title=v.title_suggestion,
+                        description=f"Viral topic from Reddit: {v.source_title[:100]}",
+                        keywords=v.keywords if v.keywords else [niche, "viral", "trending"],
+                        niche=niche,
+                        score=viral_normalized,
+                        trend_score=viral_normalized,
+                        competition_score=50,  # Viral topics usually have competition
+                        engagement_score=viral_normalized,
+                        source=f"reddit_viral:{v.subreddit}",
+                        reasoning=f"High-engagement post from r/{v.subreddit} (Score: {v.viral_score:.0f})",
+                    )
+                )
 
             return ideas
 
@@ -1218,7 +1467,7 @@ Return as JSON."""
         niche: str,
         count: int = 10,
         include_questions: bool = True,
-        include_viral: bool = True
+        include_viral: bool = True,
     ) -> List[ScoredIdea]:
         """
         Generate video ideas combining AI and Reddit research.
@@ -1269,7 +1518,7 @@ Return as JSON."""
 
         for idea in all_ideas:
             # Simple dedup by first 5 words of title
-            title_key = ' '.join(idea.title.lower().split()[:5])
+            title_key = " ".join(idea.title.lower().split()[:5])
             if title_key not in seen_titles:
                 seen_titles.add(title_key)
                 unique_ideas.append(idea)
@@ -1286,14 +1535,11 @@ if __name__ == "__main__":
     # Uses AI_PROVIDER from environment, falls back to "ollama"
     generator = IdeaGenerator()
 
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print("GENERATING VIDEO IDEAS")
-    print("="*60 + "\n")
+    print("=" * 60 + "\n")
 
-    ideas = generator.generate_ideas(
-        niche="Python programming tutorials",
-        count=5
-    )
+    ideas = generator.generate_ideas(niche="Python programming tutorials", count=5)
 
     for i, idea in enumerate(ideas, 1):
         print(f"\n{i}. {idea.title}")

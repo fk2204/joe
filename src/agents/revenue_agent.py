@@ -19,22 +19,18 @@ Usage:
     result = agent.identify_high_revenue_topics("finance")
 """
 
-import os
 import json
+import os
 import sqlite3
+from dataclasses import asdict, dataclass, field
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Dict, Any, List, Optional, Tuple
-from dataclasses import dataclass, field, asdict
+from typing import Any, Dict, List, Optional
+
 from loguru import logger
 
-from ..utils.token_manager import (
-    get_token_manager,
-    get_cost_optimizer,
-    get_prompt_cache
-)
 from ..utils.best_practices import get_niche_metrics
-
+from ..utils.token_manager import get_cost_optimizer, get_prompt_cache, get_token_manager
 
 # CPM ranges by niche ($ per 1000 views)
 NICHE_CPM_RANGES = {
@@ -48,6 +44,7 @@ NICHE_CPM_RANGES = {
 @dataclass
 class VideoRevenue:
     """Revenue data for a single video."""
+
     video_id: str
     title: str
     views: int
@@ -61,6 +58,7 @@ class VideoRevenue:
 @dataclass
 class RevenueResult:
     """Result from revenue agent operations."""
+
     success: bool
     operation: str
     total_revenue: float = 0.0
@@ -91,15 +89,13 @@ class RevenueResult:
             f"Total Revenue: ${self.total_revenue:.2f}",
             f"Average CPM: ${self.avg_cpm:.2f}",
             f"Revenue Trend: {self.revenue_trend.upper()}",
-            ""
+            "",
         ]
 
         if self.revenue_by_channel:
             lines.append("Revenue by Channel:")
             for channel, revenue in sorted(
-                self.revenue_by_channel.items(),
-                key=lambda x: x[1],
-                reverse=True
+                self.revenue_by_channel.items(), key=lambda x: x[1], reverse=True
             ):
                 lines.append(f"  {channel}: ${revenue:.2f}")
             lines.append("")
@@ -107,7 +103,9 @@ class RevenueResult:
         if self.best_topics:
             lines.append("Best Revenue Topics:")
             for i, topic in enumerate(self.best_topics[:5], 1):
-                lines.append(f"  {i}. {topic.get('topic', 'Unknown')} - ${topic.get('avg_revenue', 0):.2f}/video")
+                lines.append(
+                    f"  {i}. {topic.get('topic', 'Unknown')} - ${topic.get('avg_revenue', 0):.2f}/video"
+                )
             lines.append("")
 
         if self.projections:
@@ -182,7 +180,8 @@ class RevenueAgent:
         self.revenue_db.parent.mkdir(parents=True, exist_ok=True)
 
         with sqlite3.connect(self.revenue_db) as conn:
-            conn.execute("""
+            conn.execute(
+                """
                 CREATE TABLE IF NOT EXISTS video_revenue (
                     video_id TEXT PRIMARY KEY,
                     channel TEXT,
@@ -196,9 +195,11 @@ class RevenueAgent:
                     upload_date TEXT,
                     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
                 )
-            """)
+            """
+            )
 
-            conn.execute("""
+            conn.execute(
+                """
                 CREATE TABLE IF NOT EXISTS daily_revenue (
                     date TEXT,
                     channel TEXT,
@@ -207,21 +208,28 @@ class RevenueAgent:
                     avg_cpm REAL DEFAULT 0,
                     PRIMARY KEY (date, channel)
                 )
-            """)
+            """
+            )
 
             # Indexes for performance
-            conn.execute("""
+            conn.execute(
+                """
                 CREATE INDEX IF NOT EXISTS idx_revenue_channel
                 ON video_revenue(channel)
-            """)
-            conn.execute("""
+            """
+            )
+            conn.execute(
+                """
                 CREATE INDEX IF NOT EXISTS idx_revenue_niche
                 ON video_revenue(niche)
-            """)
-            conn.execute("""
+            """
+            )
+            conn.execute(
+                """
                 CREATE INDEX IF NOT EXISTS idx_revenue_date
                 ON video_revenue(upload_date)
-            """)
+            """
+            )
 
     def _get_estimated_cpm(self, niche: str, video_data: Dict = None) -> float:
         """
@@ -267,7 +275,7 @@ class RevenueAgent:
         views: int,
         niche: str = None,
         actual_revenue: float = None,
-        upload_date: str = None
+        upload_date: str = None,
     ):
         """
         Record video revenue data.
@@ -291,21 +299,30 @@ class RevenueAgent:
         rpm = (actual_revenue / views * 1000) if actual_revenue and views > 0 else 0
 
         with sqlite3.connect(self.revenue_db) as conn:
-            conn.execute("""
+            conn.execute(
+                """
                 INSERT OR REPLACE INTO video_revenue
                 (video_id, channel, title, niche, views, estimated_cpm,
                  estimated_revenue, actual_revenue, rpm, upload_date, updated_at)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
-            """, (video_id, channel, title, niche, views, estimated_cpm,
-                  estimated_revenue, actual_revenue, rpm, upload_date))
+            """,
+                (
+                    video_id,
+                    channel,
+                    title,
+                    niche,
+                    views,
+                    estimated_cpm,
+                    estimated_revenue,
+                    actual_revenue,
+                    rpm,
+                    upload_date,
+                ),
+            )
 
         logger.info(f"Recorded revenue for video: {video_id} - ${estimated_revenue:.2f}")
 
-    def track_revenue(
-        self,
-        channel: str = None,
-        period: str = "30d"
-    ) -> RevenueResult:
+    def track_revenue(self, channel: str = None, period: str = "30d") -> RevenueResult:
         """
         Track revenue for a channel or all channels.
 
@@ -358,7 +375,7 @@ class RevenueAgent:
                     total_revenue=0.0,
                     avg_cpm=0.0,
                     provider="database",
-                    error="No revenue data found. Record video data first."
+                    error="No revenue data found. Record video data first.",
                 )
 
             # Process results
@@ -375,16 +392,18 @@ class RevenueAgent:
                 # Use actual revenue if available, otherwise estimated
                 revenue = actual_rev if actual_rev else est_rev
 
-                videos.append(VideoRevenue(
-                    video_id=video_id,
-                    title=title or "Unknown",
-                    views=views or 0,
-                    estimated_cpm=cpm or 0,
-                    estimated_revenue=revenue or 0,
-                    niche=niche or "default",
-                    upload_date=upload_date,
-                    rpm=rpm or 0
-                ))
+                videos.append(
+                    VideoRevenue(
+                        video_id=video_id,
+                        title=title or "Unknown",
+                        views=views or 0,
+                        estimated_cpm=cpm or 0,
+                        estimated_revenue=revenue or 0,
+                        niche=niche or "default",
+                        upload_date=upload_date,
+                        rpm=rpm or 0,
+                    )
+                )
 
                 revenue_by_video[video_id] = revenue or 0
                 revenue_by_channel[ch] = revenue_by_channel.get(ch, 0) + (revenue or 0)
@@ -416,7 +435,7 @@ class RevenueAgent:
                 projections=projections,
                 tokens_used=0,
                 cost=0.0,
-                provider="database"
+                provider="database",
             )
 
             logger.success(f"[RevenueAgent] Revenue tracked: ${total_revenue:.2f} total")
@@ -425,17 +444,10 @@ class RevenueAgent:
         except Exception as e:
             logger.error(f"[RevenueAgent] Error tracking revenue: {e}")
             return RevenueResult(
-                success=False,
-                operation=operation,
-                error=str(e),
-                provider="database"
+                success=False, operation=operation, error=str(e), provider="database"
             )
 
-    def _load_from_performance_db(
-        self,
-        channel: str = None,
-        cutoff: str = None
-    ) -> List[tuple]:
+    def _load_from_performance_db(self, channel: str = None, cutoff: str = None) -> List[tuple]:
         """Load and estimate revenue from performance database."""
         if not self.performance_db.exists():
             return []
@@ -468,7 +480,9 @@ class RevenueAgent:
                 niche = niche or self.CHANNEL_NICHE_MAP.get(ch, "default")
                 cpm = self._get_estimated_cpm(niche)
                 est_rev = (views / 1000) * cpm if views else 0
-                result.append((video_id, ch, title, niche, views, cpm, est_rev, None, 0, upload_date))
+                result.append(
+                    (video_id, ch, title, niche, views, cpm, est_rev, None, 0, upload_date)
+                )
 
             return result
 
@@ -488,6 +502,7 @@ class RevenueAgent:
 
         try:
             with sqlite3.connect(self.revenue_db) as conn:
+
                 def get_period_revenue(start: datetime, end: datetime) -> float:
                     if channel:
                         query = """
@@ -495,21 +510,18 @@ class RevenueAgent:
                             FROM video_revenue
                             WHERE channel = ? AND upload_date BETWEEN ? AND ?
                         """
-                        row = conn.execute(query, (
-                            channel,
-                            start.strftime("%Y-%m-%d"),
-                            end.strftime("%Y-%m-%d")
-                        )).fetchone()
+                        row = conn.execute(
+                            query, (channel, start.strftime("%Y-%m-%d"), end.strftime("%Y-%m-%d"))
+                        ).fetchone()
                     else:
                         query = """
                             SELECT COALESCE(SUM(estimated_revenue), 0)
                             FROM video_revenue
                             WHERE upload_date BETWEEN ? AND ?
                         """
-                        row = conn.execute(query, (
-                            start.strftime("%Y-%m-%d"),
-                            end.strftime("%Y-%m-%d")
-                        )).fetchone()
+                        row = conn.execute(
+                            query, (start.strftime("%Y-%m-%d"), end.strftime("%Y-%m-%d"))
+                        ).fetchone()
                     return row[0] if row else 0
 
                 current_rev = get_period_revenue(current_start, current_end)
@@ -545,8 +557,18 @@ class RevenueAgent:
                 for word in words:
                     # Skip common words
                     if len(word) > 4 and word not in [
-                        "video", "about", "first", "every", "never", "always",
-                        "what", "when", "where", "which", "these", "those"
+                        "video",
+                        "about",
+                        "first",
+                        "every",
+                        "never",
+                        "always",
+                        "what",
+                        "when",
+                        "where",
+                        "which",
+                        "these",
+                        "those",
                     ]:
                         if word not in topic_revenue:
                             topic_revenue[word] = {"count": 0, "total_revenue": 0, "niche": niche}
@@ -558,23 +580,22 @@ class RevenueAgent:
         for topic, data in topic_revenue.items():
             if data["count"] >= 2:  # At least 2 videos with this topic
                 avg_revenue = data["total_revenue"] / data["count"]
-                best_topics.append({
-                    "topic": topic,
-                    "video_count": data["count"],
-                    "total_revenue": data["total_revenue"],
-                    "avg_revenue": avg_revenue,
-                    "niche": data["niche"]
-                })
+                best_topics.append(
+                    {
+                        "topic": topic,
+                        "video_count": data["count"],
+                        "total_revenue": data["total_revenue"],
+                        "avg_revenue": avg_revenue,
+                        "niche": data["niche"],
+                    }
+                )
 
         # Sort by average revenue
         best_topics.sort(key=lambda x: x["avg_revenue"], reverse=True)
         return best_topics[:10]
 
     def _generate_projections(
-        self,
-        total_revenue: float,
-        video_count: int,
-        days: int
+        self, total_revenue: float, video_count: int, days: int
     ) -> Dict[str, float]:
         """Generate revenue projections."""
         if days == 0 or video_count == 0:
@@ -588,7 +609,7 @@ class RevenueAgent:
             "monthly": daily_revenue * 30,
             "quarterly": daily_revenue * 90,
             "yearly": daily_revenue * 365,
-            "per_video_avg": total_revenue / video_count if video_count > 0 else 0
+            "per_video_avg": total_revenue / video_count if video_count > 0 else 0,
         }
 
     def analyze_cpm_by_niche(self) -> RevenueResult:
@@ -605,7 +626,8 @@ class RevenueAgent:
 
         try:
             with sqlite3.connect(self.revenue_db) as conn:
-                rows = conn.execute("""
+                rows = conn.execute(
+                    """
                     SELECT niche,
                            AVG(estimated_cpm) as avg_cpm,
                            AVG(rpm) as avg_rpm,
@@ -615,25 +637,28 @@ class RevenueAgent:
                     WHERE niche IS NOT NULL
                     GROUP BY niche
                     ORDER BY avg_cpm DESC
-                """).fetchall()
+                """
+                ).fetchall()
 
             if not rows:
                 # Return theoretical CPM ranges
                 best_topics = []
                 for niche, cpm_range in NICHE_CPM_RANGES.items():
-                    best_topics.append({
-                        "topic": niche,
-                        "avg_revenue": (cpm_range[0] + cpm_range[1]) / 2,
-                        "cpm_range": f"${cpm_range[0]}-${cpm_range[1]}",
-                        "video_count": 0
-                    })
+                    best_topics.append(
+                        {
+                            "topic": niche,
+                            "avg_revenue": (cpm_range[0] + cpm_range[1]) / 2,
+                            "cpm_range": f"${cpm_range[0]}-${cpm_range[1]}",
+                            "video_count": 0,
+                        }
+                    )
 
                 return RevenueResult(
                     success=True,
                     operation=operation,
                     best_topics=best_topics,
                     provider="theoretical",
-                    error="No actual data - showing theoretical CPM ranges"
+                    error="No actual data - showing theoretical CPM ranges",
                 )
 
             best_topics = []
@@ -644,14 +669,16 @@ class RevenueAgent:
                 niche, avg_cpm, avg_rpm, niche_revenue, video_count = row
                 cpm_range = NICHE_CPM_RANGES.get(niche, NICHE_CPM_RANGES["default"])
 
-                best_topics.append({
-                    "topic": niche,
-                    "avg_cpm": avg_cpm,
-                    "avg_rpm": avg_rpm or 0,
-                    "total_revenue": niche_revenue,
-                    "video_count": video_count,
-                    "cpm_range": f"${cpm_range[0]}-${cpm_range[1]}"
-                })
+                best_topics.append(
+                    {
+                        "topic": niche,
+                        "avg_cpm": avg_cpm,
+                        "avg_rpm": avg_rpm or 0,
+                        "total_revenue": niche_revenue,
+                        "video_count": video_count,
+                        "cpm_range": f"${cpm_range[0]}-${cpm_range[1]}",
+                    }
+                )
 
                 total_revenue += niche_revenue or 0
                 total_cpm += avg_cpm or 0
@@ -664,7 +691,7 @@ class RevenueAgent:
                 best_topics=best_topics,
                 tokens_used=0,
                 cost=0.0,
-                provider="database"
+                provider="database",
             )
 
             logger.success(f"[RevenueAgent] CPM analysis complete: {len(rows)} niches")
@@ -673,17 +700,10 @@ class RevenueAgent:
         except Exception as e:
             logger.error(f"[RevenueAgent] Error analyzing CPM: {e}")
             return RevenueResult(
-                success=False,
-                operation=operation,
-                error=str(e),
-                provider="database"
+                success=False, operation=operation, error=str(e), provider="database"
             )
 
-    def optimize_for_rpm(
-        self,
-        channel: str = None,
-        use_ai: bool = False
-    ) -> RevenueResult:
+    def optimize_for_rpm(self, channel: str = None, use_ai: bool = False) -> RevenueResult:
         """
         Generate recommendations to optimize RPM.
 
@@ -754,7 +774,7 @@ class RevenueAgent:
                     provider=self.provider,
                     input_tokens=500,
                     output_tokens=300,
-                    operation="revenue_ai_optimize"
+                    operation="revenue_ai_optimize",
                 )
                 current.provider = self.provider
 
@@ -767,19 +787,16 @@ class RevenueAgent:
             projections=current.projections,
             tokens_used=current.tokens_used,
             cost=current.cost,
-            provider=current.provider or "rule_based"
+            provider=current.provider or "rule_based",
         )
 
         return result
 
-    def _get_ai_recommendations(
-        self,
-        current: RevenueResult,
-        niche: str
-    ) -> List[str]:
+    def _get_ai_recommendations(self, current: RevenueResult, niche: str) -> List[str]:
         """Get AI-powered revenue optimization recommendations."""
         try:
             from ..content.script_writer import get_provider
+
             ai = get_provider(self.provider, self.api_key)
 
             prompt = f"""Analyze this YouTube channel revenue data and provide 3 specific recommendations:
@@ -842,7 +859,8 @@ def main():
     import sys
 
     if len(sys.argv) < 2:
-        print("""
+        print(
+            """
 Revenue Agent - Revenue Tracking and Optimization
 
 Usage:
@@ -864,7 +882,8 @@ Examples:
     python -m src.agents.revenue_agent --channel money_blueprints --period 30d
     python -m src.agents.revenue_agent --cpm-analysis
     python -m src.agents.revenue_agent --optimize --ai --save
-        """)
+        """
+        )
         return
 
     # Parse arguments

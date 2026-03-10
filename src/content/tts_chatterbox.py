@@ -23,11 +23,13 @@ Usage:
 import asyncio
 from pathlib import Path
 from typing import Optional
+
 from loguru import logger
 
 # Try to import chatterbox (may not be available yet)
 try:
-    import chatterbox
+    pass
+
     CHATTERBOX_AVAILABLE = True
 except ImportError:
     CHATTERBOX_AVAILABLE = False
@@ -44,12 +46,7 @@ class ChatterboxTTS:
     Falls back to Edge-TTS if Chatterbox is not installed.
     """
 
-    def __init__(
-        self,
-        model: str = "default",
-        voice: str = "default",
-        **kwargs
-    ):
+    def __init__(self, model: str = "default", voice: str = "default", **kwargs):
         """
         Initialize Chatterbox TTS.
 
@@ -76,11 +73,7 @@ class ChatterboxTTS:
             self.fallback = TextToSpeech(default_voice="en-US-GuyNeural")
 
     async def generate(
-        self,
-        text: str,
-        output_file: str,
-        voice: Optional[str] = None,
-        **kwargs
+        self, text: str, output_file: str, voice: Optional[str] = None, **kwargs
     ) -> str:
         """
         Generate speech from text.
@@ -114,12 +107,7 @@ class ChatterboxTTS:
             logger.info("[ChatterboxTTS] Using Edge-TTS fallback")
             return await self.fallback.generate(text, output_file, **kwargs)
 
-    async def generate_natural(
-        self,
-        text: str,
-        output_file: str,
-        **kwargs
-    ) -> str:
+    async def generate_natural(self, text: str, output_file: str, **kwargs) -> str:
         """
         Generate natural-sounding speech.
 
@@ -145,7 +133,7 @@ class ChatterboxTTS:
         enhance: bool = True,
         noise_reduction: bool = True,
         normalize_lufs: float = -14.0,
-        **kwargs
+        **kwargs,
     ) -> str:
         """
         Generate speech with professional broadcast-quality enhancement.
@@ -174,16 +162,12 @@ class ChatterboxTTS:
                 enhance=enhance,
                 noise_reduction=noise_reduction,
                 normalize_lufs=normalize_lufs,
-                **kwargs
+                **kwargs,
             )
 
 
 # Convenience function
-async def generate_chatterbox_speech(
-    text: str,
-    output_file: str,
-    voice: str = "default"
-) -> str:
+async def generate_chatterbox_speech(text: str, output_file: str, voice: str = "default") -> str:
     """Quick function to generate Chatterbox speech."""
     tts = ChatterboxTTS(voice=voice)
     return await tts.generate(text, output_file)
@@ -195,7 +179,8 @@ if __name__ == "__main__":
 
     async def main():
         if len(sys.argv) < 3:
-            print("""
+            print(
+                """
 Chatterbox TTS - MIT Licensed, Beat ElevenLabs in Blind Tests
 
 Usage:
@@ -206,7 +191,8 @@ Examples:
     python -m src.content.tts_chatterbox "Hello" output.mp3 --voice default
 
 Note: Chatterbox integration pending. Currently uses Edge-TTS fallback.
-            """)
+            """
+            )
             return
 
         text = sys.argv[1]

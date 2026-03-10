@@ -32,7 +32,8 @@ import asyncio
 import os
 import re
 from pathlib import Path
-from typing import Optional, List, Dict
+from typing import Dict, List, Optional
+
 from loguru import logger
 
 try:
@@ -57,13 +58,10 @@ class NaturalVoiceVariation:
 
     # Default variation ranges
     DEFAULT_RATE_VARIATION_PERCENT = 8  # +/- 8% rate variation
-    DEFAULT_PITCH_VARIATION_HZ = 5       # +/- 5Hz pitch variation
+    DEFAULT_PITCH_VARIATION_HZ = 5  # +/- 5Hz pitch variation
 
     def __init__(
-        self,
-        rate_variation_percent: int = None,
-        pitch_variation_hz: int = None,
-        seed: int = None
+        self, rate_variation_percent: int = None, pitch_variation_hz: int = None, seed: int = None
     ):
         """
         Initialize voice variation settings.
@@ -79,7 +77,9 @@ class NaturalVoiceVariation:
         if seed is not None:
             random.seed(seed)
 
-        logger.debug(f"NaturalVoiceVariation initialized: rate=+/-{self.rate_variation}%, pitch=+/-{self.pitch_variation}Hz")
+        logger.debug(
+            f"NaturalVoiceVariation initialized: rate=+/-{self.rate_variation}%, pitch=+/-{self.pitch_variation}Hz"
+        )
 
     def _parse_base_value(self, base_value: str, unit: str) -> float:
         """
@@ -94,7 +94,7 @@ class NaturalVoiceVariation:
         """
         try:
             # Remove unit and parse
-            cleaned = base_value.replace(unit, '').replace('+', '').strip()
+            cleaned = base_value.replace(unit, "").replace("+", "").strip()
             return float(cleaned)
         except (ValueError, AttributeError):
             return 0.0
@@ -110,7 +110,7 @@ class NaturalVoiceVariation:
             List of sentences
         """
         # Split on sentence-ending punctuation followed by space or end
-        sentence_pattern = r'(?<=[.!?])\s+'
+        sentence_pattern = r"(?<=[.!?])\s+"
         sentences = re.split(sentence_pattern, text.strip())
         return [s.strip() for s in sentences if s.strip()]
 
@@ -127,7 +127,7 @@ class NaturalVoiceVariation:
             List of phrases
         """
         # Split on phrase-separating punctuation
-        phrase_pattern = r'(?<=[,;:\-])\s*'
+        phrase_pattern = r"(?<=[,;:\-])\s*"
         phrases = re.split(phrase_pattern, text.strip())
         return [p.strip() for p in phrases if p.strip()]
 
@@ -145,7 +145,7 @@ class NaturalVoiceVariation:
         Returns:
             SSML text with rate variations applied per sentence
         """
-        base_rate_value = self._parse_base_value(base_rate, '%')
+        base_rate_value = self._parse_base_value(base_rate, "%")
         sentences = self._split_into_sentences(text)
 
         if not sentences:
@@ -164,7 +164,7 @@ class NaturalVoiceVariation:
             varied_sentence = f'<prosody rate="{rate_str}">{sentence}</prosody>'
             varied_parts.append(varied_sentence)
 
-        result = ' '.join(varied_parts)
+        result = " ".join(varied_parts)
         logger.debug(f"Added rate variation to {len(sentences)} sentences")
         return result
 
@@ -182,7 +182,7 @@ class NaturalVoiceVariation:
         Returns:
             SSML text with pitch variations applied per phrase
         """
-        base_pitch_value = self._parse_base_value(base_pitch, 'Hz')
+        base_pitch_value = self._parse_base_value(base_pitch, "Hz")
         phrases = self._split_into_phrases(text)
 
         if not phrases:
@@ -201,15 +201,12 @@ class NaturalVoiceVariation:
             varied_phrase = f'<prosody pitch="{pitch_str}">{phrase}</prosody>'
             varied_parts.append(varied_phrase)
 
-        result = ' '.join(varied_parts)
+        result = " ".join(varied_parts)
         logger.debug(f"Added pitch variation to {len(phrases)} phrases")
         return result
 
     def apply_natural_variation(
-        self,
-        text: str,
-        base_rate: str = "+0%",
-        base_pitch: str = "+0Hz"
+        self, text: str, base_rate: str = "+0%", base_pitch: str = "+0Hz"
     ) -> str:
         """
         Apply both rate and pitch variations for maximum naturalness.
@@ -259,7 +256,7 @@ class NaturalVoiceVariation:
                 pause_ms = random.randint(150, 300)
                 result_parts.append(f'<break time="{pause_ms}ms"/>')
 
-        return ' '.join(result_parts)
+        return " ".join(result_parts)
 
 
 class TextToSpeech:
@@ -272,11 +269,9 @@ class TextToSpeech:
         "en-US-JennyNeural": "US Female - Friendly, warm",
         "en-US-AriaNeural": "US Female - Professional",
         "en-US-DavisNeural": "US Male - Casual, friendly",
-
         # UK English
         "en-GB-SoniaNeural": "UK Female - Professional",
         "en-GB-RyanNeural": "UK Male - Professional",
-
         # Australian English
         "en-AU-WilliamNeural": "AU Male - Friendly",
         "en-AU-NatashaNeural": "AU Female - Professional",
@@ -284,10 +279,10 @@ class TextToSpeech:
 
     # Pause durations for SSML (in milliseconds)
     PAUSE_DURATIONS = {
-        "short": 300,   # After comma
+        "short": 300,  # After comma
         "medium": 500,  # After period, semicolon
-        "long": 800,    # After paragraph breaks, ellipsis
-        "dramatic": 1200  # For dramatic effect
+        "long": 800,  # After paragraph breaks, ellipsis
+        "dramatic": 1200,  # For dramatic effect
     }
 
     def __init__(self, default_voice: str = "en-US-GuyNeural"):
@@ -307,7 +302,7 @@ class TextToSpeech:
         voice: Optional[str] = None,
         rate: str = "+0%",
         pitch: str = "+0Hz",
-        volume: str = "+0%"
+        volume: str = "+0%",
     ) -> str:
         """
         Generate speech from text and save to file.
@@ -334,11 +329,7 @@ class TextToSpeech:
 
         try:
             communicate = edge_tts.Communicate(
-                text=text,
-                voice=voice,
-                rate=rate,
-                pitch=pitch,
-                volume=volume
+                text=text, voice=voice, rate=rate, pitch=pitch, volume=volume
             )
             await communicate.save(str(output_path))
 
@@ -368,53 +359,25 @@ class TextToSpeech:
             Text with SSML break tags inserted
         """
         # Replace ellipsis with long pause
-        text = re.sub(
-            r'\.{3}',
-            f'<break time="{self.PAUSE_DURATIONS["long"]}ms"/>',
-            text
-        )
+        text = re.sub(r"\.{3}", f'<break time="{self.PAUSE_DURATIONS["long"]}ms"/>', text)
 
         # Replace double newlines (paragraph breaks) with long pause
-        text = re.sub(
-            r'\n\s*\n',
-            f' <break time="{self.PAUSE_DURATIONS["long"]}ms"/> ',
-            text
-        )
+        text = re.sub(r"\n\s*\n", f' <break time="{self.PAUSE_DURATIONS["long"]}ms"/> ', text)
 
         # Replace period followed by space with medium pause
-        text = re.sub(
-            r'\.\s+',
-            f'. <break time="{self.PAUSE_DURATIONS["medium"]}ms"/> ',
-            text
-        )
+        text = re.sub(r"\.\s+", f'. <break time="{self.PAUSE_DURATIONS["medium"]}ms"/> ', text)
 
         # Replace question mark followed by space with medium pause
-        text = re.sub(
-            r'\?\s+',
-            f'? <break time="{self.PAUSE_DURATIONS["medium"]}ms"/> ',
-            text
-        )
+        text = re.sub(r"\?\s+", f'? <break time="{self.PAUSE_DURATIONS["medium"]}ms"/> ', text)
 
         # Replace exclamation mark followed by space with medium pause
-        text = re.sub(
-            r'!\s+',
-            f'! <break time="{self.PAUSE_DURATIONS["medium"]}ms"/> ',
-            text
-        )
+        text = re.sub(r"!\s+", f'! <break time="{self.PAUSE_DURATIONS["medium"]}ms"/> ', text)
 
         # Replace semicolon/colon followed by space with medium pause
-        text = re.sub(
-            r'[;:]\s+',
-            f'; <break time="{self.PAUSE_DURATIONS["medium"]}ms"/> ',
-            text
-        )
+        text = re.sub(r"[;:]\s+", f'; <break time="{self.PAUSE_DURATIONS["medium"]}ms"/> ', text)
 
         # Replace comma followed by space with short pause
-        text = re.sub(
-            r',\s+',
-            f', <break time="{self.PAUSE_DURATIONS["short"]}ms"/> ',
-            text
-        )
+        text = re.sub(r",\s+", f', <break time="{self.PAUSE_DURATIONS["short"]}ms"/> ', text)
 
         logger.debug("Added dramatic pauses to text with SSML breaks")
         return text
@@ -446,7 +409,7 @@ class TextToSpeech:
         rate: str = "+0%",
         pitch: str = "+0Hz",
         volume: str = "+0%",
-        add_pauses: bool = False
+        add_pauses: bool = False,
     ) -> str:
         """
         Generate speech from text with SSML support.
@@ -479,11 +442,7 @@ class TextToSpeech:
 
         try:
             communicate = edge_tts.Communicate(
-                text=text,
-                voice=voice,
-                rate=rate,
-                pitch=pitch,
-                volume=volume
+                text=text, voice=voice, rate=rate, pitch=pitch, volume=volume
             )
             await communicate.save(str(output_path))
 
@@ -508,7 +467,7 @@ class TextToSpeech:
         add_breath_pauses: bool = True,
         enhance: bool = False,
         noise_reduction: bool = True,
-        normalize_lufs: float = -14.0
+        normalize_lufs: float = -14.0,
     ) -> str:
         """
         Generate natural-sounding speech with AI authenticity features.
@@ -552,8 +511,7 @@ class TextToSpeech:
 
         # Apply natural voice variation
         variation = NaturalVoiceVariation(
-            rate_variation_percent=rate_variation_percent,
-            pitch_variation_hz=pitch_variation_hz
+            rate_variation_percent=rate_variation_percent, pitch_variation_hz=pitch_variation_hz
         )
 
         # Apply breath pauses first (for long sentences)
@@ -564,9 +522,7 @@ class TextToSpeech:
 
         # Apply rate and pitch variations
         processed_text = variation.apply_natural_variation(
-            processed_text,
-            base_rate=rate,
-            base_pitch=pitch
+            processed_text, base_rate=rate, base_pitch=pitch
         )
 
         # Add dramatic pauses at punctuation if requested
@@ -578,8 +534,12 @@ class TextToSpeech:
         output_path = Path(output_file)
         output_path.parent.mkdir(parents=True, exist_ok=True)
 
-        logger.info(f"Generating natural speech with AI authenticity features: {len(text)} chars -> {output_file}")
-        logger.debug(f"Voice: {voice}, Rate variation: +/-{rate_variation_percent}%, Pitch variation: +/-{pitch_variation_hz}Hz")
+        logger.info(
+            f"Generating natural speech with AI authenticity features: {len(text)} chars -> {output_file}"
+        )
+        logger.debug(
+            f"Voice: {voice}, Rate variation: +/-{rate_variation_percent}%, Pitch variation: +/-{pitch_variation_hz}Hz"
+        )
 
         # Generate with or without enhancement
         if enhance:
@@ -587,11 +547,7 @@ class TextToSpeech:
             temp_file = str(output_path.parent / f"_natural_raw_{output_path.name}")
 
             try:
-                communicate = edge_tts.Communicate(
-                    text=processed_text,
-                    voice=voice,
-                    volume=volume
-                )
+                communicate = edge_tts.Communicate(text=processed_text, voice=voice, volume=volume)
                 await communicate.save(temp_file)
 
                 # Import audio processor and enhance
@@ -605,7 +561,7 @@ class TextToSpeech:
                     input_file=temp_file,
                     output_file=output_file,
                     noise_reduction=noise_reduction,
-                    normalize_lufs=normalize_lufs
+                    normalize_lufs=normalize_lufs,
                 )
 
                 if enhanced:
@@ -633,11 +589,7 @@ class TextToSpeech:
         else:
             # Generate without enhancement
             try:
-                communicate = edge_tts.Communicate(
-                    text=processed_text,
-                    voice=voice,
-                    volume=volume
-                )
+                communicate = edge_tts.Communicate(text=processed_text, voice=voice, volume=volume)
                 await communicate.save(str(output_path))
 
                 logger.success(f"Natural audio saved: {output_file}")
@@ -653,7 +605,7 @@ class TextToSpeech:
         audio_file: str,
         subtitle_file: str,
         voice: Optional[str] = None,
-        subtitle_format: str = "vtt"
+        subtitle_format: str = "vtt",
     ) -> Dict[str, str]:
         """
         Generate speech with synchronized subtitles.
@@ -686,10 +638,7 @@ class TextToSpeech:
                     if chunk["type"] == "audio":
                         audio_fp.write(chunk["data"])
                     elif chunk["type"] == "WordBoundary":
-                        submaker.create_sub(
-                            (chunk["offset"], chunk["duration"]),
-                            chunk["text"]
-                        )
+                        submaker.create_sub((chunk["offset"], chunk["duration"]), chunk["text"])
 
             # Save subtitles
             subtitle_content = submaker.generate_subs()
@@ -703,10 +652,7 @@ class TextToSpeech:
 
             logger.success(f"Audio: {audio_file}, Subtitles: {subtitle_file}")
 
-            return {
-                "audio": audio_file,
-                "subtitles": subtitle_file
-            }
+            return {"audio": audio_file, "subtitles": subtitle_file}
 
         except (ConnectionError, TimeoutError, OSError, IOError) as e:
             logger.error(f"TTS with subtitles failed: {e}")
@@ -714,23 +660,27 @@ class TextToSpeech:
 
     def _vtt_to_srt(self, vtt_content: str) -> str:
         """Convert VTT subtitle format to SRT format."""
-        lines = vtt_content.split('\n')
+        lines = vtt_content.split("\n")
         srt_lines = []
         counter = 1
 
         for i, line in enumerate(lines):
             # Skip VTT header
-            if line.startswith('WEBVTT') or line.startswith('Kind:') or line.startswith('Language:'):
+            if (
+                line.startswith("WEBVTT")
+                or line.startswith("Kind:")
+                or line.startswith("Language:")
+            ):
                 continue
             # Convert timestamp format
-            if '-->' in line:
+            if "-->" in line:
                 srt_lines.append(str(counter))
                 counter += 1
                 # VTT uses . for milliseconds, SRT uses ,
-                line = line.replace('.', ',')
+                line = line.replace(".", ",")
             srt_lines.append(line)
 
-        return '\n'.join(srt_lines)
+        return "\n".join(srt_lines)
 
     async def generate_enhanced(
         self,
@@ -742,7 +692,7 @@ class TextToSpeech:
         volume: str = "+0%",
         enhance: bool = True,
         noise_reduction: bool = True,
-        normalize_lufs: float = -14.0
+        normalize_lufs: float = -14.0,
     ) -> str:
         """
         Generate speech with professional broadcast-quality enhancement.
@@ -789,7 +739,7 @@ class TextToSpeech:
                     input_file=raw_audio,
                     output_file=output_file,
                     noise_reduction=noise_reduction,
-                    normalize_lufs=normalize_lufs
+                    normalize_lufs=normalize_lufs,
                 )
 
                 if enhanced:
@@ -849,11 +799,7 @@ class TextToSpeech:
 
 
 # Convenience function for quick generation
-async def generate_speech(
-    text: str,
-    output_file: str,
-    voice: str = "en-US-GuyNeural"
-) -> str:
+async def generate_speech(text: str, output_file: str, voice: str = "en-US-GuyNeural") -> str:
     """Quick function to generate speech."""
     tts = TextToSpeech(default_voice=voice)
     return await tts.generate(text, output_file)
@@ -917,6 +863,7 @@ def get_tts_provider(provider: str = "edge", **kwargs):
 
 # Example usage and testing
 if __name__ == "__main__":
+
     async def main():
         # List available English voices
         await TextToSpeech.print_voices("en")
@@ -937,14 +884,14 @@ if __name__ == "__main__":
             text=sample_text,
             output_file="output/test_audio.mp3",
             voice="en-US-GuyNeural",
-            rate="+5%"  # Slightly faster
+            rate="+5%",  # Slightly faster
         )
 
         # Generate with subtitles
         await tts.generate_with_subtitles(
             text=sample_text,
             audio_file="output/test_with_subs.mp3",
-            subtitle_file="output/test_subtitles.vtt"
+            subtitle_file="output/test_subtitles.vtt",
         )
 
         print("Done! Check the output folder.")

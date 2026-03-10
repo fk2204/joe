@@ -31,10 +31,10 @@ Subtitles (optional):
 
 import os
 import subprocess
-import shutil
 import time
 from pathlib import Path
-from typing import Optional, Tuple, List, Dict
+from typing import Dict, List, Optional, Tuple
+
 from loguru import logger
 
 try:
@@ -45,6 +45,7 @@ except ImportError:
 # Import audio processor for normalization
 try:
     from .audio_processor import AudioProcessor
+
     AUDIO_PROCESSOR_AVAILABLE = True
 except ImportError:
     AUDIO_PROCESSOR_AVAILABLE = False
@@ -52,14 +53,16 @@ except ImportError:
 
 # Import subtitle generator
 try:
-    from .subtitles import SubtitleGenerator, SubtitleTrack, SUBTITLE_STYLES
+    from .subtitles import SubtitleGenerator
+
     SUBTITLES_AVAILABLE = True
 except ImportError:
     SUBTITLES_AVAILABLE = False
     logger.debug("SubtitleGenerator not available - subtitles disabled")
 
 # Import shared video utilities
-from .video_utils import find_ffmpeg, two_pass_encode as _two_pass_encode, FFMPEG_PARAMS_REGULAR, FFMPEG_PARAMS_SHORTS
+from .video_utils import find_ffmpeg
+from .video_utils import two_pass_encode as _two_pass_encode
 
 
 class FastVideoGenerator:
@@ -77,25 +80,41 @@ class FastVideoGenerator:
 
     # Optimized FFmpeg parameters for YouTube streaming
     FFMPEG_PARAMS_REGULAR = [
-        "-movflags", "+faststart",    # Enable web streaming
-        "-profile:v", "high",          # H.264 High Profile
-        "-level", "4.2",               # Level 4.2 for 1080p30
-        "-bf", "3",                    # 3 B-frames
-        "-g", "60",                    # GOP size = 2x framerate
-        "-keyint_min", "30",           # Minimum GOP
-        "-sc_threshold", "0",          # Fixed GOP
-        "-threads", "0",               # Auto thread detection
+        "-movflags",
+        "+faststart",  # Enable web streaming
+        "-profile:v",
+        "high",  # H.264 High Profile
+        "-level",
+        "4.2",  # Level 4.2 for 1080p30
+        "-bf",
+        "3",  # 3 B-frames
+        "-g",
+        "60",  # GOP size = 2x framerate
+        "-keyint_min",
+        "30",  # Minimum GOP
+        "-sc_threshold",
+        "0",  # Fixed GOP
+        "-threads",
+        "0",  # Auto thread detection
     ]
 
     FFMPEG_PARAMS_SHORTS = [
-        "-movflags", "+faststart",    # Enable web streaming
-        "-profile:v", "high",          # H.264 High Profile
-        "-level", "4.2",               # Level 4.2 for 1080p
-        "-bf", "2",                    # 2 B-frames for faster encode
-        "-g", "60",                    # GOP size
-        "-keyint_min", "30",           # Minimum GOP
-        "-sc_threshold", "0",          # Fixed GOP
-        "-threads", "0",               # Auto thread detection
+        "-movflags",
+        "+faststart",  # Enable web streaming
+        "-profile:v",
+        "high",  # H.264 High Profile
+        "-level",
+        "4.2",  # Level 4.2 for 1080p
+        "-bf",
+        "2",  # 2 B-frames for faster encode
+        "-g",
+        "60",  # GOP size
+        "-keyint_min",
+        "30",  # Minimum GOP
+        "-sc_threshold",
+        "0",  # Fixed GOP
+        "-threads",
+        "0",  # Auto thread detection
     ]
 
     def __init__(
@@ -103,7 +122,7 @@ class FastVideoGenerator:
         resolution: Tuple[int, int] = (1920, 1080),
         fps: int = 30,
         background_color: str = "#14141e",
-        content_type: str = "regular"
+        content_type: str = "regular",
     ):
         self.resolution = resolution
         self.fps = fps
@@ -125,7 +144,9 @@ class FastVideoGenerator:
         # Check FFmpeg
         self.ffmpeg = self._find_ffmpeg()
         if self.ffmpeg:
-            logger.info(f"FastVideoGenerator ready (FFmpeg: {self.ffmpeg}, content_type={content_type})")
+            logger.info(
+                f"FastVideoGenerator ready (FFmpeg: {self.ffmpeg}, content_type={content_type})"
+            )
         else:
             logger.warning("FFmpeg not found. Install from https://ffmpeg.org/download.html")
 
@@ -156,7 +177,9 @@ class FastVideoGenerator:
             ffmpeg_path = self.ffmpeg or "ffmpeg"
             result = subprocess.run(
                 [ffmpeg_path, "-hide_banner", "-encoders"],
-                capture_output=True, text=True, timeout=5
+                capture_output=True,
+                text=True,
+                timeout=5,
             )
             self._nvenc_available = "h264_nvenc" in result.stdout
             if self._nvenc_available:
@@ -193,7 +216,7 @@ class FastVideoGenerator:
         input_file: str,
         output_file: str,
         target_bitrate: str = "8M",
-        max_bitrate: str = "12M"
+        max_bitrate: str = "12M",
     ) -> Optional[str]:
         """
         Perform two-pass encoding for maximum quality at target bitrate.
@@ -234,7 +257,7 @@ class FastVideoGenerator:
         script_text: Optional[str] = None,
         subtitles_enabled: bool = False,
         subtitle_style: str = "regular",
-        niche: Optional[str] = None
+        niche: Optional[str] = None,
     ) -> Optional[str]:
         """
         Single-pass FFmpeg video creation (4× faster).
@@ -261,7 +284,7 @@ class FastVideoGenerator:
         # Create or use background image
         temp_bg = None
         if not background_image:
-            temp_bg = str(Path(output_file).with_suffix('.bg.png'))
+            temp_bg = str(Path(output_file).with_suffix(".bg.png"))
             background_image = self.create_background_image(temp_bg, title, subtitle)
 
         # Generate subtitle file if needed
@@ -283,11 +306,13 @@ class FastVideoGenerator:
 
                 if track.cues:
                     # Save to SRT file
-                    subtitle_file = str(Path(output_file).with_suffix('.temp.srt'))
-                    with open(subtitle_file, 'w', encoding='utf-8') as f:
+                    subtitle_file = str(Path(output_file).with_suffix(".temp.srt"))
+                    with open(subtitle_file, "w", encoding="utf-8") as f:
                         for i, cue in enumerate(track.cues, 1):
                             f.write(f"{i}\n")
-                            f.write(f"{self._format_srt_time(cue.start)} --> {self._format_srt_time(cue.end)}\n")
+                            f.write(
+                                f"{self._format_srt_time(cue.start)} --> {self._format_srt_time(cue.end)}\n"
+                            )
                             f.write(f"{cue.text}\n\n")
                     logger.info(f"Subtitle file created: {len(track.cues)} cues")
             except Exception as e:
@@ -324,7 +349,9 @@ class FastVideoGenerator:
                 filters.append(f"[1:a]volume={music_volume}[music]")
 
                 # Mix voice and music
-                filters.append(f"[voice][music]amix=inputs=2:duration=first:dropout_transition=2[audio]")
+                filters.append(
+                    f"[voice][music]amix=inputs=2:duration=first:dropout_transition=2[audio]"
+                )
             elif normalize_audio:
                 # Just normalize voice
                 filters.append(f"[0:a]loudnorm=I=-14:TP=-1.5:LRA=11[audio]")
@@ -342,37 +369,59 @@ class FastVideoGenerator:
             # Build FFmpeg command
             video_codec = self._get_video_codec()
             cmd = [
-                self.ffmpeg, '-y',
-                '-i', audio_file,  # Input 0: voice audio
+                self.ffmpeg,
+                "-y",
+                "-i",
+                audio_file,  # Input 0: voice audio
             ]
 
             # Add background music input if present
             if background_music and os.path.exists(background_music):
-                cmd.extend(['-i', background_music])  # Input 1: music
+                cmd.extend(["-i", background_music])  # Input 1: music
 
             # Add background image input (always present)
-            cmd.extend([
-                '-loop', '1',
-                '-i', background_image,  # Input N: background
-                '-filter_complex', filtergraph,
-                '-map', '[video]',
-                '-map', '[audio]',
-                '-c:v', video_codec,
-                '-tune', 'stillimage',
-                '-preset', self.encoding_preset,
-                '-crf', '23',
-                '-b:v', '8000k',
-                '-c:a', 'aac',
-                '-b:a', '256k',
-                '-pix_fmt', 'yuv420p',
-                '-shortest',
-                '-r', str(self.fps),
-            ])
+            cmd.extend(
+                [
+                    "-loop",
+                    "1",
+                    "-i",
+                    background_image,  # Input N: background
+                    "-filter_complex",
+                    filtergraph,
+                    "-map",
+                    "[video]",
+                    "-map",
+                    "[audio]",
+                    "-c:v",
+                    video_codec,
+                    "-tune",
+                    "stillimage",
+                    "-preset",
+                    self.encoding_preset,
+                    "-crf",
+                    "23",
+                    "-b:v",
+                    "8000k",
+                    "-c:a",
+                    "aac",
+                    "-b:a",
+                    "256k",
+                    "-pix_fmt",
+                    "yuv420p",
+                    "-shortest",
+                    "-r",
+                    str(self.fps),
+                ]
+            )
 
             # Add subtitle filter if subtitle file exists
             if subtitle_file and os.path.exists(subtitle_file):
                 # Get subtitle style
-                style = self.subtitle_generator.get_style(subtitle_style, niche) if self.subtitle_generator else {}
+                style = (
+                    self.subtitle_generator.get_style(subtitle_style, niche)
+                    if self.subtitle_generator
+                    else {}
+                )
                 font_name = style.get("font_family", "Arial Bold")
                 font_size = style.get("font_size", 24)
                 primary_color = style.get("color", "#FFFFFF").replace("#", "&H")
@@ -384,18 +433,15 @@ class FastVideoGenerator:
                 # This is a bit complex - we need to rebuild the command with subtitle filter
                 # For simplicity in single-pass, we'll add subtitles as a post-process
                 # True single-pass with subtitles requires more complex filter graph
-                logger.info("Note: Subtitles will be burned in a quick second pass for compatibility")
+                logger.info(
+                    "Note: Subtitles will be burned in a quick second pass for compatibility"
+                )
 
             cmd.extend(self._get_ffmpeg_base_params())
             cmd.append(output_file)
 
             # Run FFmpeg
-            result = subprocess.run(
-                cmd,
-                capture_output=True,
-                text=True,
-                timeout=300
-            )
+            result = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
 
             if result.returncode != 0:
                 logger.error(f"FFmpeg error: {result.stderr[:500]}")
@@ -407,10 +453,14 @@ class FastVideoGenerator:
             # This is still faster than multi-pass audio processing
             if subtitle_file and os.path.exists(subtitle_file):
                 logger.info("Burning subtitles (quick pass)...")
-                temp_video = str(Path(output_file).with_suffix('.temp_no_subs.mp4'))
+                temp_video = str(Path(output_file).with_suffix(".temp_no_subs.mp4"))
                 os.rename(output_file, temp_video)
 
-                style = self.subtitle_generator.get_style(subtitle_style, niche) if self.subtitle_generator else {}
+                style = (
+                    self.subtitle_generator.get_style(subtitle_style, niche)
+                    if self.subtitle_generator
+                    else {}
+                )
                 font_name = style.get("font_family", "Arial Bold")
                 font_size = style.get("font_size", 24)
                 primary_color = style.get("color", "#FFFFFF").replace("#", "&H")
@@ -419,11 +469,15 @@ class FastVideoGenerator:
                 subtitle_filter = f"subtitles={subtitle_file}:force_style='FontName={font_name},FontSize={font_size},PrimaryColour={primary_color},OutlineColour={outline_color},Outline=2,Shadow=1'"
 
                 sub_cmd = [
-                    self.ffmpeg, '-y',
-                    '-i', temp_video,
-                    '-vf', subtitle_filter,
-                    '-c:a', 'copy',  # Copy audio (no re-encode)
-                    output_file
+                    self.ffmpeg,
+                    "-y",
+                    "-i",
+                    temp_video,
+                    "-vf",
+                    subtitle_filter,
+                    "-c:a",
+                    "copy",  # Copy audio (no re-encode)
+                    output_file,
                 ]
 
                 subprocess.run(sub_cmd, capture_output=True, timeout=120)
@@ -432,7 +486,7 @@ class FastVideoGenerator:
                 if os.path.exists(temp_video):
                     try:
                         os.remove(temp_video)
-                    except:
+                    except Exception:
                         pass
 
             return output_file
@@ -444,21 +498,30 @@ class FastVideoGenerator:
             logger.error(f"Single-pass video creation failed: {e}")
             logger.warning("Falling back to multi-pass method")
             return self._create_video_multipass(
-                audio_file, output_file, title, subtitle, background_image,
-                normalize_audio, background_music, music_volume,
-                script_text, subtitles_enabled, subtitle_style, niche
+                audio_file,
+                output_file,
+                title,
+                subtitle,
+                background_image,
+                normalize_audio,
+                background_music,
+                music_volume,
+                script_text,
+                subtitles_enabled,
+                subtitle_style,
+                niche,
             )
         finally:
             # Clean up temp files
             if temp_bg and os.path.exists(temp_bg):
                 try:
                     os.remove(temp_bg)
-                except:
+                except Exception:
                     pass
             if subtitle_file and os.path.exists(subtitle_file):
                 try:
                     os.remove(subtitle_file)
-                except:
+                except Exception:
                     pass
 
     def _format_srt_time(self, seconds: float) -> str:
@@ -470,18 +533,15 @@ class FastVideoGenerator:
         return f"{hours:02d}:{minutes:02d}:{secs:02d},{millis:03d}"
 
     def create_background_image(
-        self,
-        output_path: str,
-        title: Optional[str] = None,
-        subtitle: Optional[str] = None
+        self, output_path: str, title: Optional[str] = None, subtitle: Optional[str] = None
     ) -> str:
         """Create a background image with optional text."""
         # Parse hex color
-        color = self.background_color.lstrip('#')
-        rgb = tuple(int(color[i:i+2], 16) for i in (0, 2, 4))
+        color = self.background_color.lstrip("#")
+        rgb = tuple(int(color[i : i + 2], 16) for i in (0, 2, 4))
 
         # Create image
-        img = Image.new('RGB', self.resolution, rgb)
+        img = Image.new("RGB", self.resolution, rgb)
         draw = ImageDraw.Draw(img)
 
         # Add gradient effect (darker at edges)
@@ -489,7 +549,7 @@ class FastVideoGenerator:
             alpha = int(255 * (1 - i / 50) * 0.3)
             draw.rectangle(
                 [i, i, self.width - i, self.height - i],
-                outline=tuple(max(0, c - alpha // 3) for c in rgb)
+                outline=tuple(max(0, c - alpha // 3) for c in rgb),
             )
 
         # Add title text if provided
@@ -499,10 +559,10 @@ class FastVideoGenerator:
                 font_size = 72
                 try:
                     font = ImageFont.truetype("arial.ttf", font_size)
-                except:
+                except Exception:
                     try:
                         font = ImageFont.truetype("C:\\Windows\\Fonts\\arial.ttf", font_size)
-                    except:
+                    except Exception:
                         font = ImageFont.load_default()
 
                 # Calculate text position
@@ -525,7 +585,7 @@ class FastVideoGenerator:
                 font_size = 36
                 try:
                     font = ImageFont.truetype("arial.ttf", font_size)
-                except:
+                except Exception:
                     font = ImageFont.load_default()
 
                 bbox = draw.textbbox((0, 0), subtitle, font=font)
@@ -534,7 +594,7 @@ class FastVideoGenerator:
                 y = self.height // 2 + 50
 
                 draw.text((x, y), subtitle, fill="#aaaaaa", font=font)
-            except:
+            except Exception:
                 pass
 
         # Save
@@ -558,7 +618,7 @@ class FastVideoGenerator:
         subtitles_enabled: bool = False,
         subtitle_style: str = "regular",
         niche: Optional[str] = None,
-        single_pass: bool = True
+        single_pass: bool = True,
     ) -> Optional[str]:
         """
         Create a video from audio file.
@@ -584,16 +644,34 @@ class FastVideoGenerator:
         # Use optimized single-pass if requested and subtitles are needed
         if single_pass and (normalize_audio or background_music or subtitles_enabled):
             return self._create_video_single_pass(
-                audio_file, output_file, title, subtitle, background_image,
-                normalize_audio, background_music, music_volume,
-                script_text, subtitles_enabled, subtitle_style, niche
+                audio_file,
+                output_file,
+                title,
+                subtitle,
+                background_image,
+                normalize_audio,
+                background_music,
+                music_volume,
+                script_text,
+                subtitles_enabled,
+                subtitle_style,
+                niche,
             )
 
         # Fall back to multi-pass method
         return self._create_video_multipass(
-            audio_file, output_file, title, subtitle, background_image,
-            normalize_audio, background_music, music_volume,
-            script_text, subtitles_enabled, subtitle_style, niche
+            audio_file,
+            output_file,
+            title,
+            subtitle,
+            background_image,
+            normalize_audio,
+            background_music,
+            music_volume,
+            script_text,
+            subtitles_enabled,
+            subtitle_style,
+            niche,
         )
 
     def _create_video_multipass(
@@ -609,7 +687,7 @@ class FastVideoGenerator:
         script_text: Optional[str] = None,
         subtitles_enabled: bool = False,
         subtitle_style: str = "regular",
-        niche: Optional[str] = None
+        niche: Optional[str] = None,
     ) -> Optional[str]:
         """
         Multi-pass video creation (legacy method).
@@ -631,7 +709,7 @@ class FastVideoGenerator:
         temp_audio = None
 
         if self.audio_processor and (normalize_audio or background_music):
-            temp_audio = str(Path(output_file).with_suffix('.processed_audio.mp3'))
+            temp_audio = str(Path(output_file).with_suffix(".processed_audio.mp3"))
 
             if background_music and os.path.exists(background_music):
                 # Mix with background music (this also normalizes)
@@ -641,7 +719,7 @@ class FastVideoGenerator:
                     music_file=background_music,
                     output_file=temp_audio,
                     music_volume=music_volume,
-                    normalize_before_mix=True
+                    normalize_before_mix=True,
                 )
                 if result:
                     processed_audio = result
@@ -655,7 +733,7 @@ class FastVideoGenerator:
         # Create or use background image
         temp_bg = None
         if not background_image:
-            temp_bg = str(Path(output_file).with_suffix('.bg.png'))
+            temp_bg = str(Path(output_file).with_suffix(".bg.png"))
             background_image = self.create_background_image(temp_bg, title, subtitle)
 
         try:
@@ -663,31 +741,45 @@ class FastVideoGenerator:
 
             # FFmpeg command to create video from image + audio with optimized params
             video_codec = self._get_video_codec()
-            cmd = [
-                self.ffmpeg,
-                '-y',  # Overwrite output
-                '-loop', '1',  # Loop image
-                '-i', background_image,  # Input image
-                '-i', processed_audio,  # Input audio (may be normalized/mixed)
-                '-c:v', video_codec,  # Video codec (NVENC if available)
-                '-tune', 'stillimage',  # Optimize for still image
-                '-preset', self.encoding_preset,  # Content-type based preset
-                '-crf', '23',  # Constant rate factor for quality
-                '-b:v', '8000k',  # Video bitrate (8 Mbps for YouTube 1080p)
-                '-c:a', 'aac',  # Audio codec
-                '-b:a', '256k',  # Audio bitrate (improved from 192k)
-                '-pix_fmt', 'yuv420p',  # Pixel format
-                '-shortest',  # End when audio ends
-                '-vf', f'scale={self.width}:{self.height}',  # Resolution
-                '-r', str(self.fps),  # Frame rate
-            ] + self._get_ffmpeg_base_params() + [output_file]
+            cmd = (
+                [
+                    self.ffmpeg,
+                    "-y",  # Overwrite output
+                    "-loop",
+                    "1",  # Loop image
+                    "-i",
+                    background_image,  # Input image
+                    "-i",
+                    processed_audio,  # Input audio (may be normalized/mixed)
+                    "-c:v",
+                    video_codec,  # Video codec (NVENC if available)
+                    "-tune",
+                    "stillimage",  # Optimize for still image
+                    "-preset",
+                    self.encoding_preset,  # Content-type based preset
+                    "-crf",
+                    "23",  # Constant rate factor for quality
+                    "-b:v",
+                    "8000k",  # Video bitrate (8 Mbps for YouTube 1080p)
+                    "-c:a",
+                    "aac",  # Audio codec
+                    "-b:a",
+                    "256k",  # Audio bitrate (improved from 192k)
+                    "-pix_fmt",
+                    "yuv420p",  # Pixel format
+                    "-shortest",  # End when audio ends
+                    "-vf",
+                    f"scale={self.width}:{self.height}",  # Resolution
+                    "-r",
+                    str(self.fps),  # Frame rate
+                ]
+                + self._get_ffmpeg_base_params()
+                + [output_file]
+            )
 
             # Run FFmpeg
             result = subprocess.run(
-                cmd,
-                capture_output=True,
-                text=True,
-                timeout=300  # 5 minute timeout
+                cmd, capture_output=True, text=True, timeout=300  # 5 minute timeout
             )
 
             if result.returncode != 0:
@@ -714,22 +806,18 @@ class FastVideoGenerator:
 
                     if track.cues:
                         # Burn subtitles into video
-                        temp_video = str(Path(output_file).with_suffix('.temp_no_subs.mp4'))
+                        temp_video = str(Path(output_file).with_suffix(".temp_no_subs.mp4"))
                         os.rename(output_file, temp_video)
 
                         result = self.subtitle_generator.burn_subtitles(
-                            temp_video,
-                            track,
-                            output_file,
-                            style=subtitle_style,
-                            niche=niche
+                            temp_video, track, output_file, style=subtitle_style, niche=niche
                         )
 
                         # Clean up temp video
                         if os.path.exists(temp_video):
                             try:
                                 os.remove(temp_video)
-                            except:
+                            except Exception:
                                 pass
 
                         if result:
@@ -753,13 +841,13 @@ class FastVideoGenerator:
             if temp_bg and os.path.exists(temp_bg):
                 try:
                     os.remove(temp_bg)
-                except:
+                except Exception:
                     pass
             # Clean up temp audio
             if temp_audio and os.path.exists(temp_audio):
                 try:
                     os.remove(temp_audio)
-                except:
+                except Exception:
                     pass
 
     def create_thumbnail(
@@ -767,24 +855,23 @@ class FastVideoGenerator:
         output_file: str,
         title: str,
         subtitle: Optional[str] = None,
-        background_color: str = "#1e1e3f"
+        background_color: str = "#1e1e3f",
     ) -> str:
         """Create a YouTube thumbnail (1280x720)."""
         size = (1280, 720)
 
         # Parse color
-        color = background_color.lstrip('#')
-        rgb = tuple(int(color[i:i+2], 16) for i in (0, 2, 4))
+        color = background_color.lstrip("#")
+        rgb = tuple(int(color[i : i + 2], 16) for i in (0, 2, 4))
 
-        img = Image.new('RGB', size, rgb)
+        img = Image.new("RGB", size, rgb)
         draw = ImageDraw.Draw(img)
 
         # Add gradient
         for i in range(40):
             alpha = int(255 * (1 - i / 40) * 0.4)
             draw.rectangle(
-                [i, i, size[0] - i, size[1] - i],
-                outline=tuple(max(0, c - alpha // 2) for c in rgb)
+                [i, i, size[0] - i, size[1] - i], outline=tuple(max(0, c - alpha // 2) for c in rgb)
             )
 
         # Title
@@ -792,10 +879,10 @@ class FastVideoGenerator:
             font_size = 64
             try:
                 font = ImageFont.truetype("arial.ttf", font_size)
-            except:
+            except Exception:
                 try:
                     font = ImageFont.truetype("C:\\Windows\\Fonts\\arialbd.ttf", font_size)
-                except:
+                except Exception:
                     font = ImageFont.load_default()
 
             # Wrap title if too long
@@ -806,7 +893,7 @@ class FastVideoGenerator:
                 current_line = ""
                 for word in words:
                     if len(current_line + " " + word) <= max_chars:
-                        current_line += (" " + word if current_line else word)
+                        current_line += " " + word if current_line else word
                     else:
                         if current_line:
                             lines.append(current_line)
@@ -836,7 +923,7 @@ class FastVideoGenerator:
                 x = (size[0] - (bbox[2] - bbox[0])) // 2
                 y = size[1] // 2 + 60
                 draw.text((x, y), subtitle, fill="#cccccc", font=font)
-            except:
+            except Exception:
                 pass
 
         # Save
@@ -852,17 +939,20 @@ class FastVideoGenerator:
             return None
 
         try:
-            ffprobe = self.ffmpeg.replace('ffmpeg', 'ffprobe')
+            ffprobe = self.ffmpeg.replace("ffmpeg", "ffprobe")
             cmd = [
                 ffprobe,
-                '-v', 'error',
-                '-show_entries', 'format=duration',
-                '-of', 'default=noprint_wrappers=1:nokey=1',
-                audio_file
+                "-v",
+                "error",
+                "-show_entries",
+                "format=duration",
+                "-of",
+                "default=noprint_wrappers=1:nokey=1",
+                audio_file,
             ]
             result = subprocess.run(cmd, capture_output=True, text=True)
             return float(result.stdout.strip())
-        except:
+        except Exception:
             return None
 
     def create_video_ffmpeg_direct(
@@ -871,7 +961,7 @@ class FastVideoGenerator:
         background_image: str,
         output_file: str,
         preset: str = "faster",
-        crf: int = 23
+        crf: int = 23,
     ) -> Optional[str]:
         """
         Ultra-fast video creation using pure FFmpeg.
@@ -916,32 +1006,43 @@ class FastVideoGenerator:
 
         try:
             logger.info(f"Creating video (FFmpeg direct): {output_file}")
-            start_time = time.time() if 'time' in dir() else None
+            start_time = time.time() if "time" in dir() else None
 
             # Build FFmpeg command for optimal performance with all optimizations
             video_codec = self._get_video_codec()
-            cmd = [
-                self.ffmpeg,
-                '-y',                           # Overwrite output
-                '-loop', '1',                   # Loop image
-                '-i', background_image,         # Input image
-                '-i', audio_file,               # Input audio
-                '-c:v', video_codec,            # Video codec (NVENC if available)
-                '-preset', preset,              # Encoding speed preset
-                '-crf', str(crf),               # Quality factor
-                '-c:a', 'aac',                  # Audio codec
-                '-b:a', '256k',                 # Audio bitrate
-                '-pix_fmt', 'yuv420p',          # Pixel format (compatibility)
-                '-shortest',                    # End when shortest stream ends
-                '-r', str(self.fps),            # Frame rate
-            ] + self._get_ffmpeg_base_params() + [output_file]
+            cmd = (
+                [
+                    self.ffmpeg,
+                    "-y",  # Overwrite output
+                    "-loop",
+                    "1",  # Loop image
+                    "-i",
+                    background_image,  # Input image
+                    "-i",
+                    audio_file,  # Input audio
+                    "-c:v",
+                    video_codec,  # Video codec (NVENC if available)
+                    "-preset",
+                    preset,  # Encoding speed preset
+                    "-crf",
+                    str(crf),  # Quality factor
+                    "-c:a",
+                    "aac",  # Audio codec
+                    "-b:a",
+                    "256k",  # Audio bitrate
+                    "-pix_fmt",
+                    "yuv420p",  # Pixel format (compatibility)
+                    "-shortest",  # End when shortest stream ends
+                    "-r",
+                    str(self.fps),  # Frame rate
+                ]
+                + self._get_ffmpeg_base_params()
+                + [output_file]
+            )
 
             # Run FFmpeg
             result = subprocess.run(
-                cmd,
-                capture_output=True,
-                text=True,
-                timeout=600  # 10 minute timeout
+                cmd, capture_output=True, text=True, timeout=600  # 10 minute timeout
             )
 
             if result.returncode != 0:
@@ -958,7 +1059,9 @@ class FastVideoGenerator:
                 logger.error(f"Output file too small ({file_size} bytes)")
                 return None
 
-            logger.success(f"Video created (FFmpeg direct): {output_file} ({file_size / 1024 / 1024:.1f} MB)")
+            logger.success(
+                f"Video created (FFmpeg direct): {output_file} ({file_size / 1024 / 1024:.1f} MB)"
+            )
             return output_file
 
         except subprocess.TimeoutExpired:
@@ -969,10 +1072,7 @@ class FastVideoGenerator:
             return None
 
     def create_video_batch_ffmpeg(
-        self,
-        items: list,
-        output_dir: str,
-        preset: str = "faster"
+        self, items: list, output_dir: str, preset: str = "faster"
     ) -> list:
         """
         Create multiple videos in batch using FFmpeg direct method.
@@ -1000,9 +1100,9 @@ class FastVideoGenerator:
         logger.info(f"Starting batch video creation: {len(items)} videos")
 
         for i, item in enumerate(items):
-            audio_file = item.get('audio_file')
-            background_image = item.get('background_image')
-            output_name = item.get('output_name', f'video_{i}')
+            audio_file = item.get("audio_file")
+            background_image = item.get("background_image")
+            output_name = item.get("output_name", f"video_{i}")
 
             if not audio_file or not background_image:
                 logger.warning(f"Skipping item {i}: missing audio or image")
@@ -1015,7 +1115,7 @@ class FastVideoGenerator:
                 audio_file=audio_file,
                 background_image=background_image,
                 output_file=output_file,
-                preset=preset
+                preset=preset,
             )
 
             if result:
@@ -1036,7 +1136,7 @@ if __name__ == "__main__":
     generator.create_thumbnail(
         output_file="output/test_thumb.png",
         title="Python Tutorial",
-        subtitle="Learn Python in 10 Minutes"
+        subtitle="Learn Python in 10 Minutes",
     )
 
     # If we have test audio, create video
@@ -1046,7 +1146,7 @@ if __name__ == "__main__":
             audio_file="output/test_voice.mp3",
             output_file="output/test_video.mp4",
             title="Test Video",
-            subtitle="Created with FFmpeg"
+            subtitle="Created with FFmpeg",
         )
     else:
         print("\nNo test audio found. Run TTS test first.")

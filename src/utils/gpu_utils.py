@@ -13,17 +13,18 @@ Usage:
         ffmpeg_args = accelerator.get_ffmpeg_args(preset='fast')
 """
 
-import os
-import subprocess
 import platform
-from typing import Optional, Dict, List, Tuple
+import subprocess
 from dataclasses import dataclass
 from enum import Enum
+from typing import Dict, List, Optional, Tuple
+
 from loguru import logger
 
 
 class GPUType(Enum):
     """Supported GPU types for hardware acceleration."""
+
     NVIDIA = "nvidia"
     AMD = "amd"
     INTEL = "intel"
@@ -33,6 +34,7 @@ class GPUType(Enum):
 @dataclass
 class GPUInfo:
     """GPU information and capabilities."""
+
     gpu_type: GPUType
     name: str
     available: bool
@@ -72,7 +74,7 @@ class GPUAccelerator:
                 capture_output=True,
                 text=True,
                 timeout=timeout,
-                creationflags=subprocess.CREATE_NO_WINDOW if platform.system() == "Windows" else 0
+                creationflags=subprocess.CREATE_NO_WINDOW if platform.system() == "Windows" else 0,
             )
             return result.returncode == 0, result.stdout + result.stderr
         except Exception as e:
@@ -103,7 +105,7 @@ class GPUAccelerator:
                     decoder="h264_cuvid",
                     scale_filter="scale_cuda",
                     supports_hevc="hevc_nvenc" in encoders_available,
-                    max_encode_resolution=(7680, 4320)  # 8K on modern NVIDIA
+                    max_encode_resolution=(7680, 4320),  # 8K on modern NVIDIA
                 )
                 logger.success(f"NVIDIA GPU detected: {gpu_name}")
                 return
@@ -120,7 +122,7 @@ class GPUAccelerator:
                     decoder="h264",  # AMD doesn't have dedicated decoder
                     scale_filter="scale",
                     supports_hevc="hevc_amf" in encoders_available,
-                    max_encode_resolution=(3840, 2160)  # 4K
+                    max_encode_resolution=(3840, 2160),  # 4K
                 )
                 logger.success(f"AMD GPU detected: {gpu_name}")
                 return
@@ -137,7 +139,7 @@ class GPUAccelerator:
                     decoder="h264_qsv",
                     scale_filter="scale_qsv",
                     supports_hevc="hevc_qsv" in encoders_available,
-                    max_encode_resolution=(4096, 2304)  # 4K+
+                    max_encode_resolution=(4096, 2304),  # 4K+
                 )
                 logger.success(f"Intel GPU detected: {gpu_name}")
                 return
@@ -149,10 +151,12 @@ class GPUAccelerator:
     def _get_nvidia_gpu_name(self) -> Optional[str]:
         """Get NVIDIA GPU name using nvidia-smi."""
         try:
-            success, output = self._run_command(["nvidia-smi", "--query-gpu=name", "--format=csv,noheader"])
+            success, output = self._run_command(
+                ["nvidia-smi", "--query-gpu=name", "--format=csv,noheader"]
+            )
             if success and output.strip():
-                return output.strip().split('\n')[0]
-        except:
+                return output.strip().split("\n")[0]
+        except Exception:
             pass
 
         # Fallback: check Windows registry or Linux sysfs
@@ -180,11 +184,11 @@ class GPUAccelerator:
                 ["wmic", "path", "win32_VideoController", "get", "name"]
             )
             if success:
-                for line in output.split('\n'):
+                for line in output.split("\n"):
                     line = line.strip()
                     if vendor.lower() in line.lower() and line != "Name":
                         return line
-        except:
+        except Exception:
             pass
         return None
 
@@ -198,7 +202,7 @@ class GPUAccelerator:
             decoder="h264",
             scale_filter="scale",
             supports_hevc=False,
-            max_encode_resolution=(7680, 4320)
+            max_encode_resolution=(7680, 4320),
         )
 
     def is_available(self) -> bool:
@@ -227,7 +231,7 @@ class GPUAccelerator:
                 GPUType.NVIDIA: "hevc_nvenc",
                 GPUType.AMD: "hevc_amf",
                 GPUType.INTEL: "hevc_qsv",
-                GPUType.CPU: "libx265"
+                GPUType.CPU: "libx265",
             }
             return encoder_map[self._gpu_info.gpu_type]
 
@@ -247,7 +251,7 @@ class GPUAccelerator:
         bitrate: str = "8M",
         quality: Optional[int] = None,
         width: int = 1920,
-        height: int = 1080
+        height: int = 1080,
     ) -> List[str]:
         """
         Get optimized FFmpeg arguments for the detected GPU.
@@ -279,9 +283,12 @@ class GPUAccelerator:
     def _get_nvidia_args(self, preset: str, bitrate: str, quality: Optional[int]) -> List[str]:
         """Get NVIDIA NVENC encoding arguments."""
         args = [
-            "-c:v", "h264_nvenc",
-            "-preset", preset,  # p1-p7 presets, or fast/medium/slow
-            "-b:v", bitrate,
+            "-c:v",
+            "h264_nvenc",
+            "-preset",
+            preset,  # p1-p7 presets, or fast/medium/slow
+            "-b:v",
+            bitrate,
         ]
 
         # GPU has different quality scale: 0 (best) to 51 (worst)
@@ -290,12 +297,18 @@ class GPUAccelerator:
 
         # Quality optimizations
         if self.prefer_quality:
-            args.extend([
-                "-rc", "vbr_hq",  # High-quality VBR
-                "-spatial_aq", "1",  # Spatial AQ
-                "-temporal_aq", "1",  # Temporal AQ
-                "-rc-lookahead", "20"  # Lookahead frames
-            ])
+            args.extend(
+                [
+                    "-rc",
+                    "vbr_hq",  # High-quality VBR
+                    "-spatial_aq",
+                    "1",  # Spatial AQ
+                    "-temporal_aq",
+                    "1",  # Temporal AQ
+                    "-rc-lookahead",
+                    "20",  # Lookahead frames
+                ]
+            )
         else:
             args.extend(["-rc", "vbr"])  # Standard VBR
 
@@ -306,9 +319,12 @@ class GPUAccelerator:
     def _get_amd_args(self, preset: str, bitrate: str, quality: Optional[int]) -> List[str]:
         """Get AMD AMF encoding arguments."""
         args = [
-            "-c:v", "h264_amf",
-            "-quality", preset if preset in ["balanced", "speed", "quality"] else "balanced",
-            "-b:v", bitrate,
+            "-c:v",
+            "h264_amf",
+            "-quality",
+            preset if preset in ["balanced", "speed", "quality"] else "balanced",
+            "-b:v",
+            bitrate,
         ]
 
         if quality is not None:
@@ -321,17 +337,15 @@ class GPUAccelerator:
     def _get_intel_args(self, preset: str, bitrate: str, quality: Optional[int]) -> List[str]:
         """Get Intel Quick Sync encoding arguments."""
         # Map preset to Intel preset names
-        preset_map = {
-            "ultrafast": "veryfast",
-            "fast": "fast",
-            "medium": "medium",
-            "slow": "slow"
-        }
+        preset_map = {"ultrafast": "veryfast", "fast": "fast", "medium": "medium", "slow": "slow"}
 
         args = [
-            "-c:v", "h264_qsv",
-            "-preset", preset_map.get(preset, "medium"),
-            "-b:v", bitrate,
+            "-c:v",
+            "h264_qsv",
+            "-preset",
+            preset_map.get(preset, "medium"),
+            "-b:v",
+            bitrate,
         ]
 
         if quality is not None:
@@ -344,9 +358,12 @@ class GPUAccelerator:
     def _get_cpu_args(self, preset: str, bitrate: str, quality: Optional[int]) -> List[str]:
         """Get CPU (libx264) encoding arguments."""
         args = [
-            "-c:v", "libx264",
-            "-preset", preset,
-            "-b:v", bitrate,
+            "-c:v",
+            "libx264",
+            "-preset",
+            preset,
+            "-b:v",
+            bitrate,
         ]
 
         if quality is not None:
@@ -390,14 +407,14 @@ class GPUAccelerator:
                 "type": "cpu",
                 "name": "CPU (Software Encoding)",
                 "encoder": "libx264",
-                "speedup": "1x (baseline)"
+                "speedup": "1x (baseline)",
             }
 
         speedup_map = {
             GPUType.NVIDIA: "2-3x faster",
             GPUType.AMD: "2-3x faster",
             GPUType.INTEL: "1.5-2x faster",
-            GPUType.CPU: "1x (baseline)"
+            GPUType.CPU: "1x (baseline)",
         }
 
         return {
@@ -409,34 +426,36 @@ class GPUAccelerator:
             "scale_filter": self._gpu_info.scale_filter,
             "supports_hevc": self._gpu_info.supports_hevc,
             "max_resolution": f"{self._gpu_info.max_encode_resolution[0]}x{self._gpu_info.max_encode_resolution[1]}",
-            "speedup": speedup_map[self._gpu_info.gpu_type]
+            "speedup": speedup_map[self._gpu_info.gpu_type],
         }
 
     def print_status(self) -> None:
         """Print GPU status to console."""
         status = self.get_status()
 
-        print("\n" + "="*60)
+        print("\n" + "=" * 60)
         print("  GPU ACCELERATION STATUS")
-        print("="*60)
+        print("=" * 60)
         print(f"GPU Available:     {'YES' if status['available'] else 'NO'}")
         print(f"Type:              {status['type'].upper()}")
         print(f"Name:              {status['name']}")
         print(f"Encoder:           {status['encoder']}")
-        if status['available']:
+        if status["available"]:
             print(f"Decoder:           {status['decoder']}")
             print(f"Scale Filter:      {status['scale_filter']}")
             print(f"HEVC Support:      {'YES' if status['supports_hevc'] else 'NO'}")
             print(f"Max Resolution:    {status['max_resolution']}")
         print(f"Expected Speedup:  {status['speedup']}")
-        print("="*60 + "\n")
+        print("=" * 60 + "\n")
 
 
 # Singleton instance
 _gpu_accelerator: Optional[GPUAccelerator] = None
 
 
-def get_gpu_accelerator(ffmpeg_path: str = "ffmpeg", prefer_quality: bool = False) -> GPUAccelerator:
+def get_gpu_accelerator(
+    ffmpeg_path: str = "ffmpeg", prefer_quality: bool = False
+) -> GPUAccelerator:
     """Get or create GPU accelerator singleton."""
     global _gpu_accelerator
     if _gpu_accelerator is None:

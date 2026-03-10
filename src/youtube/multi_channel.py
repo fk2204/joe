@@ -17,20 +17,21 @@ Usage:
 
 import os
 import pickle
-from pathlib import Path
-from typing import Optional, Dict, List
 from dataclasses import dataclass
-from loguru import logger
+from pathlib import Path
+from typing import Dict, List, Optional
 
-from google_auth_oauthlib.flow import InstalledAppFlow
 from google.auth.transport.requests import Request
+from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaFileUpload
+from loguru import logger
 
 
 @dataclass
 class ChannelInfo:
     """Information about a YouTube channel."""
+
     channel_id: str
     name: str
     credentials_file: str
@@ -42,7 +43,7 @@ class MultiChannelManager:
 
     SCOPES = [
         "https://www.googleapis.com/auth/youtube.upload",
-        "https://www.googleapis.com/auth/youtube.readonly"
+        "https://www.googleapis.com/auth/youtube.readonly",
     ]
 
     # Channel configurations
@@ -50,18 +51,18 @@ class MultiChannelManager:
         "money_blueprints": {
             "name": "Money Blueprints",
             "niche": "finance",
-            "voice": "en-US-GuyNeural"
+            "voice": "en-US-GuyNeural",
         },
         "mind_unlocked": {
             "name": "Mind Unlocked",
             "niche": "psychology",
-            "voice": "en-US-JennyNeural"
+            "voice": "en-US-JennyNeural",
         },
         "untold_stories": {
             "name": "Untold Stories",
             "niche": "storytelling",
-            "voice": "en-GB-RyanNeural"
-        }
+            "voice": "en-GB-RyanNeural",
+        },
     }
 
     def __init__(self):
@@ -89,7 +90,7 @@ class MultiChannelManager:
                     channel_id=channel_id,
                     name=self.CHANNELS[channel_id]["name"],
                     credentials_file=str(cred_file),
-                    authenticated=True
+                    authenticated=True,
                 )
                 logger.info(f"Found credentials for: {self.CHANNELS[channel_id]['name']}")
 
@@ -111,9 +112,9 @@ class MultiChannelManager:
         cred_file = self.credentials_dir / f"{channel_id}.pickle"
 
         print()
-        print("="*60)
+        print("=" * 60)
         print(f"  AUTHENTICATE: {channel_name}")
-        print("="*60)
+        print("=" * 60)
         print()
         print("A browser will open. Please:")
         print(f"1. Sign in with Google")
@@ -122,15 +123,9 @@ class MultiChannelManager:
         print()
 
         try:
-            flow = InstalledAppFlow.from_client_secrets_file(
-                str(self.client_secrets),
-                self.SCOPES
-            )
+            flow = InstalledAppFlow.from_client_secrets_file(str(self.client_secrets), self.SCOPES)
 
-            credentials = flow.run_local_server(
-                port=0,
-                prompt="consent"
-            )
+            credentials = flow.run_local_server(port=0, prompt="consent")
 
             # Save credentials
             with open(cred_file, "wb") as f:
@@ -149,7 +144,7 @@ class MultiChannelManager:
                     channel_id=channel_id,
                     name=actual_name,
                     credentials_file=str(cred_file),
-                    authenticated=True
+                    authenticated=True,
                 )
                 return True
 
@@ -190,7 +185,7 @@ class MultiChannelManager:
         description: str,
         tags: List[str] = None,
         privacy: str = "unlisted",
-        thumbnail_file: str = None
+        thumbnail_file: str = None,
     ) -> Optional[str]:
         """
         Upload video to a specific channel.
@@ -211,25 +206,14 @@ class MultiChannelManager:
                     "title": title,
                     "description": description,
                     "tags": tags or [],
-                    "categoryId": "22"  # People & Blogs
+                    "categoryId": "22",  # People & Blogs
                 },
-                "status": {
-                    "privacyStatus": privacy,
-                    "selfDeclaredMadeForKids": False
-                }
+                "status": {"privacyStatus": privacy, "selfDeclaredMadeForKids": False},
             }
 
-            media = MediaFileUpload(
-                video_file,
-                mimetype="video/mp4",
-                resumable=True
-            )
+            media = MediaFileUpload(video_file, mimetype="video/mp4", resumable=True)
 
-            request = youtube.videos().insert(
-                part="snippet,status",
-                body=body,
-                media_body=media
-            )
+            request = youtube.videos().insert(part="snippet,status", body=body, media_body=media)
 
             response = request.execute()
             video_id = response["id"]
@@ -241,11 +225,10 @@ class MultiChannelManager:
             if thumbnail_file and os.path.exists(thumbnail_file):
                 try:
                     youtube.thumbnails().set(
-                        videoId=video_id,
-                        media_body=MediaFileUpload(thumbnail_file)
+                        videoId=video_id, media_body=MediaFileUpload(thumbnail_file)
                     ).execute()
                     logger.success("Thumbnail set")
-                except:
+                except Exception:
                     pass
 
             return video_url
@@ -257,9 +240,9 @@ class MultiChannelManager:
     def list_channels(self):
         """List all channels and their status."""
         print()
-        print("="*60)
+        print("=" * 60)
         print("  YOUR YOUTUBE CHANNELS")
-        print("="*60)
+        print("=" * 60)
         print()
 
         for channel_id, config in self.CHANNELS.items():

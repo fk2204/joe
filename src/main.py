@@ -19,33 +19,26 @@ Usage:
     python src/main.py --test-script
 """
 
+import argparse
+import asyncio
 import os
 import sys
-import asyncio
-import argparse
 from pathlib import Path
-from datetime import datetime
-from typing import Optional
 
 # Add src to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from loguru import logger
 from dotenv import load_dotenv
+from loguru import logger
 
 # Configure logging
 logger.remove()
 logger.add(
     sys.stderr,
     format="<green>{time:HH:mm:ss}</green> | <level>{level: <8}</level> | <level>{message}</level>",
-    level="INFO"
+    level="INFO",
 )
-logger.add(
-    "logs/joe_{time:YYYY-MM-DD}.log",
-    rotation="1 day",
-    retention="7 days",
-    level="DEBUG"
-)
+logger.add("logs/joe_{time:YYYY-MM-DD}.log", rotation="1 day", retention="7 days", level="DEBUG")
 
 
 def load_config():
@@ -92,11 +85,7 @@ def get_ai_provider():
     return provider, api_key
 
 
-def run_pipeline(
-    niche: str,
-    upload: bool = False,
-    privacy: str = "unlisted"
-):
+def run_pipeline(niche: str, upload: bool = False, privacy: str = "unlisted"):
     """Run the video creation pipeline."""
     from src.agents.crew import YouTubeCrew
 
@@ -160,7 +149,7 @@ def run_scheduler():
         daily_job,
         CronTrigger(hour=int(hour), minute=int(minute)),
         id="daily_video_creation",
-        name="Daily Video Creation"
+        name="Daily Video Creation",
     )
 
     logger.info(f"Scheduler started. Daily job at {schedule_time}")
@@ -204,38 +193,37 @@ def test_script():
     writer = ScriptWriter(provider=provider, api_key=api_key)
 
     script = writer.generate_script(
-        topic="How to make your first Python program",
-        duration_minutes=5
+        topic="How to make your first Python program", duration_minutes=5
     )
 
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print(f"TITLE: {script.title}")
-    print("="*60)
+    print("=" * 60)
     print(f"\nDescription:\n{script.description[:200]}...")
     print(f"\nTags: {', '.join(script.tags[:5])}")
     print(f"\nSections: {len(script.sections)}")
     print(f"Total duration: {script.total_duration} seconds")
 
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print("NARRATION PREVIEW:")
-    print("="*60)
+    print("=" * 60)
     narration = writer.get_full_narration(script)
     print(narration[:500] + "...")
 
 
 def test_research():
     """Test the research module."""
-    from src.research.trends import TrendResearcher
     from src.research.idea_generator import IdeaGenerator
+    from src.research.trends import TrendResearcher
 
     logger.info("Testing trend research...")
 
     researcher = TrendResearcher()
     trends = researcher.get_trending_topics("python programming")
 
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print("TRENDING TOPICS")
-    print("="*60 + "\n")
+    print("=" * 60 + "\n")
 
     for trend in trends[:5]:
         print(f"  {trend.keyword} ({trend.trend_direction})")
@@ -247,9 +235,9 @@ def test_research():
 
     ideas = generator.generate_ideas("python programming", count=3)
 
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print("VIDEO IDEAS")
-    print("="*60 + "\n")
+    print("=" * 60 + "\n")
 
     for i, idea in enumerate(ideas, 1):
         print(f"{i}. {idea.title}")
@@ -268,46 +256,24 @@ Examples:
   python src/main.py --niche "web development" --upload
   python src/main.py --schedule
   python src/main.py --test-tts
-        """
+        """,
     )
 
+    parser.add_argument("--niche", type=str, help="Topic niche for video generation")
     parser.add_argument(
-        "--niche",
-        type=str,
-        help="Topic niche for video generation"
-    )
-    parser.add_argument(
-        "--upload",
-        action="store_true",
-        help="Upload video to YouTube after creation"
+        "--upload", action="store_true", help="Upload video to YouTube after creation"
     )
     parser.add_argument(
         "--privacy",
         type=str,
         default="unlisted",
         choices=["public", "unlisted", "private"],
-        help="YouTube privacy setting (default: unlisted)"
+        help="YouTube privacy setting (default: unlisted)",
     )
-    parser.add_argument(
-        "--schedule",
-        action="store_true",
-        help="Run the automated scheduler"
-    )
-    parser.add_argument(
-        "--test-tts",
-        action="store_true",
-        help="Test the TTS module"
-    )
-    parser.add_argument(
-        "--test-script",
-        action="store_true",
-        help="Test the script writer"
-    )
-    parser.add_argument(
-        "--test-research",
-        action="store_true",
-        help="Test the research module"
-    )
+    parser.add_argument("--schedule", action="store_true", help="Run the automated scheduler")
+    parser.add_argument("--test-tts", action="store_true", help="Test the TTS module")
+    parser.add_argument("--test-script", action="store_true", help="Test the script writer")
+    parser.add_argument("--test-research", action="store_true", help="Test the research module")
 
     args = parser.parse_args()
 
@@ -315,9 +281,9 @@ Examples:
     Path("output").mkdir(exist_ok=True)
     Path("logs").mkdir(exist_ok=True)
 
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print("  JOE")
-    print("="*60 + "\n")
+    print("=" * 60 + "\n")
 
     if args.test_tts:
         asyncio.run(test_tts())
@@ -328,19 +294,15 @@ Examples:
     elif args.schedule:
         run_scheduler()
     elif args.niche:
-        run_pipeline(
-            niche=args.niche,
-            upload=args.upload,
-            privacy=args.privacy
-        )
+        run_pipeline(niche=args.niche, upload=args.upload, privacy=args.privacy)
     else:
         parser.print_help()
-        print("\n" + "-"*60)
+        print("\n" + "-" * 60)
         print("Quick Start:")
         print("  1. Install Ollama: https://ollama.ai/download")
         print("  2. Run: ollama pull llama3.2")
         print("  3. Run: python src/main.py --niche 'python tutorials'")
-        print("-"*60 + "\n")
+        print("-" * 60 + "\n")
 
 
 if __name__ == "__main__":

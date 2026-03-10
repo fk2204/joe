@@ -31,25 +31,29 @@ import asyncio
 import json
 import sqlite3
 import statistics
-from collections import defaultdict
-from dataclasses import dataclass, field, asdict
+from dataclasses import asdict, dataclass, field
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional
+
 from loguru import logger
 
 try:
-    from googleapiclient.discovery import build
     from google.oauth2.credentials import Credentials
+    from googleapiclient.discovery import build
+
     YOUTUBE_API_AVAILABLE = True
 except ImportError:
     YOUTUBE_API_AVAILABLE = False
-    logger.warning("Google API client not available. Install with: pip install google-api-python-client google-auth-oauthlib")
+    logger.warning(
+        "Google API client not available. Install with: pip install google-api-python-client google-auth-oauthlib"
+    )
 
 
 @dataclass
 class VideoAnalytics:
     """Video analytics data."""
+
     video_id: str
     title: str
     views: int = 0
@@ -73,6 +77,7 @@ class VideoAnalytics:
 @dataclass
 class DropOffPoint:
     """Identified content drop-off point."""
+
     timestamp: float  # seconds
     percentage: float  # percentage of video
     retention_before: float  # retention before this point
@@ -87,6 +92,7 @@ class DropOffPoint:
 @dataclass
 class TemplateScore:
     """Performance score for a content template."""
+
     template_name: str
     template_type: str  # hook, structure, outro, etc.
     usage_count: int = 0
@@ -104,6 +110,7 @@ class TemplateScore:
 @dataclass
 class ContentRecommendation:
     """Actionable content recommendation."""
+
     category: str  # hook, pacing, retention, engagement, etc.
     priority: str  # high, medium, low
     recommendation: str
@@ -134,7 +141,7 @@ class AnalyticsFeedbackLoop:
     def __init__(
         self,
         credentials_file: str = "config/youtube_credentials.json",
-        db_path: str = "data/analytics/feedback_loop.db"
+        db_path: str = "data/analytics/feedback_loop.db",
     ):
         """
         Initialize analytics feedback loop.
@@ -174,7 +181,8 @@ class AnalyticsFeedbackLoop:
         """Initialize SQLite database."""
         with sqlite3.connect(self.db_path) as conn:
             # Video analytics table
-            conn.execute("""
+            conn.execute(
+                """
                 CREATE TABLE IF NOT EXISTS video_analytics (
                     video_id TEXT PRIMARY KEY,
                     title TEXT,
@@ -194,10 +202,12 @@ class AnalyticsFeedbackLoop:
                     fetched_at TEXT,
                     niche TEXT
                 )
-            """)
+            """
+            )
 
             # Template scores table
-            conn.execute("""
+            conn.execute(
+                """
                 CREATE TABLE IF NOT EXISTS template_scores (
                     template_name TEXT PRIMARY KEY,
                     template_type TEXT,
@@ -209,10 +219,12 @@ class AnalyticsFeedbackLoop:
                     videos_used TEXT,
                     last_updated TEXT
                 )
-            """)
+            """
+            )
 
             # Recommendations table
-            conn.execute("""
+            conn.execute(
+                """
                 CREATE TABLE IF NOT EXISTS recommendations (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     niche TEXT,
@@ -225,16 +237,15 @@ class AnalyticsFeedbackLoop:
                     created_at TEXT,
                     status TEXT DEFAULT 'active'
                 )
-            """)
+            """
+            )
 
             conn.execute("CREATE INDEX IF NOT EXISTS idx_niche ON video_analytics(niche)")
-            conn.execute("CREATE INDEX IF NOT EXISTS idx_performance ON video_analytics(performance_score)")
+            conn.execute(
+                "CREATE INDEX IF NOT EXISTS idx_performance ON video_analytics(performance_score)"
+            )
 
-    async def analyze_video(
-        self,
-        video_id: str,
-        niche: Optional[str] = None
-    ) -> VideoAnalytics:
+    async def analyze_video(self, video_id: str, niche: Optional[str] = None) -> VideoAnalytics:
         """
         Analyze a video's performance.
 
@@ -265,7 +276,7 @@ class AnalyticsFeedbackLoop:
             shares=analytics_data.get("shares", 0),
             ctr=analytics_data.get("ctr", 0.0),
             impressions=analytics_data.get("impressions", 0),
-            retention_data=analytics_data.get("retention_data", [])
+            retention_data=analytics_data.get("retention_data", []),
         )
 
         # Identify drop-off points
@@ -310,14 +321,18 @@ class AnalyticsFeedbackLoop:
             start_date = end_date - timedelta(days=30)
 
             # Query YouTube Analytics API
-            response = self.youtube.reports().query(
-                ids="channel==MINE",
-                startDate=start_date.isoformat(),
-                endDate=end_date.isoformat(),
-                metrics="views,estimatedMinutesWatched,averageViewDuration,averageViewPercentage,likes,comments,shares,cardClickRate,cardImpressions",
-                dimensions="video",
-                filters=f"video=={video_id}"
-            ).execute()
+            response = (
+                self.youtube.reports()
+                .query(
+                    ids="channel==MINE",
+                    startDate=start_date.isoformat(),
+                    endDate=end_date.isoformat(),
+                    metrics="views,estimatedMinutesWatched,averageViewDuration,averageViewPercentage,likes,comments,shares,cardClickRate,cardImpressions",
+                    dimensions="video",
+                    filters=f"video=={video_id}",
+                )
+                .execute()
+            )
 
             if not response.get("rows"):
                 logger.warning(f"No analytics data found for video: {video_id}")
@@ -347,7 +362,7 @@ class AnalyticsFeedbackLoop:
                 "shares": data.get("shares", 0),
                 "ctr": data.get("cardClickRate", 0.0),
                 "impressions": data.get("cardImpressions", 0),
-                "retention_data": retention
+                "retention_data": retention,
             }
 
         except Exception as e:
@@ -417,14 +432,16 @@ class AnalyticsFeedbackLoop:
                 # Infer likely cause based on timing
                 likely_cause = self._infer_drop_cause(percentage)
 
-                drop_offs.append({
-                    "timestamp": i,
-                    "percentage": percentage,
-                    "retention_before": before,
-                    "retention_after": current,
-                    "drop_magnitude": drop,
-                    "likely_cause": likely_cause
-                })
+                drop_offs.append(
+                    {
+                        "timestamp": i,
+                        "percentage": percentage,
+                        "retention_before": before,
+                        "retention_after": current,
+                        "drop_magnitude": drop,
+                        "likely_cause": likely_cause,
+                    }
+                )
 
         logger.debug(f"Identified {len(drop_offs)} drop-off points")
         return drop_offs
@@ -491,7 +508,7 @@ class AnalyticsFeedbackLoop:
             if template_type:
                 rows = conn.execute(
                     "SELECT * FROM template_scores WHERE template_type = ? ORDER BY performance_score DESC",
-                    (template_type,)
+                    (template_type,),
                 ).fetchall()
             else:
                 rows = conn.execute(
@@ -500,25 +517,24 @@ class AnalyticsFeedbackLoop:
 
         scores = []
         for row in rows:
-            scores.append(TemplateScore(
-                template_name=row[0],
-                template_type=row[1],
-                usage_count=row[2],
-                avg_retention=row[3],
-                avg_ctr=row[4],
-                avg_engagement=row[5],
-                performance_score=row[6],
-                videos_used=json.loads(row[7]) if row[7] else [],
-                last_updated=row[8]
-            ))
+            scores.append(
+                TemplateScore(
+                    template_name=row[0],
+                    template_type=row[1],
+                    usage_count=row[2],
+                    avg_retention=row[3],
+                    avg_ctr=row[4],
+                    avg_engagement=row[5],
+                    performance_score=row[6],
+                    videos_used=json.loads(row[7]) if row[7] else [],
+                    last_updated=row[8],
+                )
+            )
 
         return scores
 
     def get_recommendations(
-        self,
-        niche: Optional[str] = None,
-        priority: Optional[str] = None,
-        limit: int = 10
+        self, niche: Optional[str] = None, priority: Optional[str] = None, limit: int = 10
     ) -> List[ContentRecommendation]:
         """
         Get content improvement recommendations.
@@ -547,21 +563,25 @@ class AnalyticsFeedbackLoop:
                 query += " AND priority = ?"
                 params.append(priority)
 
-            query += " ORDER BY CASE priority WHEN 'high' THEN 1 WHEN 'medium' THEN 2 ELSE 3 END LIMIT ?"
+            query += (
+                " ORDER BY CASE priority WHEN 'high' THEN 1 WHEN 'medium' THEN 2 ELSE 3 END LIMIT ?"
+            )
             params.append(limit)
 
             rows = conn.execute(query, params).fetchall()
 
         recommendations = []
         for row in rows:
-            recommendations.append(ContentRecommendation(
-                category=row[0],
-                priority=row[1],
-                recommendation=row[2],
-                data_support=row[3],
-                expected_impact=row[4],
-                implementation=row[5]
-            ))
+            recommendations.append(
+                ContentRecommendation(
+                    category=row[0],
+                    priority=row[1],
+                    recommendation=row[2],
+                    data_support=row[3],
+                    expected_impact=row[4],
+                    implementation=row[5],
+                )
+            )
 
         return recommendations
 
@@ -599,98 +619,109 @@ class AnalyticsFeedbackLoop:
         if ctrs:
             avg_ctr = statistics.mean(ctrs)
             if avg_ctr < self.GOOD_CTR:
-                recommendations.append({
-                    "niche": niche or "all",
-                    "category": "ctr",
-                    "priority": "high",
-                    "recommendation": "Improve thumbnail and title CTR",
-                    "data_support": f"Average CTR is {avg_ctr:.2f}%, below {self.GOOD_CTR}% benchmark",
-                    "expected_impact": "15-30% increase in views",
-                    "implementation": "A/B test thumbnails with faces, bright colors, and contrasting text. Use power words in titles."
-                })
+                recommendations.append(
+                    {
+                        "niche": niche or "all",
+                        "category": "ctr",
+                        "priority": "high",
+                        "recommendation": "Improve thumbnail and title CTR",
+                        "data_support": f"Average CTR is {avg_ctr:.2f}%, below {self.GOOD_CTR}% benchmark",
+                        "expected_impact": "15-30% increase in views",
+                        "implementation": "A/B test thumbnails with faces, bright colors, and contrasting text. Use power words in titles.",
+                    }
+                )
 
         # Retention analysis
         if retentions:
             avg_retention = statistics.mean(retentions)
             if avg_retention < self.GOOD_AVD:
-                recommendations.append({
-                    "niche": niche or "all",
-                    "category": "retention",
-                    "priority": "high",
-                    "recommendation": "Strengthen hooks and add pattern interrupts",
-                    "data_support": f"Average retention is {avg_retention:.1f}%, below {self.GOOD_AVD}% benchmark",
-                    "expected_impact": "20-40% increase in watch time",
-                    "implementation": "Use curiosity-driven hooks in first 5 seconds. Add visual/audio interrupts every 60 seconds."
-                })
+                recommendations.append(
+                    {
+                        "niche": niche or "all",
+                        "category": "retention",
+                        "priority": "high",
+                        "recommendation": "Strengthen hooks and add pattern interrupts",
+                        "data_support": f"Average retention is {avg_retention:.1f}%, below {self.GOOD_AVD}% benchmark",
+                        "expected_impact": "20-40% increase in watch time",
+                        "implementation": "Use curiosity-driven hooks in first 5 seconds. Add visual/audio interrupts every 60 seconds.",
+                    }
+                )
 
         # Engagement analysis
         if engagements:
             avg_engagement = statistics.mean(engagements)
             if avg_engagement < self.GOOD_ENGAGEMENT_RATE:
-                recommendations.append({
-                    "niche": niche or "all",
-                    "category": "engagement",
-                    "priority": "medium",
-                    "recommendation": "Increase calls-to-action and community interaction",
-                    "data_support": f"Average engagement rate is {avg_engagement:.2f}%, below {self.GOOD_ENGAGEMENT_RATE}% benchmark",
-                    "expected_impact": "10-20% increase in engagement",
-                    "implementation": "Ask questions, encourage comments, add polls/cards. Respond to comments quickly."
-                })
+                recommendations.append(
+                    {
+                        "niche": niche or "all",
+                        "category": "engagement",
+                        "priority": "medium",
+                        "recommendation": "Increase calls-to-action and community interaction",
+                        "data_support": f"Average engagement rate is {avg_engagement:.2f}%, below {self.GOOD_ENGAGEMENT_RATE}% benchmark",
+                        "expected_impact": "10-20% increase in engagement",
+                        "implementation": "Ask questions, encourage comments, add polls/cards. Respond to comments quickly.",
+                    }
+                )
 
         # Save recommendations
         with sqlite3.connect(self.db_path) as conn:
             # Clear old recommendations for this niche
             conn.execute(
-                "UPDATE recommendations SET status = 'archived' WHERE niche = ?",
-                (niche or "all",)
+                "UPDATE recommendations SET status = 'archived' WHERE niche = ?", (niche or "all",)
             )
 
             # Insert new recommendations
             for rec in recommendations:
-                conn.execute("""
+                conn.execute(
+                    """
                     INSERT INTO recommendations
                     (niche, category, priority, recommendation, data_support, expected_impact, implementation, created_at)
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-                """, (
-                    rec["niche"],
-                    rec["category"],
-                    rec["priority"],
-                    rec["recommendation"],
-                    rec["data_support"],
-                    rec["expected_impact"],
-                    rec["implementation"],
-                    datetime.now().isoformat()
-                ))
+                """,
+                    (
+                        rec["niche"],
+                        rec["category"],
+                        rec["priority"],
+                        rec["recommendation"],
+                        rec["data_support"],
+                        rec["expected_impact"],
+                        rec["implementation"],
+                        datetime.now().isoformat(),
+                    ),
+                )
 
     def _save_analytics(self, analytics: VideoAnalytics, niche: Optional[str] = None):
         """Save analytics to database."""
         with sqlite3.connect(self.db_path) as conn:
-            conn.execute("""
+            conn.execute(
+                """
                 INSERT OR REPLACE INTO video_analytics
                 (video_id, title, views, watch_time_minutes, average_view_duration,
                  average_percentage_viewed, likes, comments, shares, ctr, impressions,
                  retention_data, drop_off_points, engagement_rate, performance_score,
                  fetched_at, niche)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """, (
-                analytics.video_id,
-                analytics.title,
-                analytics.views,
-                analytics.watch_time_minutes,
-                analytics.average_view_duration,
-                analytics.average_percentage_viewed,
-                analytics.likes,
-                analytics.comments,
-                analytics.shares,
-                analytics.ctr,
-                analytics.impressions,
-                json.dumps(analytics.retention_data),
-                json.dumps(analytics.drop_off_points),
-                analytics.engagement_rate,
-                analytics.performance_score,
-                datetime.now().isoformat(),
-                niche
-            ))
+            """,
+                (
+                    analytics.video_id,
+                    analytics.title,
+                    analytics.views,
+                    analytics.watch_time_minutes,
+                    analytics.average_view_duration,
+                    analytics.average_percentage_viewed,
+                    analytics.likes,
+                    analytics.comments,
+                    analytics.shares,
+                    analytics.ctr,
+                    analytics.impressions,
+                    json.dumps(analytics.retention_data),
+                    json.dumps(analytics.drop_off_points),
+                    analytics.engagement_rate,
+                    analytics.performance_score,
+                    datetime.now().isoformat(),
+                    niche,
+                ),
+            )
 
     def _get_mock_analytics(self, video_id: str) -> Dict:
         """Get mock analytics data for testing."""
@@ -705,7 +736,7 @@ class AnalyticsFeedbackLoop:
             "shares": 5,
             "ctr": 4.5,
             "impressions": 20000,
-            "retention_data": [95, 90, 85, 75, 70, 65, 60, 55, 50, 45]
+            "retention_data": [95, 90, 85, 75, 70, 65, 60, 55, 50, 45],
         }
 
 
@@ -715,7 +746,8 @@ async def main():
     import sys
 
     if len(sys.argv) < 2:
-        print("""
+        print(
+            """
 Analytics Feedback Loop - Content Optimization System
 
 Commands:
@@ -732,7 +764,8 @@ Examples:
     python -m src.analytics.feedback_loop analyze abc123 --niche finance
     python -m src.analytics.feedback_loop templates --type hook
     python -m src.analytics.feedback_loop recommendations --niche finance --priority high
-        """)
+        """
+        )
         return
 
     feedback = AnalyticsFeedbackLoop()
@@ -754,7 +787,9 @@ Examples:
 
         scores = feedback.get_template_scores(template_type)
         for score in scores:
-            print(f"{score.template_name}: {score.performance_score:.1f}/100 ({score.usage_count} uses)")
+            print(
+                f"{score.template_name}: {score.performance_score:.1f}/100 ({score.usage_count} uses)"
+            )
 
     elif cmd == "recommendations":
         niche = None

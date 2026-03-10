@@ -35,16 +35,16 @@ CLI:
     python -m src.agents.validator_agent --video output/video.mp4 --thumbnail thumb.png
 """
 
-import os
 import json
+import os
 import subprocess
+from dataclasses import asdict, dataclass, field
 from pathlib import Path
-from typing import Dict, Any, List, Optional, Tuple
-from dataclasses import dataclass, field, asdict
+from typing import Any, Dict, List, Tuple
+
 from loguru import logger
 
-from .base_agent import BaseAgent, AgentResult
-
+from .base_agent import AgentResult, BaseAgent
 
 # Validation thresholds
 VALIDATION_THRESHOLDS = {
@@ -52,13 +52,13 @@ VALIDATION_THRESHOLDS = {
     "thumbnail_width": 1280,
     "thumbnail_height": 720,
     "thumbnail_max_size_kb": 2048,  # 2MB max
-    "thumbnail_min_size_kb": 50,    # Sanity check
-    "video_min_duration": 60,       # 1 minute for regular videos
-    "video_max_duration": 43200,    # 12 hours (YouTube limit)
-    "short_max_duration": 60,       # 60 seconds for Shorts
-    "short_min_duration": 15,       # 15 seconds minimum
-    "audio_min_level_db": -50,      # Minimum audio level
-    "audio_max_level_db": -10,      # Maximum (too loud = clipping)
+    "thumbnail_min_size_kb": 50,  # Sanity check
+    "video_min_duration": 60,  # 1 minute for regular videos
+    "video_max_duration": 43200,  # 12 hours (YouTube limit)
+    "short_max_duration": 60,  # 60 seconds for Shorts
+    "short_min_duration": 15,  # 15 seconds minimum
+    "audio_min_level_db": -50,  # Minimum audio level
+    "audio_max_level_db": -10,  # Maximum (too loud = clipping)
     "title_max_length": 100,
     "title_min_length": 10,
     "description_min_length": 50,
@@ -92,6 +92,7 @@ class ValidationCheck:
         message: Description of result
         details: Additional details
     """
+
     name: str
     passed: bool
     score: int = 100
@@ -118,6 +119,7 @@ class ValidationResult:
         ready_to_publish: Whether content is ready for publishing
         categories: Scores by category
     """
+
     passed: bool
     score: int = 0
     blockers: List[str] = field(default_factory=list)
@@ -193,6 +195,7 @@ class ValidatorAgent(BaseAgent):
         if self._video_checker is None:
             try:
                 from ..content.quality_checker import VideoQualityChecker
+
                 self._video_checker = VideoQualityChecker()
             except ImportError as e:
                 logger.warning(f"Could not import VideoQualityChecker: {e}")
@@ -203,6 +206,7 @@ class ValidatorAgent(BaseAgent):
         if self._quality_agent is None:
             try:
                 from .quality_agent import QualityAgent
+
                 self._quality_agent = QualityAgent(provider=self.provider, api_key=self.api_key)
             except ImportError as e:
                 logger.warning(f"Could not import QualityAgent: {e}")
@@ -218,7 +222,7 @@ class ValidatorAgent(BaseAgent):
         is_short: bool = False,
         min_score: int = 75,
         strict_mode: bool = False,
-        **kwargs
+        **kwargs,
     ) -> AgentResult:
         """
         Run comprehensive validation on video content.
@@ -246,7 +250,7 @@ class ValidatorAgent(BaseAgent):
             "content": [],
             "technical": [],
             "assets": [],
-            "metadata": []
+            "metadata": [],
         }
 
         # Extract script data if only text provided
@@ -258,10 +262,7 @@ class ValidatorAgent(BaseAgent):
         # ============================================================
         if script_data or script_text:
             script_check = self._validate_script_quality(
-                script_data=script_data,
-                script_text=script_text,
-                niche=niche,
-                is_short=is_short
+                script_data=script_data, script_text=script_text, niche=niche, is_short=is_short
             )
             checks.append(script_check)
             category_scores["content"].append(script_check.score)
@@ -277,9 +278,7 @@ class ValidatorAgent(BaseAgent):
         # ============================================================
         if video_file:
             video_check = self._validate_video_technical(
-                video_file=video_file,
-                is_short=is_short,
-                script_data=script_data
+                video_file=video_file, is_short=is_short, script_data=script_data
             )
             checks.append(video_check)
             category_scores["technical"].append(video_check.score)
@@ -291,9 +290,7 @@ class ValidatorAgent(BaseAgent):
                     warnings.append(video_check.message)
 
             # Audio quality check
-            audio_check = self._validate_audio_quality(
-                video_file=video_file
-            )
+            audio_check = self._validate_audio_quality(video_file=video_file)
             checks.append(audio_check)
             category_scores["technical"].append(audio_check.score)
 
@@ -307,9 +304,7 @@ class ValidatorAgent(BaseAgent):
         # 3. THUMBNAIL VALIDATION
         # ============================================================
         if thumbnail_file:
-            thumb_check = self._validate_thumbnail(
-                thumbnail_file=thumbnail_file
-            )
+            thumb_check = self._validate_thumbnail(thumbnail_file=thumbnail_file)
             checks.append(thumb_check)
             category_scores["assets"].append(thumb_check.score)
 
@@ -324,10 +319,7 @@ class ValidatorAgent(BaseAgent):
         # ============================================================
         if script_data:
             # Title validation
-            title_check = self._validate_title(
-                title=script_data.get("title", ""),
-                niche=niche
-            )
+            title_check = self._validate_title(title=script_data.get("title", ""), niche=niche)
             checks.append(title_check)
             category_scores["metadata"].append(title_check.score)
 
@@ -338,9 +330,7 @@ class ValidatorAgent(BaseAgent):
                     warnings.append(title_check.message)
 
             # Description validation
-            desc_check = self._validate_description(
-                description=script_data.get("description", "")
-            )
+            desc_check = self._validate_description(description=script_data.get("description", ""))
             checks.append(desc_check)
             category_scores["metadata"].append(desc_check.score)
 
@@ -351,10 +341,7 @@ class ValidatorAgent(BaseAgent):
                     warnings.append(desc_check.message)
 
             # Tags validation
-            tags_check = self._validate_tags(
-                tags=script_data.get("tags", []),
-                niche=niche
-            )
+            tags_check = self._validate_tags(tags=script_data.get("tags", []), niche=niche)
             checks.append(tags_check)
             category_scores["metadata"].append(tags_check.score)
 
@@ -407,7 +394,7 @@ class ValidatorAgent(BaseAgent):
             warnings=warnings,
             checks=checks,
             ready_to_publish=ready_to_publish,
-            categories=categories
+            categories=categories,
         )
 
         # Log operation
@@ -425,8 +412,8 @@ class ValidatorAgent(BaseAgent):
                 "niche": niche,
                 "is_short": is_short,
                 "min_score": min_score,
-                "strict_mode": strict_mode
-            }
+                "strict_mode": strict_mode,
+            },
         )
 
     def _validate_script_quality(
@@ -434,7 +421,7 @@ class ValidatorAgent(BaseAgent):
         script_data: Dict[str, Any] = None,
         script_text: str = None,
         niche: str = "default",
-        is_short: bool = False
+        is_short: bool = False,
     ) -> ValidationCheck:
         """
         Validate script quality using QualityAgent.
@@ -466,7 +453,7 @@ class ValidatorAgent(BaseAgent):
                 category="content",
                 is_blocker=True,
                 message="No script content provided",
-                details={}
+                details={},
             )
 
         # Use QualityAgent for analysis
@@ -488,8 +475,8 @@ class ValidatorAgent(BaseAgent):
                         "score": score,
                         "checks_passed": sum(1 for c in result.checks if c.passed),
                         "total_checks": len(result.checks),
-                        "recommendations": result.recommendations[:3]
-                    }
+                        "recommendations": result.recommendations[:3],
+                    },
                 )
             except Exception as e:
                 logger.warning(f"Quality check failed: {e}")
@@ -511,14 +498,11 @@ class ValidatorAgent(BaseAgent):
             category="content",
             is_blocker=not passed,
             message=f"Script word count: {word_count} (expected: {expected_range[0]}-{expected_range[1]})",
-            details={"word_count": word_count}
+            details={"word_count": word_count},
         )
 
     def _validate_video_technical(
-        self,
-        video_file: str,
-        is_short: bool,
-        script_data: Dict[str, Any] = None
+        self, video_file: str, is_short: bool, script_data: Dict[str, Any] = None
     ) -> ValidationCheck:
         """
         Validate video technical specifications.
@@ -539,7 +523,7 @@ class ValidatorAgent(BaseAgent):
                 category="technical",
                 is_blocker=True,
                 message=f"Video file not found: {video_file}",
-                details={}
+                details={},
             )
 
         video_checker = self._get_video_checker()
@@ -551,7 +535,7 @@ class ValidatorAgent(BaseAgent):
                     script_data=script_data,
                     is_short=is_short,
                     threshold=threshold,
-                    skip_ai_checks=True
+                    skip_ai_checks=True,
                 )
 
                 return ValidationCheck(
@@ -564,8 +548,8 @@ class ValidatorAgent(BaseAgent):
                     details={
                         "file_checks": report.file_checks,
                         "technical_checks": report.technical_checks,
-                        "issues_count": len(report.issues)
-                    }
+                        "issues_count": len(report.issues),
+                    },
                 )
             except Exception as e:
                 logger.warning(f"Video check failed: {e}")
@@ -585,7 +569,7 @@ class ValidatorAgent(BaseAgent):
                     category="technical",
                     is_blocker=True,
                     message=f"Video file too small ({file_size_mb:.1f}MB < {min_size}MB)",
-                    details={"file_size_mb": file_size_mb}
+                    details={"file_size_mb": file_size_mb},
                 )
 
             return ValidationCheck(
@@ -595,7 +579,7 @@ class ValidatorAgent(BaseAgent):
                 category="technical",
                 is_blocker=False,
                 message=f"Video file size OK ({file_size_mb:.1f}MB)",
-                details={"file_size_mb": file_size_mb}
+                details={"file_size_mb": file_size_mb},
             )
         except Exception as e:
             return ValidationCheck(
@@ -605,7 +589,7 @@ class ValidatorAgent(BaseAgent):
                 category="technical",
                 is_blocker=True,
                 message=f"Could not check video: {str(e)[:50]}",
-                details={}
+                details={},
             )
 
     def _validate_audio_quality(self, video_file: str) -> ValidationCheck:
@@ -622,11 +606,15 @@ class ValidatorAgent(BaseAgent):
             # Use ffprobe to check for audio stream
             cmd = [
                 "ffprobe",
-                "-v", "error",
-                "-select_streams", "a",
-                "-show_entries", "stream=codec_type",
-                "-of", "json",
-                video_file
+                "-v",
+                "error",
+                "-select_streams",
+                "a",
+                "-show_entries",
+                "stream=codec_type",
+                "-of",
+                "json",
+                video_file,
             ]
 
             result = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
@@ -638,7 +626,7 @@ class ValidatorAgent(BaseAgent):
                     category="technical",
                     is_blocker=True,
                     message="Could not analyze audio",
-                    details={"error": result.stderr[:100]}
+                    details={"error": result.stderr[:100]},
                 )
 
             data = json.loads(result.stdout)
@@ -652,17 +640,20 @@ class ValidatorAgent(BaseAgent):
                     category="technical",
                     is_blocker=True,
                     message="No audio track found in video",
-                    details={}
+                    details={},
                 )
 
             # Audio exists, try to get volume level
             try:
                 vol_cmd = [
                     "ffmpeg",
-                    "-i", video_file,
-                    "-af", "volumedetect",
-                    "-f", "null",
-                    "NUL" if os.name == "nt" else "/dev/null"
+                    "-i",
+                    video_file,
+                    "-af",
+                    "volumedetect",
+                    "-f",
+                    "null",
+                    "NUL" if os.name == "nt" else "/dev/null",
                 ]
 
                 vol_result = subprocess.run(vol_cmd, capture_output=True, text=True, timeout=120)
@@ -686,7 +677,7 @@ class ValidatorAgent(BaseAgent):
                             category="technical",
                             is_blocker=False,
                             message=f"Audio too quiet ({mean_volume:.1f}dB < {min_level}dB)",
-                            details={"mean_volume_db": mean_volume}
+                            details={"mean_volume_db": mean_volume},
                         )
                     elif mean_volume > max_level:
                         return ValidationCheck(
@@ -696,7 +687,7 @@ class ValidatorAgent(BaseAgent):
                             category="technical",
                             is_blocker=False,
                             message=f"Audio may be clipping ({mean_volume:.1f}dB > {max_level}dB)",
-                            details={"mean_volume_db": mean_volume}
+                            details={"mean_volume_db": mean_volume},
                         )
                     else:
                         return ValidationCheck(
@@ -706,9 +697,9 @@ class ValidatorAgent(BaseAgent):
                             category="technical",
                             is_blocker=False,
                             message=f"Audio levels OK ({mean_volume:.1f}dB)",
-                            details={"mean_volume_db": mean_volume}
+                            details={"mean_volume_db": mean_volume},
                         )
-            except:
+            except Exception:
                 pass
 
             # Fallback: audio exists but couldn't measure level
@@ -719,7 +710,7 @@ class ValidatorAgent(BaseAgent):
                 category="technical",
                 is_blocker=False,
                 message="Audio track present",
-                details={"has_audio": True}
+                details={"has_audio": True},
             )
 
         except Exception as e:
@@ -730,7 +721,7 @@ class ValidatorAgent(BaseAgent):
                 category="technical",
                 is_blocker=False,
                 message=f"Could not check audio: {str(e)[:50]}",
-                details={}
+                details={},
             )
 
     def _validate_thumbnail(self, thumbnail_file: str) -> ValidationCheck:
@@ -751,7 +742,7 @@ class ValidatorAgent(BaseAgent):
                 category="assets",
                 is_blocker=True,
                 message=f"Thumbnail file not found: {thumbnail_file}",
-                details={}
+                details={},
             )
 
         try:
@@ -773,7 +764,9 @@ class ValidatorAgent(BaseAgent):
             expected_h = VALIDATION_THRESHOLDS["thumbnail_height"]
 
             if width != expected_w or height != expected_h:
-                issues.append(f"Wrong dimensions: {width}x{height} (expected {expected_w}x{expected_h})")
+                issues.append(
+                    f"Wrong dimensions: {width}x{height} (expected {expected_w}x{expected_h})"
+                )
                 score -= 20
 
             # Check file size (must be < 2MB)
@@ -796,14 +789,18 @@ class ValidatorAgent(BaseAgent):
                 score=max(0, score),
                 category="assets",
                 is_blocker=is_blocker,
-                message=issues[0] if issues else f"Thumbnail OK ({width}x{height}, {file_size_kb:.0f}KB)",
+                message=(
+                    issues[0]
+                    if issues
+                    else f"Thumbnail OK ({width}x{height}, {file_size_kb:.0f}KB)"
+                ),
                 details={
                     "width": width,
                     "height": height,
                     "file_size_kb": file_size_kb,
                     "format": format_type,
-                    "issues": issues
-                }
+                    "issues": issues,
+                },
             )
 
         except ImportError:
@@ -819,7 +816,7 @@ class ValidatorAgent(BaseAgent):
                     category="assets",
                     is_blocker=True,
                     message=f"Thumbnail too large: {file_size_kb:.0f}KB (max {max_size}KB)",
-                    details={"file_size_kb": file_size_kb}
+                    details={"file_size_kb": file_size_kb},
                 )
 
             return ValidationCheck(
@@ -829,7 +826,7 @@ class ValidatorAgent(BaseAgent):
                 category="assets",
                 is_blocker=False,
                 message=f"Thumbnail file exists ({file_size_kb:.0f}KB) - dimensions not verified",
-                details={"file_size_kb": file_size_kb}
+                details={"file_size_kb": file_size_kb},
             )
 
         except Exception as e:
@@ -840,7 +837,7 @@ class ValidatorAgent(BaseAgent):
                 category="assets",
                 is_blocker=True,
                 message=f"Could not validate thumbnail: {str(e)[:50]}",
-                details={}
+                details={},
             )
 
     def _validate_title(self, title: str, niche: str) -> ValidationCheck:
@@ -862,7 +859,7 @@ class ValidatorAgent(BaseAgent):
                 category="metadata",
                 is_blocker=True,
                 message="Title is missing",
-                details={}
+                details={},
             )
 
         issues = []
@@ -870,10 +867,14 @@ class ValidatorAgent(BaseAgent):
 
         # Length checks
         if len(title) > VALIDATION_THRESHOLDS["title_max_length"]:
-            issues.append(f"Title too long ({len(title)} chars, max {VALIDATION_THRESHOLDS['title_max_length']})")
+            issues.append(
+                f"Title too long ({len(title)} chars, max {VALIDATION_THRESHOLDS['title_max_length']})"
+            )
             score -= 20
         elif len(title) < VALIDATION_THRESHOLDS["title_min_length"]:
-            issues.append(f"Title too short ({len(title)} chars, min {VALIDATION_THRESHOLDS['title_min_length']})")
+            issues.append(
+                f"Title too short ({len(title)} chars, min {VALIDATION_THRESHOLDS['title_min_length']})"
+            )
             score -= 15
 
         # Check for generic titles
@@ -894,11 +895,12 @@ class ValidatorAgent(BaseAgent):
         # Use best practices validation if available
         try:
             from ..utils.best_practices import validate_title
+
             bp_result = validate_title(title, niche)
             if not bp_result.is_valid:
                 issues.extend(bp_result.suggestions[:2])
                 score = min(score, int(bp_result.score * 100))
-        except:
+        except Exception:
             pass
 
         passed = score >= 70 and len(title) > 0
@@ -916,8 +918,8 @@ class ValidatorAgent(BaseAgent):
                 "length": len(title),
                 "has_numbers": has_number,
                 "has_power_words": has_power_word,
-                "issues": issues
-            }
+                "issues": issues,
+            },
         )
 
     def _validate_description(self, description: str) -> ValidationCheck:
@@ -938,7 +940,7 @@ class ValidatorAgent(BaseAgent):
                 category="metadata",
                 is_blocker=True,
                 message="Description is missing",
-                details={}
+                details={},
             )
 
         issues = []
@@ -946,12 +948,15 @@ class ValidatorAgent(BaseAgent):
 
         # Length check
         if len(description) < VALIDATION_THRESHOLDS["description_min_length"]:
-            issues.append(f"Description too short ({len(description)} chars, min {VALIDATION_THRESHOLDS['description_min_length']})")
+            issues.append(
+                f"Description too short ({len(description)} chars, min {VALIDATION_THRESHOLDS['description_min_length']})"
+            )
             score -= 25
 
         # Check for timestamps
         import re
-        has_timestamps = bool(re.search(r'\d{1,2}:\d{2}', description))
+
+        has_timestamps = bool(re.search(r"\d{1,2}:\d{2}", description))
         if not has_timestamps and len(description) > 100:
             issues.append("No timestamps/chapters found")
             score -= 10
@@ -977,8 +982,8 @@ class ValidatorAgent(BaseAgent):
                 "has_timestamps": has_timestamps,
                 "has_links": has_links,
                 "word_count": len(description.split()),
-                "issues": issues
-            }
+                "issues": issues,
+            },
         )
 
     def _validate_tags(self, tags: List[str], niche: str) -> ValidationCheck:
@@ -1000,7 +1005,7 @@ class ValidatorAgent(BaseAgent):
                 category="metadata",
                 is_blocker=True,
                 message="No tags provided",
-                details={}
+                details={},
             )
 
         issues = []
@@ -1046,8 +1051,8 @@ class ValidatorAgent(BaseAgent):
                 "count": len(tags),
                 "tags_preview": tags[:5],
                 "niche_relevant_count": relevant_count,
-                "issues": issues
-            }
+                "issues": issues,
+            },
         )
 
     def quick_validate(
@@ -1055,7 +1060,7 @@ class ValidatorAgent(BaseAgent):
         video_file: str = None,
         thumbnail_file: str = None,
         title: str = None,
-        description: str = None
+        description: str = None,
     ) -> Tuple[bool, int, str]:
         """
         Quick validation returning simple pass/fail.
@@ -1078,12 +1083,16 @@ class ValidatorAgent(BaseAgent):
         result = self.run(
             script_data=script_data if script_data else None,
             video_file=video_file,
-            thumbnail_file=thumbnail_file
+            thumbnail_file=thumbnail_file,
         )
 
         if result.success:
             data = result.data
-            return data["passed"], data["score"], data.get("blockers", ["OK"])[0] if not data["passed"] else "OK"
+            return (
+                data["passed"],
+                data["score"],
+                data.get("blockers", ["OK"])[0] if not data["passed"] else "OK",
+            )
         else:
             return False, 0, result.error
 
@@ -1091,11 +1100,12 @@ class ValidatorAgent(BaseAgent):
 # CLI entry point
 def main():
     """CLI entry point for validator agent."""
-    import sys
     import argparse
+    import sys
 
     if len(sys.argv) < 2:
-        print("""
+        print(
+            """
 Validator Agent - Content Validation Gate
 
 Usage:
@@ -1117,7 +1127,8 @@ Options:
     --strict                Treat warnings as blockers
     --min-score <n>         Minimum score to pass (default: 75)
     --json                  Output as JSON
-        """)
+        """
+        )
         return
 
     parser = argparse.ArgumentParser(description="Validate YouTube content")
@@ -1157,7 +1168,7 @@ Options:
         niche=args.niche,
         is_short=args.short,
         min_score=args.min_score,
-        strict_mode=args.strict
+        strict_mode=args.strict,
     )
 
     # Output
@@ -1170,8 +1181,8 @@ Options:
 
         if result.success:
             data = result.data
-            validation = ValidationResult(**{k: v for k, v in data.items() if k != 'checks'})
-            validation.checks = [ValidationCheck(**c) for c in data.get('checks', [])]
+            validation = ValidationResult(**{k: v for k, v in data.items() if k != "checks"})
+            validation.checks = [ValidationCheck(**c) for c in data.get("checks", [])]
 
             print(validation.summary())
         else:

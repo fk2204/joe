@@ -3,18 +3,19 @@ Base Agent Infrastructure for Joe
 Provides abstract base class and utilities for all agents.
 """
 
-from abc import ABC, abstractmethod
-from dataclasses import dataclass, field, asdict
-from typing import Dict, Any, Optional, List
-from datetime import datetime
-from uuid import uuid4
-from loguru import logger
-import time
 import functools
 
 # Import existing utilities
 import sys
+import time
+from abc import ABC, abstractmethod
+from dataclasses import asdict, dataclass, field
+from datetime import datetime
 from pathlib import Path
+from typing import Any, Dict, Optional
+from uuid import uuid4
+
+from loguru import logger
 
 # Add project root to path (for imports)
 project_root = Path(__file__).parent.parent.parent
@@ -41,6 +42,7 @@ class AgentResult:
         duration_seconds: How long the operation took
         metadata: Additional operation-specific metadata
     """
+
     success: bool
     operation: str
     data: Any = None
@@ -56,8 +58,8 @@ class AgentResult:
         """Convert to dictionary for JSON serialization."""
         result = asdict(self)
         # Convert datetime to ISO string
-        if isinstance(result.get('timestamp'), datetime):
-            result['timestamp'] = result['timestamp'].isoformat()
+        if isinstance(result.get("timestamp"), datetime):
+            result["timestamp"] = result["timestamp"].isoformat()
         return result
 
     def __str__(self) -> str:
@@ -80,6 +82,7 @@ class AgentResult:
 @dataclass
 class AgentMessage:
     """Standard message format for agent communication."""
+
     sender: str
     recipient: str  # Agent name or "broadcast"
     message_type: str  # request, response, event, error
@@ -95,38 +98,39 @@ class AgentMessage:
 
 class AgentError(Exception):
     """Base exception for agent errors."""
-    pass
+
 
 
 class TokenBudgetExceeded(AgentError):
     """Daily token budget exceeded."""
-    pass
+
 
 
 class APIRateLimitError(AgentError):
     """API rate limit hit."""
-    pass
+
 
 
 class QualityError(AgentError):
     """Content failed quality checks."""
-    pass
+
 
 
 class SafetyError(AgentError):
     """Content flagged for safety concerns."""
-    pass
+
 
 
 def handle_agent_errors(func):
     """Decorator for graceful error handling."""
+
     @functools.wraps(func)
     def wrapper(*args, **kwargs):
         try:
             return func(*args, **kwargs)
         except TokenBudgetExceeded as e:
             logger.warning(f"Budget exceeded: {e}, switching to free provider")
-            kwargs['provider'] = 'ollama'
+            kwargs["provider"] = "ollama"
             return func(*args, **kwargs)
         except APIRateLimitError:
             logger.warning("Rate limited, waiting 60s and retrying")
@@ -135,6 +139,7 @@ def handle_agent_errors(func):
         except Exception as e:
             logger.error(f"Agent error: {e}")
             raise
+
     return wrapper
 
 
@@ -167,11 +172,11 @@ class BaseAgent(ABC):
             self.api_key = provider if api_key is None and isinstance(name, str) else api_key
 
         # If name wasn't set by above logic, use class name
-        if not hasattr(self, 'name'):
+        if not hasattr(self, "name"):
             self.name = self.__class__.__name__
 
         # Set API key if provided
-        if not hasattr(self, 'api_key'):
+        if not hasattr(self, "api_key"):
             self.api_key = api_key
 
         # State directory for agents that need persistent storage
@@ -184,8 +189,9 @@ class BaseAgent(ABC):
         # Try to import utilities
         try:
             from src.utils.token_manager import get_token_manager
+
             self.tracker = get_token_manager()
-        except:
+        except Exception:
             self.tracker = None
 
         logger.info(f"{self.name} initialized with provider={self.provider}")
@@ -193,7 +199,6 @@ class BaseAgent(ABC):
     @abstractmethod
     def run(self, **kwargs) -> AgentResult:
         """Main entry point - must be implemented by subclasses."""
-        pass
 
     def handle_message(self, message: AgentMessage) -> AgentMessage:
         """Handle incoming message from another agent."""
@@ -206,7 +211,7 @@ class BaseAgent(ABC):
                 recipient=message.sender,
                 message_type="response",
                 payload={"result": result, "duration": duration},
-                correlation_id=message.message_id
+                correlation_id=message.message_id,
             )
         except Exception as e:
             logger.error(f"{self.name} error handling message: {e}")
@@ -215,7 +220,7 @@ class BaseAgent(ABC):
                 recipient=message.sender,
                 message_type="error",
                 payload={"error": str(e), "error_type": type(e).__name__},
-                correlation_id=message.message_id
+                correlation_id=message.message_id,
             )
 
     def create_result(
@@ -227,7 +232,7 @@ class BaseAgent(ABC):
         tokens_used: int = 0,
         cost: float = 0.0,
         duration_seconds: float = 0.0,
-        **metadata
+        **metadata,
     ) -> AgentResult:
         """
         Convenience method to create a standardized AgentResult.
@@ -255,7 +260,7 @@ class BaseAgent(ABC):
             tokens_used=tokens_used,
             cost=cost,
             duration_seconds=duration_seconds,
-            metadata=metadata
+            metadata=metadata,
         )
 
     def log_operation(self, operation: str, tokens: int = 0, cost: float = 0.0):
@@ -265,28 +270,29 @@ class BaseAgent(ABC):
                 provider=self.provider,
                 input_tokens=tokens // 2,
                 output_tokens=tokens // 2,
-                operation=f"{self.name}_{operation}"
+                operation=f"{self.name}_{operation}",
             )
-        logger.bind(
-            agent=self.name,
-            operation=operation,
-            tokens=tokens,
-            cost=cost
-        ).info(f"{self.name} completed {operation}")
+        logger.bind(agent=self.name, operation=operation, tokens=tokens, cost=cost).info(
+            f"{self.name} completed {operation}"
+        )
 
     def _timed_operation(self, operation_name: str):
         """Context manager for timing operations."""
+
         class Timer:
             def __init__(self, agent, name):
                 self.agent = agent
                 self.name = name
                 self.start = None
+
             def __enter__(self):
                 self.start = time.time()
                 return self
+
             def __exit__(self, *args):
                 duration = time.time() - self.start
                 logger.debug(f"{self.agent.name}.{self.name} took {duration:.2f}s")
+
         return Timer(self, operation_name)
 
     def _save_state(self, filename: str, state: Dict[str, Any]) -> bool:
@@ -302,8 +308,9 @@ class BaseAgent(ABC):
         """
         try:
             import json
+
             filepath = self.state_dir / filename
-            with open(filepath, 'w') as f:
+            with open(filepath, "w") as f:
                 json.dump(state, f, indent=2, default=str)
             logger.debug(f"{self.name}: Saved state to {filepath}")
             return True
@@ -323,10 +330,11 @@ class BaseAgent(ABC):
         """
         try:
             import json
+
             filepath = self.state_dir / filename
             if not filepath.exists():
                 return None
-            with open(filepath, 'r') as f:
+            with open(filepath, "r") as f:
                 state = json.load(f)
             logger.debug(f"{self.name}: Loaded state from {filepath}")
             return state

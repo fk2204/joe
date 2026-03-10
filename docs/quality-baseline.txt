@@ -1,0 +1,1643 @@
+=== Flake8 Report ===
+src/agents\accessibility_agent.py:39:1: F401 'pathlib.Path' imported but unused
+src/agents\accessibility_agent.py:205:56: W504 line break after binary operator
+src/agents\accessibility_agent.py:206:57: W504 line break after binary operator
+src/agents\accessibility_agent.py:207:62: W504 line break after binary operator
+src/agents\accessibility_agent.py:326:43: E226 missing whitespace around arithmetic operator
+src/agents\accessibility_agent.py:329:43: E226 missing whitespace around arithmetic operator
+src/agents\accessibility_agent.py:341:48: E226 missing whitespace around arithmetic operator
+src/agents\accessibility_agent.py:487:68: W504 line break after binary operator
+src/agents\accessibility_agent.py:488:33: E128 continuation line under-indented for visual indent
+src/agents\accessibility_agent.py:489:66: W504 line break after binary operator
+src/agents\accessibility_agent.py:490:31: E128 continuation line under-indented for visual indent
+src/agents\accessibility_agent.py:668:43: E226 missing whitespace around arithmetic operator
+src/agents\accessibility_agent.py:670:43: E226 missing whitespace around arithmetic operator
+src/agents\accessibility_agent.py:673:43: E226 missing whitespace around arithmetic operator
+src/agents\accessibility_agent.py:725:101: E501 line too long (103 > 100 characters)
+src/agents\accessibility_agent.py:874:23: F541 f-string is missing placeholders
+src/agents\agent_communication.py:50:1: F401 'hashlib' imported but unused
+src/agents\agent_communication.py:55:1: F401 'time' imported but unused
+src/agents\agent_communication.py:62:1: F401 'typing.Generic' imported but unused
+src/agents\agent_communication.py:62:1: F401 'typing.Tuple' imported but unused
+src/agents\agent_communication.py:62:1: F401 'typing.Union' imported but unused
+src/agents\agent_communication.py:135:101: E501 line too long (107 > 100 characters)
+src/agents\agent_communication.py:434:101: E501 line too long (103 > 100 characters)
+src/agents\agent_communication.py:504:101: E501 line too long (104 > 100 characters)
+src/agents\agent_communication.py:1605:19: F541 f-string is missing placeholders
+src/agents\agent_communication.py:1614:19: F541 f-string is missing placeholders
+src/agents\agent_communication.py:1622:19: F541 f-string is missing placeholders
+src/agents\agent_communication.py:1630:19: F541 f-string is missing placeholders
+src/agents\agent_communication.py:1639:19: F541 f-string is missing placeholders
+src/agents\analytics_agent.py:76:13: F541 f-string is missing placeholders
+src/agents\analytics_agent.py:77:13: F541 f-string is missing placeholders
+src/agents\analytics_agent.py:227:101: E501 line too long (114 > 100 characters)
+src/agents\analytics_agent.py:254:58: E226 missing whitespace around arithmetic operator
+src/agents\analytics_agent.py:279:101: E501 line too long (101 > 100 characters)
+src/agents\analytics_agent.py:280:101: E501 line too long (138 > 100 characters)
+src/agents\analytics_agent.py:414:101: E501 line too long (103 > 100 characters)
+src/agents\analytics_agent.py:458:101: E501 line too long (107 > 100 characters)
+src/agents\analytics_agent.py:459:101: E501 line too long (145 > 100 characters)
+src/agents\analytics_agent.py:476:13: F541 f-string is missing placeholders
+src/agents\analytics_agent.py:521:21: F541 f-string is missing placeholders
+src/agents\analytics_agent.py:547:101: E501 line too long (112 > 100 characters)
+src/agents\analytics_agent.py:581:9: F841 local variable 'avg_views' is assigned to but never used
+src/agents\audio_quality_agent.py:107:33: E261 at least two spaces before inline comment
+src/agents\audio_quality_agent.py:271:101: E501 line too long (131 > 100 characters)
+src/agents\audio_quality_agent.py:369:21: F841 local variable 'max_volume' is assigned to but never used
+src/agents\audio_quality_agent.py:551:101: E501 line too long (115 > 100 characters)
+src/agents\audio_quality_agent.py:565:19: F541 f-string is missing placeholders
+src/agents\audio_quality_agent.py:566:101: E501 line too long (121 > 100 characters)
+src/agents\audio_quality_agent.py:567:101: E501 line too long (120 > 100 characters)
+src/agents\audio_quality_agent.py:568:101: E501 line too long (126 > 100 characters)
+src/agents\audio_quality_agent.py:569:101: E501 line too long (110 > 100 characters)
+src/agents\audio_quality_agent.py:583:23: F541 f-string is missing placeholders
+src/agents\base_agent.py:8:1: F401 'typing.List' imported but unused
+src/agents\base_agent.py:188:9: E722 do not use bare 'except'
+src/agents\base_agent.py:284:13: E306 expected 1 blank line before a nested definition, found 0
+src/agents\base_agent.py:287:13: E306 expected 1 blank line before a nested definition, found 0
+src/agents\compliance_agent.py:39:1: F401 'typing.Optional' imported but unused
+src/agents\compliance_agent.py:39:1: F401 'typing.Set' imported but unused
+src/agents\compliance_agent.py:175:101: E501 line too long (102 > 100 characters)
+src/agents\compliance_agent.py:179:101: E501 line too long (102 > 100 characters)
+src/agents\compliance_agent.py:191:21: F541 f-string is missing placeholders
+src/agents\compliance_agent.py:231:21: F541 f-string is missing placeholders
+src/agents\compliance_agent.py:257:59: W504 line break after binary operator
+src/agents\compliance_agent.py:263:101: E501 line too long (104 > 100 characters)
+src/agents\compliance_agent.py:299:32: E128 continuation line under-indented for visual indent
+src/agents\compliance_agent.py:332:21: F541 f-string is missing placeholders
+src/agents\compliance_agent.py:349:101: E501 line too long (115 > 100 characters)
+src/agents\compliance_agent.py:425:22: E128 continuation line under-indented for visual indent
+src/agents\compliance_agent.py:460:31: E131 continuation line unaligned for hanging indent
+src/agents\compliance_agent.py:465:31: E131 continuation line unaligned for hanging indent
+src/agents\compliance_agent.py:471:31: E131 continuation line unaligned for hanging indent
+src/agents\compliance_agent.py:564:15: F541 f-string is missing placeholders
+src/agents\compliance_agent.py:569:15: F541 f-string is missing placeholders
+src/agents\compliance_agent.py:574:15: F541 f-string is missing placeholders
+src/agents\content_safety_agent.py:39:1: F401 'typing.Optional' imported but unused
+src/agents\content_safety_agent.py:39:1: F401 'typing.Tuple' imported but unused
+src/agents\content_safety_agent.py:124:101: E501 line too long (106 > 100 characters)
+src/agents\content_safety_agent.py:126:101: E501 line too long (109 > 100 characters)
+src/agents\content_safety_agent.py:133:101: E501 line too long (114 > 100 characters)
+src/agents\content_safety_agent.py:137:101: E501 line too long (109 > 100 characters)
+src/agents\content_safety_agent.py:150:101: E501 line too long (102 > 100 characters)
+src/agents\content_safety_agent.py:152:101: E501 line too long (107 > 100 characters)
+src/agents\content_safety_agent.py:166:101: E501 line too long (102 > 100 characters)
+src/agents\content_safety_agent.py:196:101: E501 line too long (108 > 100 characters)
+src/agents\content_safety_agent.py:230:21: F541 f-string is missing placeholders
+src/agents\content_safety_agent.py:288:59: W504 line break after binary operator
+src/agents\content_safety_agent.py:571:19: F541 f-string is missing placeholders
+src/agents\content_safety_agent.py:577:15: F541 f-string is missing placeholders
+src/agents\content_strategy_agent.py:129:13: F541 f-string is missing placeholders
+src/agents\content_strategy_agent.py:130:13: F541 f-string is missing placeholders
+src/agents\content_strategy_agent.py:139:25: E128 continuation line under-indented for visual indent
+src/agents\content_strategy_agent.py:141:25: E128 continuation line under-indented for visual indent
+src/agents\content_strategy_agent.py:143:25: E128 continuation line under-indented for visual indent
+src/agents\content_strategy_agent.py:159:28: E128 continuation line under-indented for visual indent
+src/agents\content_strategy_agent.py:369:25: F541 f-string is missing placeholders
+src/agents\content_strategy_agent.py:370:25: F541 f-string is missing placeholders
+src/agents\content_strategy_agent.py:371:25: F541 f-string is missing placeholders
+src/agents\content_strategy_agent.py:395:43: W504 line break after binary operator
+src/agents\content_strategy_agent.py:396:42: W504 line break after binary operator
+src/agents\content_strategy_agent.py:446:101: E501 line too long (103 > 100 characters)
+src/agents\content_strategy_agent.py:485:9: F841 local variable 'hook_formulas' is assigned to but never used
+src/agents\content_strategy_agent.py:528:101: E501 line too long (105 > 100 characters)
+src/agents\content_strategy_agent.py:779:101: E501 line too long (127 > 100 characters)
+src/agents\content_strategy_agent.py:845:13: F841 local variable 'monthly_view_target' is assigned to but never used
+src/agents\content_strategy_agent.py:986:9: F841 local variable 'avg_cpm' is assigned to but never used
+src/agents\content_strategy_agent.py:1057:101: E501 line too long (101 > 100 characters)
+src/agents\crew.py:28:5: F401 'crewai.Task' imported but unused
+src/agents\crew.py:28:5: F401 'crewai.Crew' imported but unused
+src/agents\crew.py:28:5: F401 'crewai.Process' imported but unused
+src/agents\crew.py:65:101: E501 line too long (119 > 100 characters)
+src/agents\crew.py:357:21: E226 missing whitespace around arithmetic operator
+src/agents\crew.py:359:14: E226 missing whitespace around arithmetic operator
+src/agents\crew.py:365:11: F541 f-string is missing placeholders
+src/agents\crew.py:374:15: F541 f-string is missing placeholders
+src/agents\insight_agent.py:30:1: F401 'typing.Tuple' imported but unused
+src/agents\insight_agent.py:101:13: F541 f-string is missing placeholders
+src/agents\insight_agent.py:102:13: F541 f-string is missing placeholders
+src/agents\insight_agent.py:120:32: E128 continuation line under-indented for visual indent
+src/agents\insight_agent.py:137:101: E501 line too long (102 > 100 characters)
+src/agents\insight_agent.py:361:24: F541 f-string is missing placeholders
+src/agents\insight_agent.py:444:101: E501 line too long (104 > 100 characters)
+src/agents\insight_agent.py:583:101: E501 line too long (104 > 100 characters)
+src/agents\insight_agent.py:640:9: F841 local variable 'practices' is assigned to but never used
+src/agents\insight_agent.py:679:101: E501 line too long (137 > 100 characters)
+src/agents\insight_agent.py:686:101: E501 line too long (104 > 100 characters)
+src/agents\insight_agent.py:687:101: E501 line too long (114 > 100 characters)
+src/agents\insight_agent.py:732:9: F841 local variable 'practices' is assigned to but never used
+src/agents\insight_agent.py:860:101: E501 line too long (101 > 100 characters)
+src/agents\insight_agent.py:868:101: E501 line too long (106 > 100 characters)
+src/agents\insight_agent.py:902:101: E501 line too long (111 > 100 characters)
+src/agents\master_orchestrator.py:47:1: F401 'typing.Union' imported but unused
+src/agents\master_orchestrator.py:185:101: E501 line too long (103 > 100 characters)
+src/agents\master_orchestrator.py:251:101: E501 line too long (105 > 100 characters)
+src/agents\master_orchestrator.py:300:78: W504 line break after binary operator
+src/agents\master_orchestrator.py:421:101: E501 line too long (104 > 100 characters)
+src/agents\master_orchestrator.py:814:101: E501 line too long (101 > 100 characters)
+src/agents\master_orchestrator.py:886:13: F541 f-string is missing placeholders
+src/agents\master_orchestrator.py:887:13: F541 f-string is missing placeholders
+src/agents\master_orchestrator.py:1359:19: F541 f-string is missing placeholders
+src/agents\monitor_agent.py:21:1: F401 'os' imported but unused
+src/agents\monitor_agent.py:34:1: F401 'typing.Optional' imported but unused
+src/agents\monitor_agent.py:216:101: E501 line too long (102 > 100 characters)
+src/agents\monitor_agent.py:279:63: E226 missing whitespace around arithmetic operator
+src/agents\monitor_agent.py:378:101: E501 line too long (102 > 100 characters)
+src/agents\monitor_agent.py:387:101: E501 line too long (102 > 100 characters)
+src/agents\monitor_agent.py:433:101: E501 line too long (116 > 100 characters)
+src/agents\monitor_agent.py:440:101: E501 line too long (135 > 100 characters)
+src/agents\monitor_agent.py:474:101: E501 line too long (109 > 100 characters)
+src/agents\monitor_agent.py:491:101: E501 line too long (150 > 100 characters)
+src/agents\monitor_agent.py:555:13: E722 do not use bare 'except'
+src/agents\monitor_agent.py:572:13: E722 do not use bare 'except'
+src/agents\monitor_agent.py:593:21: E722 do not use bare 'except'
+src/agents\monitor_agent.py:622:17: E722 do not use bare 'except'
+src/agents\monitor_agent.py:654:101: E501 line too long (128 > 100 characters)
+src/agents\monitor_agent.py:659:101: E501 line too long (108 > 100 characters)
+src/agents\monitor_agent.py:660:101: E501 line too long (124 > 100 characters)
+src/agents\monitor_agent.py:673:101: E501 line too long (112 > 100 characters)
+src/agents\orchestrator.py:12:1: F401 'time' imported but unused
+src/agents\orchestrator.py:14:1: F401 'src.agents.base_agent.AgentError' imported but unused
+src/agents\orchestrator.py:98:101: E501 line too long (101 > 100 characters)
+src/agents\orchestrator.py:111:43: E226 missing whitespace around arithmetic operator
+src/agents\orchestrator.py:157:69: F541 f-string is missing placeholders
+src/agents\orchestrator.py:176:101: E501 line too long (104 > 100 characters)
+src/agents\post_all_channels.py:13:1: F401 'asyncio' imported but unused
+src/agents\post_all_channels.py:15:1: F401 'datetime.datetime' imported but unused
+src/agents\post_all_channels.py:20:1: E402 module level import not at top of file
+src/agents\post_all_channels.py:21:1: E402 module level import not at top of file
+src/agents\post_all_channels.py:22:1: E402 module level import not at top of file
+src/agents\post_all_channels.py:86:101: E501 line too long (113 > 100 characters)
+src/agents\post_all_channels.py:93:101: E501 line too long (104 > 100 characters)
+src/agents\post_all_channels.py:97:21: E226 missing whitespace around arithmetic operator
+src/agents\post_all_channels.py:99:14: E226 missing whitespace around arithmetic operator
+src/agents\post_all_channels.py:115:25: E226 missing whitespace around arithmetic operator
+src/agents\post_all_channels.py:117:18: E226 missing whitespace around arithmetic operator
+src/agents\post_all_channels.py:159:21: E226 missing whitespace around arithmetic operator
+src/agents\post_all_channels.py:161:14: E226 missing whitespace around arithmetic operator
+src/agents\quality_agent.py:35:1: F401 '..utils.best_practices.get_best_practices' imported but unused
+src/agents\quality_agent.py:35:1: F401 '..utils.best_practices.pre_publish_checklist' imported but unused
+src/agents\quality_agent.py:35:1: F401 '..utils.best_practices.ValidationResult' imported but unused
+src/agents\quality_agent.py:35:1: F401 '..utils.best_practices.PrePublishChecklist' imported but unused
+src/agents\quality_agent.py:239:101: E501 line too long (104 > 100 characters)
+src/agents\quality_agent.py:240:101: E501 line too long (113 > 100 characters)
+src/agents\quality_agent.py:252:101: E501 line too long (101 > 100 characters)
+src/agents\quality_agent.py:264:101: E501 line too long (115 > 100 characters)
+src/agents\quality_agent.py:339:9: F841 local variable 'operation' is assigned to but never used
+src/agents\quality_agent.py:360:13: E722 do not use bare 'except'
+src/agents\quality_agent.py:373:101: E501 line too long (111 > 100 characters)
+src/agents\quality_agent.py:435:101: E501 line too long (104 > 100 characters)
+src/agents\quality_agent.py:467:101: E501 line too long (106 > 100 characters)
+src/agents\quality_agent.py:470:101: E501 line too long (102 > 100 characters)
+src/agents\quality_agent.py:499:21: F541 f-string is missing placeholders
+src/agents\quality_agent.py:576:21: F541 f-string is missing placeholders
+src/agents\quality_agent.py:656:9: E722 do not use bare 'except'
+src/agents\quality_agent.py:666:17: E722 do not use bare 'except'
+src/agents\quality_agent.py:674:17: E722 do not use bare 'except'
+src/agents\quality_agent.py:683:13: E722 do not use bare 'except'
+src/agents\recovery_agent.py:31:1: F401 'typing.Tuple' imported but unused
+src/agents\recovery_agent.py:329:101: E501 line too long (102 > 100 characters)
+src/agents\recovery_agent.py:500:101: E501 line too long (105 > 100 characters)
+src/agents\recovery_agent.py:538:101: E501 line too long (204 > 100 characters)
+src/agents\recovery_agent.py:538:135: E226 missing whitespace around arithmetic operator
+src/agents\recovery_agent.py:538:167: E226 missing whitespace around arithmetic operator
+src/agents\recovery_agent.py:538:199: E226 missing whitespace around arithmetic operator
+src/agents\research_agent.py:68:13: E722 do not use bare 'except'
+src/agents\research_agent.py:164:17: E722 do not use bare 'except'
+src/agents\research_agent.py:517:101: E501 line too long (112 > 100 characters)
+src/agents\research_agent.py:528:15: F541 f-string is missing placeholders
+src/agents\retention_optimizer_agent.py:38:1: F401 'typing.Optional' imported but unused
+src/agents\retention_optimizer_agent.py:58:101: E501 line too long (115 > 100 characters)
+src/agents\retention_optimizer_agent.py:188:21: F541 f-string is missing placeholders
+src/agents\retention_optimizer_agent.py:243:101: E501 line too long (114 > 100 characters)
+src/agents\retention_optimizer_agent.py:266:101: E501 line too long (112 > 100 characters)
+src/agents\retention_optimizer_agent.py:267:101: E501 line too long (112 > 100 characters)
+src/agents\retention_optimizer_agent.py:275:101: E501 line too long (111 > 100 characters)
+src/agents\retention_optimizer_agent.py:291:101: E501 line too long (104 > 100 characters)
+src/agents\retention_optimizer_agent.py:296:101: E501 line too long (112 > 100 characters)
+src/agents\retention_optimizer_agent.py:300:101: E501 line too long (111 > 100 characters)
+src/agents\retention_optimizer_agent.py:366:101: E501 line too long (102 > 100 characters)
+src/agents\retention_optimizer_agent.py:527:9: F841 local variable 'script_lower' is assigned to but never used
+src/agents\retention_optimizer_agent.py:573:101: E501 line too long (102 > 100 characters)
+src/agents\retention_optimizer_agent.py:671:101: E501 line too long (131 > 100 characters)
+src/agents\retention_optimizer_agent.py:806:23: F541 f-string is missing placeholders
+src/agents\retention_optimizer_agent.py:812:23: F541 f-string is missing placeholders
+src/agents\retention_optimizer_agent.py:819:23: F541 f-string is missing placeholders
+src/agents\revenue_agent.py:27:1: F401 'typing.Tuple' imported but unused
+src/agents\revenue_agent.py:88:13: F541 f-string is missing placeholders
+src/agents\revenue_agent.py:89:13: F541 f-string is missing placeholders
+src/agents\revenue_agent.py:110:101: E501 line too long (114 > 100 characters)
+src/agents\revenue_agent.py:471:101: E501 line too long (102 > 100 characters)
+src/agents\revenue_agent.py:584:9: F841 local variable 'videos_per_day' is assigned to but never used
+src/agents\revenue_agent.py:728:101: E501 line too long (107 > 100 characters)
+src/agents\revenue_agent.py:785:101: E501 line too long (106 > 100 characters)
+src/agents\run_agents.py:18:1: E402 module level import not at top of file
+src/agents\run_agents.py:19:1: F401 'src.agents.subagents.quick_video' imported but unused
+src/agents\run_agents.py:19:1: E402 module level import not at top of file
+src/agents\run_agents.py:76:101: E501 line too long (104 > 100 characters)
+src/agents\run_agents.py:80:21: E226 missing whitespace around arithmetic operator
+src/agents\run_agents.py:82:14: E226 missing whitespace around arithmetic operator
+src/agents\run_agents.py:100:21: E226 missing whitespace around arithmetic operator
+src/agents\run_agents.py:102:14: E226 missing whitespace around arithmetic operator
+src/agents\run_agents.py:115:15: F541 f-string is missing placeholders
+src/agents\scheduler_agent.py:44:5: F401 'apscheduler.triggers.date.DateTrigger' imported but unused
+src/agents\scheduler_agent.py:392:13: E722 do not use bare 'except'
+src/agents\scheduler_agent.py:432:13: E722 do not use bare 'except'
+src/agents\scheduler_agent.py:466:13: E722 do not use bare 'except'
+src/agents\seo_agent.py:36:1: F401 '..utils.best_practices.VIRAL_TITLE_PATTERNS' imported but unused
+src/agents\seo_agent.py:67:101: E501 line too long (103 > 100 characters)
+src/agents\seo_agent.py:71:101: E501 line too long (113 > 100 characters)
+src/agents\seo_agent.py:182:101: E501 line too long (102 > 100 characters)
+src/agents\seo_agent.py:263:21: F541 f-string is missing placeholders
+src/agents\seo_agent.py:276:101: E501 line too long (107 > 100 characters)
+src/agents\seo_agent.py:281:9: F841 local variable 'practices' is assigned to but never used
+src/agents\seo_agent.py:309:101: E501 line too long (104 > 100 characters)
+src/agents\seo_agent.py:330:24: F541 f-string is missing placeholders
+src/agents\seo_agent.py:373:101: E501 line too long (103 > 100 characters)
+src/agents\seo_agent.py:398:101: E501 line too long (143 > 100 characters)
+src/agents\seo_agent.py:438:21: F541 f-string is missing placeholders
+src/agents\seo_agent.py:461:101: E501 line too long (109 > 100 characters)
+src/agents\seo_agent.py:462:101: E501 line too long (105 > 100 characters)
+src/agents\seo_agent.py:498:21: F541 f-string is missing placeholders
+src/agents\seo_agent.py:505:101: E501 line too long (237 > 100 characters)
+src/agents\seo_agent.py:550:13: E722 do not use bare 'except'
+src/agents\seo_agent.py:599:9: E722 do not use bare 'except'
+src/agents\seo_agent.py:609:17: E722 do not use bare 'except'
+src/agents\seo_agent.py:618:13: E722 do not use bare 'except'
+src/agents\seo_agent.py:750:101: E501 line too long (103 > 100 characters)
+src/agents\seo_strategist.py:30:1: F401 'os' imported but unused
+src/agents\seo_strategist.py:272:101: E501 line too long (102 > 100 characters)
+src/agents\seo_strategist.py:274:101: E501 line too long (113 > 100 characters)
+src/agents\seo_strategist.py:342:19: F541 f-string is missing placeholders
+src/agents\seo_strategist.py:367:23: F541 f-string is missing placeholders
+src/agents\seo_strategist.py:384:13: E722 do not use bare 'except'
+src/agents\seo_strategist.py:519:25: E128 continuation line under-indented for visual indent
+src/agents\seo_strategist.py:528:25: E128 continuation line under-indented for visual indent
+src/agents\seo_strategist.py:532:25: E128 continuation line under-indented for visual indent
+src/agents\seo_strategist.py:773:101: E501 line too long (106 > 100 characters)
+src/agents\seo_strategist.py:828:101: E501 line too long (105 > 100 characters)
+src/agents\seo_strategist.py:914:101: E501 line too long (107 > 100 characters)
+src/agents\seo_strategist.py:967:13: E722 do not use bare 'except'
+src/agents\seo_strategist.py:1295:101: E501 line too long (106 > 100 characters)
+src/agents\seo_strategist.py:1370:101: E501 line too long (110 > 100 characters)
+src/agents\seo_strategist.py:1373:101: E501 line too long (114 > 100 characters)
+src/agents\seo_strategist.py:1375:101: E501 line too long (104 > 100 characters)
+src/agents\seo_strategist.py:1385:101: E501 line too long (105 > 100 characters)
+src/agents\seo_strategist.py:1564:101: E501 line too long (114 > 100 characters)
+src/agents\seo_strategist.py:1583:101: E501 line too long (117 > 100 characters)
+src/agents\seo_strategist.py:1748:101: E501 line too long (124 > 100 characters)
+src/agents\seo_strategist.py:1792:101: E501 line too long (120 > 100 characters)
+src/agents\seo_strategist.py:1825:101: E501 line too long (108 > 100 characters)
+src/agents\seo_strategist.py:1908:101: E501 line too long (114 > 100 characters)
+src/agents\subagents.py:21:1: F401 'os' imported but unused
+src/agents\subagents.py:159:101: E501 line too long (120 > 100 characters)
+src/agents\subagents.py:286:9: F841 local variable 'video_path' is assigned to but never used
+src/agents\subagents.py:294:9: F841 local variable 'thumb_path' is assigned to but never used
+src/agents\subagents.py:437:21: F541 f-string is missing placeholders
+src/agents\subagents.py:438:27: E226 missing whitespace around arithmetic operator
+src/agents\subagents.py:440:27: E226 missing whitespace around arithmetic operator
+src/agents\subagents.py:444:25: F541 f-string is missing placeholders
+src/agents\subagents.py:467:25: F541 f-string is missing placeholders
+src/agents\subagents.py:485:25: F541 f-string is missing placeholders
+src/agents\subagents.py:507:29: F541 f-string is missing placeholders
+src/agents\subagents.py:522:29: F541 f-string is missing placeholders
+src/agents\subagents.py:528:25: F541 f-string is missing placeholders
+src/agents\subagents.py:529:31: E226 missing whitespace around arithmetic operator
+src/agents\subagents.py:530:28: F541 f-string is missing placeholders
+src/agents\subagents.py:533:31: E226 missing whitespace around arithmetic operator
+src/agents\subagents.py:580:21: E226 missing whitespace around arithmetic operator
+src/agents\subagents.py:582:14: E226 missing whitespace around arithmetic operator
+src/agents\thumbnail_agent.py:61:33: E261 at least two spaces before inline comment
+src/agents\thumbnail_agent.py:70:33: E261 at least two spaces before inline comment
+src/agents\thumbnail_agent.py:79:33: E261 at least two spaces before inline comment
+src/agents\thumbnail_agent.py:271:101: E501 line too long (134 > 100 characters)
+src/agents\thumbnail_agent.py:283:29: F541 f-string is missing placeholders
+src/agents\thumbnail_agent.py:286:9: F841 local variable 'color_scheme' is assigned to but never used
+src/agents\thumbnail_agent.py:311:101: E501 line too long (105 > 100 characters)
+src/agents\thumbnail_agent.py:362:17: E722 do not use bare 'except'
+src/agents\thumbnail_agent.py:495:9: F841 local variable 'emotions' is assigned to but never used
+src/agents\thumbnail_agent.py:496:9: F841 local variable 'positions' is assigned to but never used
+src/agents\thumbnail_agent.py:497:9: F841 local variable 'text_positions' is assigned to but never used
+src/agents\thumbnail_agent.py:567:101: E501 line too long (102 > 100 characters)
+src/agents\thumbnail_agent.py:694:15: F541 f-string is missing placeholders
+src/agents\validator_agent.py:42:1: F401 'typing.Optional' imported but unused
+src/agents\validator_agent.py:189:21: F541 f-string is missing placeholders
+src/agents\validator_agent.py:486:101: E501 line too long (112 > 100 characters)
+src/agents\validator_agent.py:513:101: E501 line too long (107 > 100 characters)
+src/agents\validator_agent.py:711:13: E722 do not use bare 'except'
+src/agents\validator_agent.py:776:101: E501 line too long (105 > 100 characters)
+src/agents\validator_agent.py:799:101: E501 line too long (106 > 100 characters)
+src/agents\validator_agent.py:873:101: E501 line too long (114 > 100 characters)
+src/agents\validator_agent.py:876:101: E501 line too long (115 > 100 characters)
+src/agents\validator_agent.py:901:9: E722 do not use bare 'except'
+src/agents\validator_agent.py:949:101: E501 line too long (133 > 100 characters)
+src/agents\validator_agent.py:963:9: F841 local variable 'has_keywords' is assigned to but never used
+src/agents\validator_agent.py:1086:101: E501 line too long (113 > 100 characters)
+src/agents\video_quality_agent.py:35:1: F401 'typing.Tuple' imported but unused
+src/agents\video_quality_agent.py:308:101: E501 line too long (105 > 100 characters)
+src/agents\video_quality_agent.py:491:101: E501 line too long (109 > 100 characters)
+src/agents\video_quality_agent.py:701:19: F541 f-string is missing placeholders
+src/agents\video_quality_agent.py:704:101: E501 line too long (111 > 100 characters)
+src/agents\video_quality_agent.py:708:101: E501 line too long (112 > 100 characters)
+src/agents\video_quality_agent.py:722:23: F541 f-string is missing placeholders
+src/agents\workflow_agent.py:29:1: F401 'pathlib.Path' imported but unused
+src/agents\workflow_agent.py:202:9: F841 local variable 'current_idx' is assigned to but never used
+src/agents\workflow_agent.py:217:101: E501 line too long (106 > 100 characters)
+src/agents\workflow_agent.py:286:101: E501 line too long (105 > 100 characters)
+src/agents\workflow_agent.py:327:101: E501 line too long (102 > 100 characters)
+src/agents\workflow_agent.py:450:101: E501 line too long (101 > 100 characters)
+src/agents\workflow_agent.py:468:101: E501 line too long (105 > 100 characters)
+src/analytics\comment_analyzer.py:37:1: F401 'datetime.timedelta' imported but unused
+src/analytics\comment_analyzer.py:314:101: E501 line too long (104 > 100 characters)
+src/analytics\comment_analyzer.py:690:101: E501 line too long (103 > 100 characters)
+src/analytics\comment_analyzer.py:713:101: E501 line too long (101 > 100 characters)
+src/analytics\comment_analyzer.py:755:101: E501 line too long (109 > 100 characters)
+src/analytics\comment_analyzer.py:810:32: F541 f-string is missing placeholders
+src/analytics\comment_analyzer.py:859:9: F841 local variable 'analysis' is assigned to but never used
+src/analytics\comment_analyzer.py:907:32: E128 continuation line under-indented for visual indent
+src/analytics\comment_analyzer.py:956:23: F541 f-string is missing placeholders
+src/analytics\comment_analyzer.py:969:27: F541 f-string is missing placeholders
+src/analytics\comment_analyzer.py:974:27: F541 f-string is missing placeholders
+src/analytics\feedback_loop.py:34:1: F401 'collections.defaultdict' imported but unused
+src/analytics\feedback_loop.py:38:1: F401 'typing.Tuple' imported but unused
+src/analytics\feedback_loop.py:47:101: E501 line too long (126 > 100 characters)
+src/analytics\feedback_loop.py:231:101: E501 line too long (108 > 100 characters)
+src/analytics\feedback_loop.py:317:101: E501 line too long (150 > 100 characters)
+src/analytics\feedback_loop.py:408:13: F841 local variable 'after' is assigned to but never used
+src/analytics\feedback_loop.py:493:101: E501 line too long (108 > 100 characters)
+src/analytics\feedback_loop.py:539:101: E501 line too long (155 > 100 characters)
+src/analytics\feedback_loop.py:550:101: E501 line too long (105 > 100 characters)
+src/analytics\feedback_loop.py:577:101: E501 line too long (124 > 100 characters)
+src/analytics\feedback_loop.py:607:101: E501 line too long (103 > 100 characters)
+src/analytics\feedback_loop.py:609:101: E501 line too long (135 > 100 characters)
+src/analytics\feedback_loop.py:621:101: E501 line too long (115 > 100 characters)
+src/analytics\feedback_loop.py:623:101: E501 line too long (132 > 100 characters)
+src/analytics\feedback_loop.py:635:101: E501 line too long (134 > 100 characters)
+src/analytics\feedback_loop.py:637:101: E501 line too long (120 > 100 characters)
+src/analytics\feedback_loop.py:652:101: E501 line too long (122 > 100 characters)
+src/analytics\feedback_loop.py:757:101: E501 line too long (105 > 100 characters)
+src/analytics\success_tracker.py:10:1: F401 'json' imported but unused
+src/analytics\success_tracker.py:185:101: E501 line too long (107 > 100 characters)
+src/analytics\success_tracker.py:186:101: E501 line too long (110 > 100 characters)
+src/analytics\success_tracker.py:424:101: E501 line too long (110 > 100 characters)
+src/automation\__init__.py:8:101: E501 line too long (103 > 100 characters)
+src/automation\batch.py:16:1: F401 'os' imported but unused
+src/automation\batch.py:32:1: E402 module level import not at top of file
+src/automation\batch.py:35:1: E402 module level import not at top of file
+src/automation\batch.py:36:1: E402 module level import not at top of file
+src/automation\batch.py:40:101: E501 line too long (104 > 100 characters)
+src/automation\batch.py:111:101: E501 line too long (112 > 100 characters)
+src/automation\batch.py:112:101: E501 line too long (140 > 100 characters)
+src/automation\batch.py:113:101: E501 line too long (167 > 100 characters)
+src/automation\batch.py:128:25: E226 missing whitespace around arithmetic operator
+src/automation\batch.py:130:23: E226 missing whitespace around arithmetic operator
+src/automation\batch.py:181:25: E226 missing whitespace around arithmetic operator
+src/automation\batch.py:182:17: F541 f-string is missing placeholders
+src/automation\batch.py:187:23: E226 missing whitespace around arithmetic operator
+src/automation\batch.py:207:52: E226 missing whitespace around arithmetic operator
+src/automation\batch.py:234:25: E226 missing whitespace around arithmetic operator
+src/automation\batch.py:236:23: E226 missing whitespace around arithmetic operator
+src/automation\batch.py:347:25: E226 missing whitespace around arithmetic operator
+src/automation\batch.py:348:17: F541 f-string is missing placeholders
+src/automation\batch.py:349:23: E226 missing whitespace around arithmetic operator
+src/automation\batch.py:355:23: E226 missing whitespace around arithmetic operator
+src/automation\batch.py:367:39: E226 missing whitespace around arithmetic operator
+src/automation\batch.py:423:39: E226 missing whitespace around arithmetic operator
+src/automation\batch.py:448:25: E226 missing whitespace around arithmetic operator
+src/automation\batch.py:449:17: F541 f-string is missing placeholders
+src/automation\batch.py:450:23: E226 missing whitespace around arithmetic operator
+src/automation\batch.py:455:55: E226 missing whitespace around arithmetic operator
+src/automation\batch.py:456:43: E226 missing whitespace around arithmetic operator
+src/automation\batch.py:457:44: E226 missing whitespace around arithmetic operator
+src/automation\batch.py:457:57: E226 missing whitespace around arithmetic operator
+src/automation\batch.py:639:25: E226 missing whitespace around arithmetic operator
+src/automation\batch.py:640:17: F541 f-string is missing placeholders
+src/automation\batch.py:641:23: E226 missing whitespace around arithmetic operator
+src/automation\batch.py:647:23: E226 missing whitespace around arithmetic operator
+src/automation\batch.py:731:101: E501 line too long (102 > 100 characters)
+src/automation\batch.py:738:25: E226 missing whitespace around arithmetic operator
+src/automation\batch.py:739:17: F541 f-string is missing placeholders
+src/automation\batch.py:740:23: E226 missing whitespace around arithmetic operator
+src/automation\batch.py:745:67: E226 missing whitespace around arithmetic operator
+src/automation\batch.py:746:49: E226 missing whitespace around arithmetic operator
+src/automation\batch.py:747:44: E226 missing whitespace around arithmetic operator
+src/automation\batch.py:747:63: E226 missing whitespace around arithmetic operator
+src/automation\batch.py:777:101: E501 line too long (104 > 100 characters)
+src/automation\parallel_pipeline.py:444:101: E501 line too long (117 > 100 characters)
+src/automation\pipeline_orchestrator.py:43:1: F401 'os' imported but unused
+src/automation\pipeline_orchestrator.py:49:1: F401 'typing.Union' imported but unused
+src/automation\pipeline_orchestrator.py:71:5: F401 'src.compliance.ai_disclosure.AIContentType' imported but unused
+src/automation\pipeline_orchestrator.py:501:43: E226 missing whitespace around arithmetic operator
+src/automation\pipeline_orchestrator.py:501:49: E226 missing whitespace around arithmetic operator
+src/automation\pipeline_orchestrator.py:915:101: E501 line too long (104 > 100 characters)
+src/automation\pipeline_orchestrator.py:954:101: E501 line too long (104 > 100 characters)
+src/automation\pipeline_orchestrator.py:1689:101: E501 line too long (107 > 100 characters)
+src/automation\pipeline_orchestrator.py:1718:101: E501 line too long (103 > 100 characters)
+src/automation\pipeline_orchestrator.py:1772:101: E501 line too long (102 > 100 characters)
+src/automation\pipeline_orchestrator.py:1785:9: F841 local variable 'niche' is assigned to but never used
+src/automation\pipeline_orchestrator.py:1804:101: E501 line too long (103 > 100 characters)
+src/automation\pipeline_orchestrator.py:1811:101: E501 line too long (120 > 100 characters)
+src/automation\pipeline_orchestrator.py:1972:101: E501 line too long (115 > 100 characters)
+src/automation\runner.py:22:1: F401 'datetime.datetime' imported but unused
+src/automation\runner.py:30:1: E402 module level import not at top of file
+src/automation\runner.py:33:1: E402 module level import not at top of file
+src/automation\runner.py:36:1: F401 'src.utils.token_manager.BudgetGuard' imported but unused
+src/automation\runner.py:36:1: E402 module level import not at top of file
+src/automation\runner.py:46:5: F401 'src.utils.best_practices.PrePublishChecklist' imported but unused
+src/automation\runner.py:54:101: E501 line too long (104 > 100 characters)
+src/automation\runner.py:167:101: E501 line too long (105 > 100 characters)
+src/automation\runner.py:288:38: E226 missing whitespace around arithmetic operator
+src/automation\runner.py:325:101: E501 line too long (105 > 100 characters)
+src/automation\runner.py:426:101: E501 line too long (108 > 100 characters)
+src/automation\runner.py:461:101: E501 line too long (133 > 100 characters)
+src/automation\runner.py:522:101: E501 line too long (106 > 100 characters)
+src/automation\runner.py:551:101: E501 line too long (147 > 100 characters)
+src/automation\runner.py:575:101: E501 line too long (110 > 100 characters)
+src/automation\runner.py:576:101: E501 line too long (107 > 100 characters)
+src/automation\runner.py:578:101: E501 line too long (103 > 100 characters)
+src/automation\runner.py:897:101: E501 line too long (120 > 100 characters)
+src/automation\runner.py:905:101: E501 line too long (103 > 100 characters)
+src/automation\runner.py:977:101: E501 line too long (147 > 100 characters)
+src/automation\runner.py:1002:101: E501 line too long (110 > 100 characters)
+src/automation\runner.py:1003:101: E501 line too long (114 > 100 characters)
+src/automation\runner.py:1009:101: E501 line too long (105 > 100 characters)
+src/automation\runner.py:1015:101: E501 line too long (105 > 100 characters)
+src/automation\runner.py:1018:101: E501 line too long (110 > 100 characters)
+src/automation\runner.py:1195:101: E501 line too long (120 > 100 characters)
+src/automation\runner.py:1203:101: E501 line too long (103 > 100 characters)
+src/automation\runner.py:1207:101: E501 line too long (110 > 100 characters)
+src/automation\runner.py:1258:101: E501 line too long (167 > 100 characters)
+src/automation\runner.py:1344:27: E131 continuation line unaligned for hanging indent
+src/automation\runner.py:1345:27: E131 continuation line unaligned for hanging indent
+src/automation\runner.py:1348:29: E226 missing whitespace around arithmetic operator
+src/automation\runner.py:1350:22: E226 missing whitespace around arithmetic operator
+src/automation\runner.py:1355:65: E226 missing whitespace around arithmetic operator
+src/automation\runner.py:1358:22: E226 missing whitespace around arithmetic operator
+src/automation\runner.py:1363:29: E226 missing whitespace around arithmetic operator
+src/automation\runner.py:1376:25: E226 missing whitespace around arithmetic operator
+src/automation\runner.py:1378:18: E226 missing whitespace around arithmetic operator
+src/automation\runner.py:1387:18: E226 missing whitespace around arithmetic operator
+src/automation\unified_launcher.py:12:1: F401 'concurrent.futures.as_completed' imported but unused
+src/captions\whisper_generator.py:37:1: F401 'subprocess' imported but unused
+src/captions\whisper_generator.py:464:101: E501 line too long (106 > 100 characters)
+src/compliance\ai_disclosure.py:35:1: F401 'dataclasses.asdict' imported but unused
+src/compliance\ai_disclosure.py:39:1: F401 'typing.Set' imported but unused
+src/compliance\ai_disclosure.py:393:101: E501 line too long (114 > 100 characters)
+src/compliance\ai_disclosure.py:484:101: E501 line too long (109 > 100 characters)
+src/compliance\ai_disclosure.py:521:101: E501 line too long (107 > 100 characters)
+src/compliance\ai_disclosure.py:536:101: E501 line too long (127 > 100 characters)
+src/compliance\ai_disclosure.py:573:101: E501 line too long (104 > 100 characters)
+src/content\__init__.py:5:101: E501 line too long (110 > 100 characters)
+src/content\ai_video_providers.py:33:1: F401 'typing.Union' imported but unused
+src/content\ai_video_providers.py:33:1: F401 'typing.Literal' imported but unused
+src/content\ai_video_providers.py:796:101: E501 line too long (106 > 100 characters)
+src/content\ai_video_providers.py:797:101: E501 line too long (112 > 100 characters)
+src/content\ai_video_providers.py:798:101: E501 line too long (101 > 100 characters)
+src/content\audio_mastering.py:160:13: F841 local variable 'result' is assigned to but never used
+src/content\audio_processor.py:60:1: F401 'typing.Tuple' imported but unused
+src/content\audio_processor.py:321:101: E501 line too long (104 > 100 characters)
+src/content\audio_processor.py:432:67: E226 missing whitespace around arithmetic operator
+src/content\audio_processor.py:442:55: E226 missing whitespace around arithmetic operator
+src/content\audio_processor.py:452:101: E501 line too long (107 > 100 characters)
+src/content\audio_processor.py:478:101: E501 line too long (104 > 100 characters)
+src/content\audio_processor.py:979:101: E501 line too long (104 > 100 characters)
+src/content\audio_processor.py:1398:21: E226 missing whitespace around arithmetic operator
+src/content\audio_processor.py:1400:14: E226 missing whitespace around arithmetic operator
+src/content\channel_branding.py:19:1: F401 'os' imported but unused
+src/content\channel_branding.py:22:1: F401 'typing.Optional' imported but unused
+src/content\channel_branding.py:44:35: E226 missing whitespace around arithmetic operator
+src/content\channel_branding.py:233:13: F841 local variable 'alpha' is assigned to but never used
+src/content\content_cache.py:20:1: F401 'typing.List' imported but unused
+src/content\content_cache.py:139:77: E226 missing whitespace around arithmetic operator
+src/content\content_cache.py:151:45: E226 missing whitespace around arithmetic operator
+src/content\multi_stock.py:21:1: F401 'shutil' imported but unused
+src/content\multi_stock.py:23:1: F401 'typing.Union' imported but unused
+src/content\multi_stock.py:142:101: E501 line too long (101 > 100 characters)
+src/content\multi_stock.py:175:101: E501 line too long (101 > 100 characters)
+src/content\multi_stock.py:250:101: E501 line too long (101 > 100 characters)
+src/content\multi_stock.py:285:101: E501 line too long (101 > 100 characters)
+src/content\multi_stock.py:299:101: E501 line too long (177 > 100 characters)
+src/content\multi_stock.py:300:101: E501 line too long (109 > 100 characters)
+src/content\multi_stock.py:301:101: E501 line too long (113 > 100 characters)
+src/content\multi_stock.py:303:101: E501 line too long (118 > 100 characters)
+src/content\multi_stock.py:304:101: E501 line too long (106 > 100 characters)
+src/content\multi_stock.py:305:101: E501 line too long (121 > 100 characters)
+src/content\multi_stock.py:309:101: E501 line too long (146 > 100 characters)
+src/content\multi_stock.py:310:101: E501 line too long (101 > 100 characters)
+src/content\multi_stock.py:311:101: E501 line too long (101 > 100 characters)
+src/content\multi_stock.py:312:101: E501 line too long (111 > 100 characters)
+src/content\multi_stock.py:313:101: E501 line too long (104 > 100 characters)
+src/content\multi_stock.py:314:101: E501 line too long (122 > 100 characters)
+src/content\multi_stock.py:320:101: E501 line too long (104 > 100 characters)
+src/content\multi_stock.py:321:101: E501 line too long (104 > 100 characters)
+src/content\multi_stock.py:324:101: E501 line too long (115 > 100 characters)
+src/content\multi_stock.py:328:101: E501 line too long (107 > 100 characters)
+src/content\multi_stock.py:329:101: E501 line too long (109 > 100 characters)
+src/content\multi_stock.py:337:101: E501 line too long (104 > 100 characters)
+src/content\multi_stock.py:339:101: E501 line too long (109 > 100 characters)
+src/content\multi_stock.py:353:101: E501 line too long (128 > 100 characters)
+src/content\multi_stock.py:355:101: E501 line too long (101 > 100 characters)
+src/content\multi_stock.py:357:101: E501 line too long (106 > 100 characters)
+src/content\multi_stock.py:370:101: E501 line too long (101 > 100 characters)
+src/content\multi_stock.py:379:101: E501 line too long (110 > 100 characters)
+src/content\multi_stock.py:387:101: E501 line too long (102 > 100 characters)
+src/content\multi_stock.py:419:101: E501 line too long (113 > 100 characters)
+src/content\multi_stock.py:420:101: E501 line too long (104 > 100 characters)
+src/content\multi_stock.py:425:101: E501 line too long (115 > 100 characters)
+src/content\multi_stock.py:430:101: E501 line too long (116 > 100 characters)
+src/content\multi_stock.py:431:101: E501 line too long (105 > 100 characters)
+src/content\multi_stock.py:447:101: E501 line too long (125 > 100 characters)
+src/content\multi_stock.py:470:101: E501 line too long (112 > 100 characters)
+src/content\multi_stock.py:473:101: E501 line too long (125 > 100 characters)
+src/content\multi_stock.py:484:101: E501 line too long (113 > 100 characters)
+src/content\multi_stock.py:538:101: E501 line too long (117 > 100 characters)
+src/content\multi_stock.py:567:101: E501 line too long (112 > 100 characters)
+src/content\multi_stock.py:689:101: E501 line too long (101 > 100 characters)
+src/content\multi_stock.py:764:101: E501 line too long (106 > 100 characters)
+src/content\multi_stock.py:795:17: E722 do not use bare 'except'
+src/content\multi_stock.py:817:17: E722 do not use bare 'except'
+src/content\multi_stock.py:838:101: E501 line too long (107 > 100 characters)
+src/content\multi_stock.py:954:101: E501 line too long (124 > 100 characters)
+src/content\multi_stock.py:987:101: E501 line too long (122 > 100 characters)
+src/content\multi_stock.py:990:101: E501 line too long (104 > 100 characters)
+src/content\multi_stock.py:1008:101: E501 line too long (107 > 100 characters)
+src/content\multi_stock.py:1013:101: E501 line too long (103 > 100 characters)
+src/content\multi_stock.py:1053:21: E226 missing whitespace around arithmetic operator
+src/content\multi_stock.py:1055:14: E226 missing whitespace around arithmetic operator
+src/content\multi_stock.py:1081:25: E226 missing whitespace around arithmetic operator
+src/content\parallel_downloader.py:109:101: E501 line too long (102 > 100 characters)
+src/content\parallel_processor.py:17:1: F401 'os' imported but unused
+src/content\parallel_processor.py:116:53: E226 missing whitespace around arithmetic operator
+src/content\parallel_processor.py:118:51: E226 missing whitespace around arithmetic operator
+src/content\parallel_processor.py:118:101: E501 line too long (109 > 100 characters)
+src/content\parallel_processor.py:192:9: F841 local variable 'channel_id' is assigned to but never used
+src/content\parallel_processor.py:193:9: F841 local variable 'niche' is assigned to but never used
+src/content\parallel_processor.py:358:21: E226 missing whitespace around arithmetic operator
+src/content\parallel_processor.py:360:14: E226 missing whitespace around arithmetic operator
+src/content\parallel_processor.py:389:11: F541 f-string is missing placeholders
+src/content\quality_checker.py:29:1: F401 'tempfile' imported but unused
+src/content\quality_checker.py:30:1: F401 'pathlib.Path' imported but unused
+src/content\quality_checker.py:260:101: E501 line too long (101 > 100 characters)
+src/content\quality_checker.py:510:101: E501 line too long (106 > 100 characters)
+src/content\quality_checker.py:594:101: E501 line too long (104 > 100 characters)
+src/content\quality_checker.py:665:101: E501 line too long (101 > 100 characters)
+src/content\quality_checker.py:804:101: E501 line too long (117 > 100 characters)
+src/content\quality_checker.py:807:101: E501 line too long (110 > 100 characters)
+src/content\quality_checker.py:813:101: E501 line too long (119 > 100 characters)
+src/content\quality_checker.py:852:101: E501 line too long (105 > 100 characters)
+src/content\quality_checker.py:857:101: E501 line too long (103 > 100 characters)
+src/content\quality_checker.py:1044:101: E501 line too long (120 > 100 characters)
+src/content\quality_checker.py:1105:25: E226 missing whitespace around arithmetic operator
+src/content\quality_checker.py:1107:18: E226 missing whitespace around arithmetic operator
+src/content\quality_checker.py:1114:101: E501 line too long (103 > 100 characters)
+src/content\script_validator.py:28:1: F401 'typing.Optional' imported but unused
+src/content\script_validator.py:28:1: F401 'typing.Set' imported but unused
+src/content\script_validator.py:78:26: F541 f-string is missing placeholders
+src/content\script_validator.py:181:101: E501 line too long (109 > 100 characters)
+src/content\script_validator.py:185:101: E501 line too long (107 > 100 characters)
+src/content\script_validator.py:188:101: E501 line too long (110 > 100 characters)
+src/content\script_validator.py:191:101: E501 line too long (103 > 100 characters)
+src/content\script_validator.py:240:101: E501 line too long (114 > 100 characters)
+src/content\script_validator.py:327:35: E127 continuation line over-indented for visual indent
+src/content\script_validator.py:331:33: E127 continuation line over-indented for visual indent
+src/content\script_validator.py:335:34: E127 continuation line over-indented for visual indent
+src/content\script_validator.py:339:31: E127 continuation line over-indented for visual indent
+src/content\script_validator.py:343:30: E127 continuation line over-indented for visual indent
+src/content\script_validator.py:347:32: E127 continuation line over-indented for visual indent
+src/content\script_validator.py:351:29: E127 continuation line over-indented for visual indent
+src/content\script_validator.py:355:37: E127 continuation line over-indented for visual indent
+src/content\script_validator.py:497:101: E501 line too long (121 > 100 characters)
+src/content\script_validator.py:503:101: E501 line too long (102 > 100 characters)
+src/content\script_validator.py:541:101: E501 line too long (105 > 100 characters)
+src/content\script_validator.py:562:101: E501 line too long (120 > 100 characters)
+src/content\script_validator.py:778:101: E501 line too long (117 > 100 characters)
+src/content\script_validator.py:803:101: E501 line too long (116 > 100 characters)
+src/content\script_writer.py:38:5: F401 'src.utils.best_practices.get_niche_metrics' imported but unused
+src/content\script_writer.py:55:5: F401 'src.utils.token_optimizer.get_token_optimizer' imported but unused
+src/content\script_writer.py:251:101: E501 line too long (102 > 100 characters)
+src/content\script_writer.py:341:101: E501 line too long (101 > 100 characters)
+src/content\script_writer.py:448:27: F541 f-string is missing placeholders
+src/content\script_writer.py:567:17: F541 f-string is missing placeholders
+src/content\script_writer.py:576:17: F541 f-string is missing placeholders
+src/content\script_writer.py:607:27: F541 f-string is missing placeholders
+src/content\script_writer.py:1014:101: E501 line too long (126 > 100 characters)
+src/content\script_writer.py:1032:101: E501 line too long (127 > 100 characters)
+src/content\script_writer.py:1035:101: E501 line too long (125 > 100 characters)
+src/content\script_writer.py:1036:101: E501 line too long (101 > 100 characters)
+src/content\script_writer.py:1042:101: E501 line too long (159 > 100 characters)
+src/content\script_writer.py:1074:101: E501 line too long (236 > 100 characters)
+src/content\script_writer.py:1079:101: E501 line too long (114 > 100 characters)
+src/content\script_writer.py:1083:101: E501 line too long (120 > 100 characters)
+src/content\script_writer.py:1085:101: E501 line too long (125 > 100 characters)
+src/content\script_writer.py:1087:101: E501 line too long (254 > 100 characters)
+src/content\script_writer.py:1147:101: E501 line too long (128 > 100 characters)
+src/content\script_writer.py:1148:101: E501 line too long (157 > 100 characters)
+src/content\script_writer.py:1152:101: E501 line too long (164 > 100 characters)
+src/content\script_writer.py:1153:101: E501 line too long (173 > 100 characters)
+src/content\script_writer.py:1157:101: E501 line too long (190 > 100 characters)
+src/content\script_writer.py:1158:101: E501 line too long (180 > 100 characters)
+src/content\script_writer.py:1192:101: E501 line too long (122 > 100 characters)
+src/content\script_writer.py:1352:101: E501 line too long (101 > 100 characters)
+src/content\script_writer.py:1355:101: E501 line too long (124 > 100 characters)
+src/content\script_writer.py:1358:101: E501 line too long (123 > 100 characters)
+src/content\script_writer.py:1382:101: E501 line too long (101 > 100 characters)
+src/content\script_writer.py:1388:26: E128 continuation line under-indented for visual indent
+src/content\script_writer.py:1389:26: E128 continuation line under-indented for visual indent
+src/content\script_writer.py:1433:37: F821 undefined name 'topic'
+src/content\script_writer.py:1489:36: E741 ambiguous variable name 'l'
+src/content\script_writer.py:1559:101: E501 line too long (101 > 100 characters)
+src/content\script_writer.py:1640:101: E501 line too long (123 > 100 characters)
+src/content\script_writer.py:1657:101: E501 line too long (156 > 100 characters)
+src/content\script_writer.py:1658:101: E501 line too long (175 > 100 characters)
+src/content\script_writer.py:1659:101: E501 line too long (162 > 100 characters)
+src/content\script_writer.py:1660:101: E501 line too long (139 > 100 characters)
+src/content\script_writer.py:1671:101: E501 line too long (115 > 100 characters)
+src/content\script_writer.py:1672:101: E501 line too long (111 > 100 characters)
+src/content\script_writer.py:1676:101: E501 line too long (157 > 100 characters)
+src/content\script_writer.py:1678:101: E501 line too long (139 > 100 characters)
+src/content\script_writer.py:1682:101: E501 line too long (117 > 100 characters)
+src/content\script_writer.py:1688:101: E501 line too long (117 > 100 characters)
+src/content\script_writer.py:1696:101: E501 line too long (104 > 100 characters)
+src/content\script_writer.py:1705:101: E501 line too long (109 > 100 characters)
+src/content\script_writer.py:1717:30: E128 continuation line under-indented for visual indent
+src/content\script_writer.py:1718:30: E128 continuation line under-indented for visual indent
+src/content\script_writer.py:1734:44: E226 missing whitespace around arithmetic operator
+src/content\script_writer.py:1734:65: E228 missing whitespace around modulo operator
+src/content\script_writer.py:1734:83: E226 missing whitespace around arithmetic operator
+src/content\script_writer.py:1734:101: E501 line too long (111 > 100 characters)
+src/content\script_writer.py:1734:102: E228 missing whitespace around modulo operator
+src/content\script_writer.py:1736:39: E226 missing whitespace around arithmetic operator
+src/content\script_writer.py:1778:37: F541 f-string is missing placeholders
+src/content\script_writer.py:1803:101: E501 line too long (101 > 100 characters)
+src/content\script_writer.py:1883:30: E128 continuation line under-indented for visual indent
+src/content\script_writer.py:1884:30: E128 continuation line under-indented for visual indent
+src/content\script_writer.py:2045:101: E501 line too long (134 > 100 characters)
+src/content\script_writer.py:2169:80: E226 missing whitespace around arithmetic operator
+src/content\script_writer.py:2281:17: F401 'src.content.script_validator.ValidationResult' imported but unused
+src/content\script_writer.py:2290:36: E128 continuation line under-indented for visual indent
+src/content\script_writer.py:2304:36: E128 continuation line under-indented for visual indent
+src/content\script_writer.py:2379:101: E501 line too long (106 > 100 characters)
+src/content\script_writer.py:2507:101: E501 line too long (108 > 100 characters)
+src/content\script_writer.py:2532:101: E501 line too long (169 > 100 characters)
+src/content\script_writer.py:2533:101: E501 line too long (173 > 100 characters)
+src/content\script_writer.py:2536:101: E501 line too long (173 > 100 characters)
+src/content\script_writer.py:2537:101: E501 line too long (159 > 100 characters)
+src/content\script_writer.py:2540:101: E501 line too long (142 > 100 characters)
+src/content\script_writer.py:2541:101: E501 line too long (145 > 100 characters)
+src/content\script_writer.py:2544:101: E501 line too long (151 > 100 characters)
+src/content\script_writer.py:2545:101: E501 line too long (120 > 100 characters)
+src/content\script_writer.py:2623:101: E501 line too long (111 > 100 characters)
+src/content\script_writer.py:2730:101: E501 line too long (106 > 100 characters)
+src/content\script_writer.py:2857:101: E501 line too long (114 > 100 characters)
+src/content\script_writer.py:2920:101: E501 line too long (124 > 100 characters)
+src/content\script_writer.py:2922:101: E501 line too long (124 > 100 characters)
+src/content\script_writer.py:3038:101: E501 line too long (112 > 100 characters)
+src/content\script_writer.py:3039:101: E501 line too long (141 > 100 characters)
+src/content\script_writer.py:3120:101: E501 line too long (106 > 100 characters)
+src/content\script_writer.py:3177:101: E501 line too long (106 > 100 characters)
+src/content\script_writer.py:3279:101: E501 line too long (108 > 100 characters)
+src/content\script_writer.py:3289:101: E501 line too long (115 > 100 characters)
+src/content\script_writer.py:3541:23: E226 missing whitespace around arithmetic operator
+src/content\script_writer.py:3543:21: E226 missing whitespace around arithmetic operator
+src/content\script_writer.py:3549:23: E226 missing whitespace around arithmetic operator
+src/content\script_writer.py:3551:21: E226 missing whitespace around arithmetic operator
+src/content\script_writer.py:3561:23: E226 missing whitespace around arithmetic operator
+src/content\script_writer.py:3563:21: E226 missing whitespace around arithmetic operator
+src/content\shorts_hybrid.py:31:1: F401 'typing.Dict' imported but unused
+src/content\shorts_hybrid.py:31:1: F401 'typing.Tuple' imported but unused
+src/content\shorts_hybrid.py:83:101: E501 line too long (110 > 100 characters)
+src/content\shorts_hybrid.py:121:101: E501 line too long (101 > 100 characters)
+src/content\shorts_hybrid.py:317:101: E501 line too long (104 > 100 characters)
+src/content\shorts_hybrid.py:333:101: E501 line too long (102 > 100 characters)
+src/content\shorts_hybrid.py:375:101: E501 line too long (231 > 100 characters)
+src/content\shorts_hybrid.py:492:101: E501 line too long (103 > 100 characters)
+src/content\sponsor_manager.py:39:1: F401 'os' imported but unused
+src/content\sponsor_manager.py:44:1: F401 'datetime.timedelta' imported but unused
+src/content\sponsor_manager.py:183:101: E501 line too long (177 > 100 characters)
+src/content\sponsor_manager.py:184:101: E501 line too long (189 > 100 characters)
+src/content\sponsor_manager.py:185:101: E501 line too long (147 > 100 characters)
+src/content\sponsor_manager.py:188:101: E501 line too long (130 > 100 characters)
+src/content\sponsor_manager.py:189:101: E501 line too long (134 > 100 characters)
+src/content\sponsor_manager.py:192:101: E501 line too long (118 > 100 characters)
+src/content\sponsor_manager.py:193:101: E501 line too long (134 > 100 characters)
+src/content\sponsor_manager.py:196:101: E501 line too long (131 > 100 characters)
+src/content\sponsor_manager.py:202:101: E501 line too long (259 > 100 characters)
+src/content\sponsor_manager.py:203:101: E501 line too long (313 > 100 characters)
+src/content\sponsor_manager.py:208:101: E501 line too long (139 > 100 characters)
+src/content\sponsor_manager.py:209:101: E501 line too long (118 > 100 characters)
+src/content\sponsor_manager.py:343:101: E501 line too long (104 > 100 characters)
+src/content\sponsor_manager.py:486:101: E501 line too long (127 > 100 characters)
+src/content\sponsor_manager.py:495:41: E226 missing whitespace around arithmetic operator
+src/content\sponsor_manager.py:525:101: E501 line too long (101 > 100 characters)
+src/content\stock_cache.py:219:101: E501 line too long (101 > 100 characters)
+src/content\stock_cache.py:378:101: E501 line too long (110 > 100 characters)
+src/content\stock_cache.py:449:101: E501 line too long (110 > 100 characters)
+src/content\stock_cache.py:753:101: E501 line too long (103 > 100 characters)
+src/content\stock_cache.py:839:101: E501 line too long (106 > 100 characters)
+src/content\stock_cache.py:925:21: E722 do not use bare 'except'
+src/content\stock_cache.py:1011:101: E501 line too long (141 > 100 characters)
+src/content\stock_cache.py:1020:101: E501 line too long (113 > 100 characters)
+src/content\stock_footage.py:37:1: F401 'dataclasses.field' imported but unused
+src/content\stock_footage.py:45:101: E501 line too long (107 > 100 characters)
+src/content\stock_footage.py:190:17: E722 do not use bare 'except'
+src/content\stock_footage.py:233:101: E501 line too long (104 > 100 characters)
+src/content\stock_footage.py:252:101: E501 line too long (116 > 100 characters)
+src/content\stock_footage.py:275:101: E501 line too long (104 > 100 characters)
+src/content\stock_footage.py:327:101: E501 line too long (117 > 100 characters)
+src/content\stock_footage.py:338:101: E501 line too long (110 > 100 characters)
+src/content\stock_footage.py:366:9: F401 'dataclasses.replace' imported but unused
+src/content\stock_footage.py:415:101: E501 line too long (177 > 100 characters)
+src/content\stock_footage.py:416:101: E501 line too long (109 > 100 characters)
+src/content\stock_footage.py:417:101: E501 line too long (113 > 100 characters)
+src/content\stock_footage.py:419:101: E501 line too long (118 > 100 characters)
+src/content\stock_footage.py:420:101: E501 line too long (106 > 100 characters)
+src/content\stock_footage.py:421:101: E501 line too long (121 > 100 characters)
+src/content\stock_footage.py:425:101: E501 line too long (146 > 100 characters)
+src/content\stock_footage.py:426:101: E501 line too long (101 > 100 characters)
+src/content\stock_footage.py:427:101: E501 line too long (101 > 100 characters)
+src/content\stock_footage.py:428:101: E501 line too long (111 > 100 characters)
+src/content\stock_footage.py:429:101: E501 line too long (104 > 100 characters)
+src/content\stock_footage.py:430:101: E501 line too long (122 > 100 characters)
+src/content\stock_footage.py:436:101: E501 line too long (104 > 100 characters)
+src/content\stock_footage.py:437:101: E501 line too long (104 > 100 characters)
+src/content\stock_footage.py:440:101: E501 line too long (115 > 100 characters)
+src/content\stock_footage.py:444:101: E501 line too long (107 > 100 characters)
+src/content\stock_footage.py:445:101: E501 line too long (109 > 100 characters)
+src/content\stock_footage.py:453:101: E501 line too long (104 > 100 characters)
+src/content\stock_footage.py:455:101: E501 line too long (109 > 100 characters)
+src/content\stock_footage.py:469:101: E501 line too long (128 > 100 characters)
+src/content\stock_footage.py:471:101: E501 line too long (101 > 100 characters)
+src/content\stock_footage.py:473:101: E501 line too long (106 > 100 characters)
+src/content\stock_footage.py:486:101: E501 line too long (101 > 100 characters)
+src/content\stock_footage.py:495:101: E501 line too long (110 > 100 characters)
+src/content\stock_footage.py:503:101: E501 line too long (102 > 100 characters)
+src/content\stock_footage.py:562:101: E501 line too long (117 > 100 characters)
+src/content\stock_footage.py:577:101: E501 line too long (112 > 100 characters)
+src/content\stock_footage.py:938:9: F841 local variable 'color' is assigned to but never used
+src/content\stock_footage.py:1031:101: E501 line too long (103 > 100 characters)
+src/content\stock_footage.py:1101:101: E501 line too long (107 > 100 characters)
+src/content\stock_footage.py:1652:101: E501 line too long (131 > 100 characters)
+src/content\stock_footage.py:1827:101: E501 line too long (108 > 100 characters)
+src/content\stock_footage.py:1840:101: E501 line too long (111 > 100 characters)
+src/content\stock_footage.py:1849:21: E226 missing whitespace around arithmetic operator
+src/content\stock_footage.py:1851:14: E226 missing whitespace around arithmetic operator
+src/content\stock_footage.py:1880:25: E226 missing whitespace around arithmetic operator
+src/content\stock_footage.py:1892:101: E501 line too long (103 > 100 characters)
+src/content\subtitles.py:38:1: F401 'typing.Tuple' imported but unused
+src/content\subtitles.py:456:101: E501 line too long (101 > 100 characters)
+src/content\subtitles.py:458:9: F841 local variable 'wpm' is assigned to but never used
+src/content\subtitles.py:750:13: F841 local variable 'y_position' is assigned to but never used
+src/content\subtitles.py:756:13: F541 f-string is missing placeholders
+src/content\subtitles.py:757:13: F541 f-string is missing placeholders
+src/content\subtitles.py:967:21: E226 missing whitespace around arithmetic operator
+src/content\subtitles.py:969:14: E226 missing whitespace around arithmetic operator
+src/content\template_engine.py:34:1: F401 'typing.Union' imported but unused
+src/content\template_engine.py:43:1: F401 'hashlib' imported but unused
+src/content\template_engine.py:47:5: F401 'PIL.ImageFilter' imported but unused
+src/content\template_engine.py:535:44: E226 missing whitespace around arithmetic operator
+src/content\template_engine.py:646:26: F541 f-string is missing placeholders
+src/content\template_engine.py:648:26: F541 f-string is missing placeholders
+src/content\template_engine.py:770:101: E501 line too long (104 > 100 characters)
+src/content\template_engine.py:839:38: E741 ambiguous variable name 'l'
+src/content\template_engine.py:839:101: E501 line too long (130 > 100 characters)
+src/content\template_engine.py:1098:38: E226 missing whitespace around arithmetic operator
+src/content\template_engine.py:1152:50: E226 missing whitespace around arithmetic operator
+src/content\thumbnail_ai.py:36:1: F401 'typing.Tuple' imported but unused
+src/content\thumbnail_ai.py:40:5: F401 'PIL.ImageFont' imported but unused
+src/content\thumbnail_ai.py:40:5: F401 'PIL.ImageEnhance' imported but unused
+src/content\thumbnail_ai.py:52:1: F401 '.channel_branding.BrandColors' imported but unused
+src/content\thumbnail_ai.py:59:101: E501 line too long (175 > 100 characters)
+src/content\thumbnail_ai.py:64:101: E501 line too long (181 > 100 characters)
+src/content\thumbnail_ai.py:69:101: E501 line too long (169 > 100 characters)
+src/content\thumbnail_ai.py:74:101: E501 line too long (170 > 100 characters)
+src/content\thumbnail_ai.py:79:101: E501 line too long (164 > 100 characters)
+src/content\thumbnail_ai.py:86:101: E501 line too long (168 > 100 characters)
+src/content\thumbnail_ai.py:91:101: E501 line too long (166 > 100 characters)
+src/content\thumbnail_ai.py:96:101: E501 line too long (170 > 100 characters)
+src/content\thumbnail_ai.py:101:101: E501 line too long (169 > 100 characters)
+src/content\thumbnail_ai.py:106:101: E501 line too long (171 > 100 characters)
+src/content\thumbnail_ai.py:113:101: E501 line too long (185 > 100 characters)
+src/content\thumbnail_ai.py:118:101: E501 line too long (167 > 100 characters)
+src/content\thumbnail_ai.py:123:101: E501 line too long (166 > 100 characters)
+src/content\thumbnail_ai.py:128:101: E501 line too long (176 > 100 characters)
+src/content\thumbnail_ai.py:133:101: E501 line too long (175 > 100 characters)
+src/content\thumbnail_ai.py:329:101: E501 line too long (104 > 100 characters)
+src/content\thumbnail_ai.py:515:84: E226 missing whitespace around arithmetic operator
+src/content\thumbnail_ai.py:515:101: E501 line too long (102 > 100 characters)
+src/content\thumbnail_ai.py:532:61: E226 missing whitespace around arithmetic operator
+src/content\thumbnail_ai.py:543:71: E226 missing whitespace around arithmetic operator
+src/content\thumbnail_ai.py:582:101: E501 line too long (103 > 100 characters)
+src/content\thumbnail_ai.py:606:24: E128 continuation line under-indented for visual indent
+src/content\thumbnail_ai.py:607:24: E128 continuation line under-indented for visual indent
+src/content\thumbnail_ai.py:612:24: E128 continuation line under-indented for visual indent
+src/content\thumbnail_ai.py:613:24: E128 continuation line under-indented for visual indent
+src/content\thumbnail_ai.py:615:24: E128 continuation line under-indented for visual indent
+src/content\thumbnail_generator.py:45:5: F401 'PIL.ImageEnhance' imported but unused
+src/content\thumbnail_generator.py:54:5: F401 'numpy as np' imported but unused
+src/content\thumbnail_generator.py:57:101: E501 line too long (106 > 100 characters)
+src/content\thumbnail_generator.py:203:101: E501 line too long (105 > 100 characters)
+src/content\thumbnail_generator.py:205:101: E501 line too long (107 > 100 characters)
+src/content\thumbnail_generator.py:296:27: E128 continuation line under-indented for visual indent
+src/content\thumbnail_generator.py:297:27: E128 continuation line under-indented for visual indent
+src/content\thumbnail_generator.py:298:27: E128 continuation line under-indented for visual indent
+src/content\thumbnail_generator.py:476:24: F541 f-string is missing placeholders
+src/content\thumbnail_generator.py:573:9: F841 local variable 'glow_color' is assigned to but never used
+src/content\thumbnail_generator.py:628:101: E501 line too long (112 > 100 characters)
+src/content\thumbnail_generator.py:728:81: E226 missing whitespace around arithmetic operator
+src/content\thumbnail_generator.py:980:38: E226 missing whitespace around arithmetic operator
+src/content\thumbnail_generator.py:980:63: E226 missing whitespace around arithmetic operator
+src/content\thumbnail_generator.py:981:38: E226 missing whitespace around arithmetic operator
+src/content\thumbnail_generator.py:981:63: E226 missing whitespace around arithmetic operator
+src/content\thumbnail_generator.py:1029:101: E501 line too long (103 > 100 characters)
+src/content\thumbnail_generator.py:1036:9: F401 'dataclasses.replace' imported but unused
+src/content\thumbnail_generator.py:1078:39: E226 missing whitespace around arithmetic operator
+src/content\thumbnail_generator.py:1127:82: E226 missing whitespace around arithmetic operator
+src/content\thumbnail_generator.py:1139:101: E501 line too long (102 > 100 characters)
+src/content\thumbnail_generator.py:1163:37: E226 missing whitespace around arithmetic operator
+src/content\thumbnail_generator.py:1176:47: E226 missing whitespace around arithmetic operator
+src/content\thumbnail_generator.py:1248:101: E501 line too long (106 > 100 characters)
+src/content\thumbnail_generator.py:1263:101: E501 line too long (110 > 100 characters)
+src/content\thumbnail_generator.py:1318:24: E128 continuation line under-indented for visual indent
+src/content\thumbnail_generator.py:1319:24: E128 continuation line under-indented for visual indent
+src/content\thumbnail_generator.py:1322:24: E128 continuation line under-indented for visual indent
+src/content\thumbnail_generator.py:1323:24: E128 continuation line under-indented for visual indent
+src/content\thumbnail_generator.py:1327:24: E128 continuation line under-indented for visual indent
+src/content\tts.py:82:101: E501 line too long (125 > 100 characters)
+src/content\tts.py:434:101: E501 line too long (101 > 100 characters)
+src/content\tts.py:581:101: E501 line too long (115 > 100 characters)
+src/content\tts.py:582:101: E501 line too long (129 > 100 characters)
+src/content\tts.py:677:21: F541 f-string is missing placeholders
+src/content\tts.py:723:101: E501 line too long (101 > 100 characters)
+src/content\tts.py:840:23: E226 missing whitespace around arithmetic operator
+src/content\tts.py:842:21: E226 missing whitespace around arithmetic operator
+src/content\tts.py:848:23: E226 missing whitespace around arithmetic operator
+src/content\tts_chatterbox.py:30:5: F401 'chatterbox' imported but unused
+src/content\video_assembler.py:27:1: F401 'typing.Dict' imported but unused
+src/content\video_assembler.py:27:1: F401 'typing.Union' imported but unused
+src/content\video_assembler.py:32:1: F401 '.video_utils.FFMPEG_PARAMS_REGULAR' imported but unused
+src/content\video_assembler.py:32:1: F401 '.video_utils.FFMPEG_PARAMS_SHORTS' imported but unused
+src/content\video_assembler.py:32:101: E501 line too long (118 > 100 characters)
+src/content\video_assembler.py:81:5: F811 redefinition of unused 'FFMPEG_PARAMS_REGULAR' from line 32
+src/content\video_assembler.py:92:5: F811 redefinition of unused 'FFMPEG_PARAMS_SHORTS' from line 32
+src/content\video_assembler.py:148:101: E501 line too long (112 > 100 characters)
+src/content\video_assembler.py:194:101: E501 line too long (105 > 100 characters)
+src/content\video_assembler.py:415:82: E226 missing whitespace around arithmetic operator
+src/content\video_assembler.py:710:9: F401 'asyncio' imported but unused
+src/content\video_assembler.py:764:51: E226 missing whitespace around arithmetic operator
+src/content\video_fast.py:34:1: F401 'shutil' imported but unused
+src/content\video_fast.py:55:5: F401 '.subtitles.SubtitleTrack' imported but unused
+src/content\video_fast.py:55:5: F401 '.subtitles.SUBTITLE_STYLES' imported but unused
+src/content\video_fast.py:62:1: F401 '.video_utils.FFMPEG_PARAMS_REGULAR' imported but unused
+src/content\video_fast.py:62:1: F401 '.video_utils.FFMPEG_PARAMS_SHORTS' imported but unused
+src/content\video_fast.py:62:101: E501 line too long (118 > 100 characters)
+src/content\video_fast.py:79:5: F811 redefinition of unused 'FFMPEG_PARAMS_REGULAR' from line 62
+src/content\video_fast.py:90:5: F811 redefinition of unused 'FFMPEG_PARAMS_SHORTS' from line 62
+src/content\video_fast.py:128:101: E501 line too long (105 > 100 characters)
+src/content\video_fast.py:290:101: E501 line too long (113 > 100 characters)
+src/content\video_fast.py:297:25: F541 f-string is missing placeholders
+src/content\video_fast.py:319:36: F541 f-string is missing placeholders
+src/content\video_fast.py:321:36: F541 f-string is missing placeholders
+src/content\video_fast.py:327:32: F541 f-string is missing placeholders
+src/content\video_fast.py:327:101: E501 line too long (105 > 100 characters)
+src/content\video_fast.py:330:32: F541 f-string is missing placeholders
+src/content\video_fast.py:333:17: F841 local variable 'audio_label' is assigned to but never used
+src/content\video_fast.py:334:32: F541 f-string is missing placeholders
+src/content\video_fast.py:375:101: E501 line too long (115 > 100 characters)
+src/content\video_fast.py:381:101: E501 line too long (197 > 100 characters)
+src/content\video_fast.py:387:101: E501 line too long (102 > 100 characters)
+src/content\video_fast.py:413:101: E501 line too long (115 > 100 characters)
+src/content\video_fast.py:419:101: E501 line too long (197 > 100 characters)
+src/content\video_fast.py:435:21: E722 do not use bare 'except'
+src/content\video_fast.py:456:17: E722 do not use bare 'except'
+src/content\video_fast.py:461:17: E722 do not use bare 'except'
+src/content\video_fast.py:481:34: E226 missing whitespace around arithmetic operator
+src/content\video_fast.py:502:17: E722 do not use bare 'except'
+src/content\video_fast.py:505:21: E722 do not use bare 'except'
+src/content\video_fast.py:528:17: E722 do not use bare 'except'
+src/content\video_fast.py:537:13: E722 do not use bare 'except'
+src/content\video_fast.py:638:82: E226 missing whitespace around arithmetic operator
+src/content\video_fast.py:732:29: E722 do not use bare 'except'
+src/content\video_fast.py:756:17: E722 do not use bare 'except'
+src/content\video_fast.py:762:17: E722 do not use bare 'except'
+src/content\video_fast.py:777:34: E226 missing whitespace around arithmetic operator
+src/content\video_fast.py:795:13: E722 do not use bare 'except'
+src/content\video_fast.py:798:17: E722 do not use bare 'except'
+src/content\video_fast.py:839:13: E722 do not use bare 'except'
+src/content\video_fast.py:865:9: E722 do not use bare 'except'
+src/content\video_fast.py:919:13: F841 local variable 'start_time' is assigned to but never used
+src/content\video_fast.py:961:101: E501 line too long (110 > 100 characters)
+src/content\video_hooks.py:83:5: F401 'PIL.ImageFilter' imported but unused
+src/content\video_hooks.py:176:101: E501 line too long (103 > 100 characters)
+src/content\video_hooks.py:193:101: E501 line too long (110 > 100 characters)
+src/content\video_hooks.py:209:101: E501 line too long (107 > 100 characters)
+src/content\video_hooks.py:210:101: E501 line too long (117 > 100 characters)
+src/content\video_hooks.py:212:101: E501 line too long (103 > 100 characters)
+src/content\video_hooks.py:334:101: E501 line too long (112 > 100 characters)
+src/content\video_hooks.py:335:101: E501 line too long (108 > 100 characters)
+src/content\video_hooks.py:336:101: E501 line too long (111 > 100 characters)
+src/content\video_hooks.py:337:101: E501 line too long (112 > 100 characters)
+src/content\video_hooks.py:363:35: E226 missing whitespace around arithmetic operator
+src/content\video_hooks.py:397:69: E226 missing whitespace around arithmetic operator
+src/content\video_hooks.py:397:101: E501 line too long (111 > 100 characters)
+src/content\video_hooks.py:520:101: E501 line too long (102 > 100 characters)
+src/content\video_hooks.py:641:101: E501 line too long (104 > 100 characters)
+src/content\video_hooks.py:677:52: E226 missing whitespace around arithmetic operator
+src/content\video_hooks.py:677:59: E226 missing whitespace around arithmetic operator
+src/content\video_hooks.py:679:45: E226 missing whitespace around arithmetic operator
+src/content\video_hooks.py:679:58: E226 missing whitespace around arithmetic operator
+src/content\video_hooks.py:681:25: F841 local variable 'opacity' is assigned to but never used
+src/content\video_hooks.py:688:28: E226 missing whitespace around arithmetic operator
+src/content\video_hooks.py:688:36: E226 missing whitespace around arithmetic operator
+src/content\video_hooks.py:688:44: E226 missing whitespace around arithmetic operator
+src/content\video_hooks.py:688:52: E226 missing whitespace around arithmetic operator
+src/content\video_hooks.py:766:101: E501 line too long (106 > 100 characters)
+src/content\video_hooks.py:908:101: E501 line too long (105 > 100 characters)
+src/content\video_hooks.py:1063:9: F841 local variable 'template' is assigned to but never used
+src/content\video_hooks.py:1069:9: F841 local variable 'dark_frame' is assigned to but never used
+src/content\video_hooks.py:1094:101: E501 line too long (103 > 100 characters)
+src/content\video_hooks.py:1103:17: F841 local variable 'text_opacity' is assigned to but never used
+src/content\video_hooks.py:1147:101: E501 line too long (119 > 100 characters)
+src/content\video_hooks.py:1152:101: E501 line too long (114 > 100 characters)
+src/content\video_hooks.py:1243:56: E226 missing whitespace around arithmetic operator
+src/content\video_hooks.py:1243:101: E501 line too long (138 > 100 characters)
+src/content\video_hooks.py:1304:101: E501 line too long (103 > 100 characters)
+src/content\video_hooks.py:1477:101: E501 line too long (104 > 100 characters)
+src/content\video_hooks.py:1539:101: E501 line too long (103 > 100 characters)
+src/content\video_hooks.py:1590:9: F841 local variable 'style_config' is assigned to but never used
+src/content\video_hooks.py:1654:13: F841 local variable 'current_text' is assigned to but never used
+src/content\video_hooks.py:1678:101: E501 line too long (101 > 100 characters)
+src/content\video_hooks.py:1720:40: E226 missing whitespace around arithmetic operator
+src/content\video_hooks.py:1983:9: F841 local variable 'glow_rgba' is assigned to but never used
+src/content\video_hooks.py:2082:101: E501 line too long (105 > 100 characters)
+src/content\video_hooks.py:2130:17: F841 local variable 'result' is assigned to but never used
+src/content\video_pika.py:41:1: F401 'typing.Literal' imported but unused
+src/content\video_pika.py:72:9: F401 'aiohttp' imported but unused
+src/content\video_pika.py:230:17: F811 redefinition of unused 'aiohttp' from line 72
+src/content\video_pika.py:232:101: E501 line too long (102 > 100 characters)
+src/content\video_pika.py:290:21: F541 f-string is missing placeholders
+src/content\video_pika.py:410:21: F541 f-string is missing placeholders
+src/content\video_pika.py:531:101: E501 line too long (101 > 100 characters)
+src/content\video_pika.py:691:101: E501 line too long (106 > 100 characters)
+src/content\video_shorts.py:31:1: F401 'dataclasses.dataclass' imported but unused
+src/content\video_shorts.py:46:5: F401 'PIL.ImageFilter' imported but unused
+src/content\video_shorts.py:46:5: F401 'PIL.ImageEnhance' imported but unused
+src/content\video_shorts.py:52:5: F401 '.subtitles.SubtitleTrack' imported but unused
+src/content\video_shorts.py:52:5: F401 '.subtitles.SUBTITLE_STYLES' imported but unused
+src/content\video_shorts.py:60:5: F401 '.video_hooks.HookValidationResult' imported but unused
+src/content\video_shorts.py:67:1: E402 module level import not at top of file
+src/content\video_shorts.py:71:1: E302 expected 2 blank lines, found 1
+src/content\video_shorts.py:81:1: E302 expected 2 blank lines, found 1
+src/content\video_shorts.py:85:1: E305 expected 2 blank lines after class or function definition, found 1
+src/content\video_shorts.py:148:101: E501 line too long (103 > 100 characters)
+src/content\video_shorts.py:150:101: E501 line too long (103 > 100 characters)
+src/content\video_shorts.py:152:101: E501 line too long (105 > 100 characters)
+src/content\video_shorts.py:154:101: E501 line too long (106 > 100 characters)
+src/content\video_shorts.py:156:101: E501 line too long (102 > 100 characters)
+src/content\video_shorts.py:158:101: E501 line too long (106 > 100 characters)
+src/content\video_shorts.py:301:101: E501 line too long (130 > 100 characters)
+src/content\video_shorts.py:314:101: E501 line too long (101 > 100 characters)
+src/content\video_shorts.py:371:101: E501 line too long (112 > 100 characters)
+src/content\video_shorts.py:372:101: E501 line too long (108 > 100 characters)
+src/content\video_shorts.py:373:101: E501 line too long (111 > 100 characters)
+src/content\video_shorts.py:430:50: E226 missing whitespace around arithmetic operator
+src/content\video_shorts.py:512:28: F541 f-string is missing placeholders
+src/content\video_shorts.py:550:101: E501 line too long (109 > 100 characters)
+src/content\video_shorts.py:575:55: E226 missing whitespace around arithmetic operator
+src/content\video_shorts.py:577:101: E501 line too long (102 > 100 characters)
+src/content\video_shorts.py:578:101: E501 line too long (132 > 100 characters)
+src/content\video_shorts.py:585:13: F841 local variable 'result' is assigned to but never used
+src/content\video_shorts.py:611:44: E226 missing whitespace around arithmetic operator
+src/content\video_shorts.py:624:101: E501 line too long (109 > 100 characters)
+src/content\video_shorts.py:673:48: E226 missing whitespace around arithmetic operator
+src/content\video_shorts.py:675:52: E226 missing whitespace around arithmetic operator
+src/content\video_shorts.py:707:101: E501 line too long (101 > 100 characters)
+src/content\video_shorts.py:754:101: E501 line too long (104 > 100 characters)
+src/content\video_shorts.py:812:13: F841 local variable 'primary_rgb' is assigned to but never used
+src/content\video_shorts.py:812:48: E226 missing whitespace around arithmetic operator
+src/content\video_shorts.py:902:52: E226 missing whitespace around arithmetic operator
+src/content\video_shorts.py:904:48: E226 missing whitespace around arithmetic operator
+src/content\video_shorts.py:970:13: F401 'asyncio' imported but unused
+src/content\video_shorts.py:1015:101: E501 line too long (110 > 100 characters)
+src/content\video_shorts.py:1041:101: E501 line too long (126 > 100 characters)
+src/content\video_shorts.py:1044:101: E501 line too long (117 > 100 characters)
+src/content\video_shorts.py:1048:101: E501 line too long (110 > 100 characters)
+src/content\video_shorts.py:1049:28: E128 continuation line under-indented for visual indent
+src/content\video_shorts.py:1132:101: E501 line too long (134 > 100 characters)
+src/content\video_shorts.py:1163:101: E501 line too long (141 > 100 characters)
+src/content\video_shorts.py:1190:101: E501 line too long (105 > 100 characters)
+src/content\video_shorts.py:1234:101: E501 line too long (112 > 100 characters)
+src/content\video_shorts.py:1239:101: E501 line too long (103 > 100 characters)
+src/content\video_shorts.py:1389:101: E501 line too long (113 > 100 characters)
+src/content\video_shorts.py:1395:101: E501 line too long (103 > 100 characters)
+src/content\video_shorts.py:1417:37: E722 do not use bare 'except'
+src/content\video_shorts.py:1425:101: E501 line too long (102 > 100 characters)
+src/content\video_shorts.py:1585:64: E226 missing whitespace around arithmetic operator
+src/content\video_shorts.py:1623:21: E226 missing whitespace around arithmetic operator
+src/content\video_shorts.py:1625:14: E226 missing whitespace around arithmetic operator
+src/content\video_utils.py:14:1: F401 'pathlib.Path' imported but unused
+src/content\video_utils.py:107:101: E501 line too long (117 > 100 characters)
+src/content\viral_content_engine.py:39:1: F401 're' imported but unused
+src/content\viral_content_engine.py:41:1: F401 'dataclasses.field' imported but unused
+src/content\viral_content_engine.py:166:101: E501 line too long (132 > 100 characters)
+src/content\viral_content_engine.py:168:101: E501 line too long (124 > 100 characters)
+src/content\viral_content_engine.py:169:101: E501 line too long (106 > 100 characters)
+src/content\viral_content_engine.py:173:101: E501 line too long (112 > 100 characters)
+src/content\viral_content_engine.py:174:101: E501 line too long (104 > 100 characters)
+src/content\viral_content_engine.py:175:101: E501 line too long (111 > 100 characters)
+src/content\viral_content_engine.py:190:101: E501 line too long (173 > 100 characters)
+src/content\viral_content_engine.py:191:101: E501 line too long (146 > 100 characters)
+src/content\viral_content_engine.py:194:101: E501 line too long (131 > 100 characters)
+src/content\viral_content_engine.py:195:101: E501 line too long (112 > 100 characters)
+src/content\viral_content_engine.py:205:101: E501 line too long (111 > 100 characters)
+src/content\viral_content_engine.py:215:101: E501 line too long (101 > 100 characters)
+src/content\viral_content_engine.py:221:101: E501 line too long (107 > 100 characters)
+src/content\viral_content_engine.py:222:101: E501 line too long (105 > 100 characters)
+src/content\viral_content_engine.py:230:101: E501 line too long (155 > 100 characters)
+src/content\viral_content_engine.py:231:101: E501 line too long (125 > 100 characters)
+src/content\viral_content_engine.py:630:101: E501 line too long (127 > 100 characters)
+src/content\viral_content_engine.py:631:101: E501 line too long (115 > 100 characters)
+src/content\viral_content_engine.py:632:101: E501 line too long (133 > 100 characters)
+src/content\viral_content_engine.py:633:101: E501 line too long (112 > 100 characters)
+src/content\viral_content_engine.py:637:101: E501 line too long (111 > 100 characters)
+src/content\viral_content_engine.py:638:101: E501 line too long (101 > 100 characters)
+src/content\viral_content_engine.py:640:101: E501 line too long (106 > 100 characters)
+src/content\viral_content_engine.py:643:101: E501 line too long (128 > 100 characters)
+src/content\viral_content_engine.py:644:101: E501 line too long (103 > 100 characters)
+src/content\viral_content_engine.py:645:101: E501 line too long (148 > 100 characters)
+src/content\viral_content_engine.py:649:101: E501 line too long (114 > 100 characters)
+src/content\viral_content_engine.py:653:101: E501 line too long (102 > 100 characters)
+src/content\viral_content_engine.py:952:101: E501 line too long (109 > 100 characters)
+src/content\viral_content_engine.py:961:36: W504 line break after binary operator
+src/content\viral_content_engine.py:962:36: W504 line break after binary operator
+src/content\viral_content_engine.py:963:35: W504 line break after binary operator
+src/content\viral_content_engine.py:967:101: E501 line too long (103 > 100 characters)
+src/content\viral_content_engine.py:1064:101: E501 line too long (113 > 100 characters)
+src/content\viral_content_engine.py:1085:101: E501 line too long (117 > 100 characters)
+src/content\viral_content_engine.py:1086:101: E501 line too long (112 > 100 characters)
+src/content\viral_content_engine.py:1422:101: E501 line too long (113 > 100 characters)
+src/content\viral_hooks.py:30:1: F401 're' imported but unused
+src/content\viral_hooks.py:32:1: F401 'typing.Dict' imported but unused
+src/content\viral_hooks.py:32:1: F401 'typing.Optional' imported but unused
+src/content\viral_hooks.py:373:9: F841 local variable 'seconds_per_word' is assigned to but never used
+src/content\viral_hooks.py:386:101: E501 line too long (111 > 100 characters)
+src/database\db.py:8:1: F401 'os' imported but unused
+src/database\db.py:186:101: E501 line too long (101 > 100 characters)
+src/database\db.py:397:5: F811 redefinition of unused 'logger' from line 16
+src/database\models.py:72:101: E501 line too long (101 > 100 characters)
+src/database\models.py:98:101: E501 line too long (101 > 100 characters)
+src/database\models.py:131:101: E501 line too long (101 > 100 characters)
+src/main.py:27:1: F401 'datetime.datetime' imported but unused
+src/main.py:28:1: F401 'typing.Optional' imported but unused
+src/main.py:33:1: E402 module level import not at top of file
+src/main.py:34:1: E402 module level import not at top of file
+src/main.py:110:24: F541 f-string is missing placeholders
+src/main.py:188:101: E501 line too long (110 > 100 characters)
+src/main.py:211:21: E226 missing whitespace around arithmetic operator
+src/main.py:213:14: E226 missing whitespace around arithmetic operator
+src/main.py:219:21: E226 missing whitespace around arithmetic operator
+src/main.py:221:14: E226 missing whitespace around arithmetic operator
+src/main.py:236:21: E226 missing whitespace around arithmetic operator
+src/main.py:238:14: E226 missing whitespace around arithmetic operator
+src/main.py:250:21: E226 missing whitespace around arithmetic operator
+src/main.py:252:14: E226 missing whitespace around arithmetic operator
+src/main.py:318:21: E226 missing whitespace around arithmetic operator
+src/main.py:320:14: E226 missing whitespace around arithmetic operator
+src/main.py:338:25: E226 missing whitespace around arithmetic operator
+src/main.py:343:18: E226 missing whitespace around arithmetic operator
+src/monitoring\error_monitor.py:553:9: F841 local variable 'trends' is assigned to but never used
+src/monitoring\error_monitor.py:574:101: E501 line too long (124 > 100 characters)
+src/monitoring\error_monitor.py:582:101: E501 line too long (107 > 100 characters)
+src/monitoring\error_monitor.py:723:5: E226 missing whitespace around arithmetic operator
+src/monitoring\error_monitor.py:725:5: E226 missing whitespace around arithmetic operator
+src/monitoring\error_monitor.py:736:5: E226 missing whitespace around arithmetic operator
+src/monitoring\error_monitor.py:770:101: E501 line too long (101 > 100 characters)
+src/monitoring\error_monitor.py:783:101: E501 line too long (105 > 100 characters)
+src/monitoring\error_monitor.py:975:11: F541 f-string is missing placeholders
+src/monitoring\error_monitor.py:982:11: F541 f-string is missing placeholders
+src/monitoring\performance_alerts.py:35:1: F401 'json' imported but unused
+src/monitoring\performance_alerts.py:43:1: F401 'typing.Callable' imported but unused
+src/monitoring\performance_alerts.py:228:101: E501 line too long (110 > 100 characters)
+src/monitoring\performance_alerts.py:309:101: E501 line too long (103 > 100 characters)
+src/monitoring\performance_alerts.py:444:101: E501 line too long (132 > 100 characters)
+src/monitoring\performance_alerts.py:450:101: E501 line too long (104 > 100 characters)
+src/monitoring\performance_alerts.py:455:101: E501 line too long (104 > 100 characters)
+src/monitoring\performance_alerts.py:460:101: E501 line too long (126 > 100 characters)
+src/monitoring\performance_alerts.py:494:101: E501 line too long (138 > 100 characters)
+src/monitoring\performance_alerts.py:504:101: E501 line too long (132 > 100 characters)
+src/monitoring\performance_alerts.py:505:101: E501 line too long (103 > 100 characters)
+src/monitoring\performance_alerts.py:512:101: E501 line too long (153 > 100 characters)
+src/monitoring\performance_alerts.py:536:101: E501 line too long (122 > 100 characters)
+src/monitoring\performance_alerts.py:585:101: E501 line too long (106 > 100 characters)
+src/monitoring\performance_alerts.py:587:101: E501 line too long (101 > 100 characters)
+src/monitoring\performance_alerts.py:703:101: E501 line too long (105 > 100 characters)
+src/monitoring\performance_alerts.py:705:101: E501 line too long (104 > 100 characters)
+src/monitoring\performance_alerts.py:723:101: E501 line too long (104 > 100 characters)
+src/monitoring\performance_alerts.py:794:101: E501 line too long (157 > 100 characters)
+src/monitoring\performance_alerts.py:795:101: E501 line too long (118 > 100 characters)
+src/monitoring\performance_alerts.py:801:101: E501 line too long (102 > 100 characters)
+src/monitoring\performance_alerts.py:918:67: E226 missing whitespace around arithmetic operator
+src/monitoring\performance_alerts.py:918:77: E226 missing whitespace around arithmetic operator
+src/monitoring\performance_alerts.py:918:101: E501 line too long (126 > 100 characters)
+src/monitoring\performance_alerts.py:919:44: E226 missing whitespace around arithmetic operator
+src/monitoring\performance_alerts.py:919:55: E226 missing whitespace around arithmetic operator
+src/monitoring\performance_alerts.py:919:101: E501 line too long (107 > 100 characters)
+src/monitoring\performance_alerts.py:926:89: E226 missing whitespace around arithmetic operator
+src/monitoring\performance_alerts.py:926:101: E501 line too long (122 > 100 characters)
+src/monitoring\performance_alerts.py:927:44: E226 missing whitespace around arithmetic operator
+src/monitoring\performance_alerts.py:927:55: E226 missing whitespace around arithmetic operator
+src/monitoring\performance_alerts.py:1084:101: E501 line too long (113 > 100 characters)
+src/monitoring\performance_alerts.py:1255:23: F541 f-string is missing placeholders
+src/monitoring\performance_alerts.py:1273:101: E501 line too long (104 > 100 characters)
+src/monitoring\performance_monitor.py:95:101: E501 line too long (119 > 100 characters)
+src/monitoring\performance_monitor.py:295:101: E501 line too long (115 > 100 characters)
+src/monitoring\performance_monitor.py:307:101: E501 line too long (112 > 100 characters)
+src/monitoring\performance_monitor.py:327:101: E501 line too long (134 > 100 characters)
+src/monitoring\performance_monitor.py:327:116: E226 missing whitespace around arithmetic operator
+src/monitoring\performance_monitor.py:330:101: E501 line too long (102 > 100 characters)
+src/monitoring\performance_monitor.py:337:101: E501 line too long (108 > 100 characters)
+src/monitoring\performance_monitor.py:342:101: E501 line too long (134 > 100 characters)
+src/monitoring\performance_monitor.py:342:117: E226 missing whitespace around arithmetic operator
+src/monitoring\performance_monitor.py:345:101: E501 line too long (110 > 100 characters)
+src/monitoring\performance_monitor.py:392:101: E501 line too long (129 > 100 characters)
+src/monitoring\performance_monitor.py:469:101: E501 line too long (106 > 100 characters)
+src/monitoring\performance_monitor.py:484:101: E501 line too long (133 > 100 characters)
+src/monitoring\performance_monitor.py:488:101: E501 line too long (116 > 100 characters)
+src/monitoring\performance_monitor.py:504:101: E501 line too long (129 > 100 characters)
+src/monitoring\performance_monitor.py:572:13: F401 'glob' imported but unused
+src/research\idea_generator.py:15:1: F401 'dataclasses.asdict' imported but unused
+src/research\idea_generator.py:23:1: F401 '.trends.TrendTopic' imported but unused
+src/research\idea_generator.py:23:1: E402 module level import not at top of file
+src/research\idea_generator.py:24:1: F401 '.reddit.VideoIdea' imported but unused
+src/research\idea_generator.py:24:1: E402 module level import not at top of file
+src/research\idea_generator.py:28:5: F401 '.reddit_researcher.RedditResearchReport' imported but unused
+src/research\idea_generator.py:28:5: F401 '.reddit_researcher.VideoIdea as EnhancedVideoIdea' imported but unused
+src/research\idea_generator.py:60:101: E501 line too long (109 > 100 characters)
+src/research\idea_generator.py:98:101: E501 line too long (136 > 100 characters)
+src/research\idea_generator.py:100:101: E501 line too long (113 > 100 characters)
+src/research\idea_generator.py:101:101: E501 line too long (133 > 100 characters)
+src/research\idea_generator.py:102:101: E501 line too long (115 > 100 characters)
+src/research\idea_generator.py:103:101: E501 line too long (125 > 100 characters)
+src/research\idea_generator.py:141:101: E501 line too long (104 > 100 characters)
+src/research\idea_generator.py:144:101: E501 line too long (104 > 100 characters)
+src/research\idea_generator.py:176:101: E501 line too long (207 > 100 characters)
+src/research\idea_generator.py:177:101: E501 line too long (206 > 100 characters)
+src/research\idea_generator.py:178:101: E501 line too long (175 > 100 characters)
+src/research\idea_generator.py:180:101: E501 line too long (146 > 100 characters)
+src/research\idea_generator.py:181:101: E501 line too long (178 > 100 characters)
+src/research\idea_generator.py:182:101: E501 line too long (146 > 100 characters)
+src/research\idea_generator.py:183:101: E501 line too long (184 > 100 characters)
+src/research\idea_generator.py:184:101: E501 line too long (130 > 100 characters)
+src/research\idea_generator.py:185:101: E501 line too long (112 > 100 characters)
+src/research\idea_generator.py:252:101: E501 line too long (189 > 100 characters)
+src/research\idea_generator.py:253:101: E501 line too long (130 > 100 characters)
+src/research\idea_generator.py:254:101: E501 line too long (133 > 100 characters)
+src/research\idea_generator.py:255:101: E501 line too long (130 > 100 characters)
+src/research\idea_generator.py:256:101: E501 line too long (124 > 100 characters)
+src/research\idea_generator.py:257:101: E501 line too long (126 > 100 characters)
+src/research\idea_generator.py:258:101: E501 line too long (105 > 100 characters)
+src/research\idea_generator.py:259:101: E501 line too long (189 > 100 characters)
+src/research\idea_generator.py:260:101: E501 line too long (109 > 100 characters)
+src/research\idea_generator.py:261:101: E501 line too long (118 > 100 characters)
+src/research\idea_generator.py:266:101: E501 line too long (102 > 100 characters)
+src/research\idea_generator.py:267:101: E501 line too long (126 > 100 characters)
+src/research\idea_generator.py:383:101: E501 line too long (118 > 100 characters)
+src/research\idea_generator.py:435:101: E501 line too long (129 > 100 characters)
+src/research\idea_generator.py:439:101: E501 line too long (102 > 100 characters)
+src/research\idea_generator.py:440:101: E501 line too long (133 > 100 characters)
+src/research\idea_generator.py:451:101: E501 line too long (118 > 100 characters)
+src/research\idea_generator.py:463:101: E501 line too long (129 > 100 characters)
+src/research\idea_generator.py:464:101: E501 line too long (155 > 100 characters)
+src/research\idea_generator.py:465:101: E501 line too long (123 > 100 characters)
+src/research\idea_generator.py:491:101: E501 line too long (120 > 100 characters)
+src/research\idea_generator.py:500:101: E501 line too long (115 > 100 characters)
+src/research\idea_generator.py:509:101: E501 line too long (106 > 100 characters)
+src/research\idea_generator.py:514:101: E501 line too long (103 > 100 characters)
+src/research\idea_generator.py:518:101: E501 line too long (106 > 100 characters)
+src/research\idea_generator.py:527:101: E501 line too long (109 > 100 characters)
+src/research\idea_generator.py:1137:101: E501 line too long (104 > 100 characters)
+src/research\idea_generator.py:1184:101: E501 line too long (103 > 100 characters)
+src/research\idea_generator.py:1289:21: E226 missing whitespace around arithmetic operator
+src/research\idea_generator.py:1291:14: E226 missing whitespace around arithmetic operator
+src/research\reddit.py:18:1: F401 'typing.Dict' imported but unused
+src/research\reddit.py:20:1: F401 'datetime.timedelta' imported but unused
+src/research\reddit.py:393:25: E226 missing whitespace around arithmetic operator
+src/research\reddit.py:395:18: E226 missing whitespace around arithmetic operator
+src/research\reddit_researcher.py:40:1: F401 'datetime.timedelta' imported but unused
+src/research\reddit_researcher.py:41:1: F401 'typing.Tuple' imported but unused
+src/research\reddit_researcher.py:49:5: F401 'praw.models.Comment' imported but unused
+src/research\reddit_researcher.py:156:21: E226 missing whitespace around arithmetic operator
+src/research\reddit_researcher.py:158:19: E226 missing whitespace around arithmetic operator
+src/research\reddit_researcher.py:174:22: F541 f-string is missing placeholders
+src/research\reddit_researcher.py:178:25: E226 missing whitespace around arithmetic operator
+src/research\reddit_researcher.py:444:101: E501 line too long (106 > 100 characters)
+src/research\reddit_researcher.py:517:26: E128 continuation line under-indented for visual indent
+src/research\reddit_researcher.py:724:101: E501 line too long (103 > 100 characters)
+src/research\reddit_researcher.py:754:9: F841 local variable 'keywords' is assigned to but never used
+src/research\reddit_researcher.py:995:101: E501 line too long (108 > 100 characters)
+src/research\reddit_researcher.py:1095:19: E226 missing whitespace around arithmetic operator
+src/research\reddit_researcher.py:1097:17: E226 missing whitespace around arithmetic operator
+src/research\reddit_researcher.py:1122:19: E226 missing whitespace around arithmetic operator
+src/research\trend_predictor.py:38:1: F401 'os' imported but unused
+src/research\trend_predictor.py:42:1: F401 'math' imported but unused
+src/research\trend_predictor.py:59:5: F401 'numpy as np' imported but unused
+src/research\trend_predictor.py:125:101: E501 line too long (117 > 100 characters)
+src/research\trend_predictor.py:596:26: E128 continuation line under-indented for visual indent
+src/research\trend_predictor.py:748:32: W504 line break after binary operator
+src/research\trend_predictor.py:749:46: W504 line break after binary operator
+src/research\trend_predictor.py:750:38: W504 line break after binary operator
+src/research\trend_predictor.py:895:26: E128 continuation line under-indented for visual indent
+src/research\trend_predictor.py:930:101: E501 line too long (106 > 100 characters)
+src/research\trend_predictor.py:939:101: E501 line too long (102 > 100 characters)
+src/research\trend_predictor.py:1076:101: E501 line too long (117 > 100 characters)
+src/research\trend_predictor.py:1077:101: E501 line too long (123 > 100 characters)
+src/research\trend_predictor.py:1181:101: E501 line too long (124 > 100 characters)
+src/research\trends.py:12:1: F401 'typing.Optional' imported but unused
+src/research\trends.py:22:5: F401 'pytrends.exceptions.ResponseError' imported but unused
+src/research\trends.py:52:101: E501 line too long (107 > 100 characters)
+src/research\trends.py:204:101: E501 line too long (113 > 100 characters)
+src/research\trends.py:220:101: E501 line too long (113 > 100 characters)
+src/research\trends.py:236:101: E501 line too long (113 > 100 characters)
+src/research\trends.py:252:101: E501 line too long (113 > 100 characters)
+src/research\trends.py:268:101: E501 line too long (113 > 100 characters)
+src/research\trends.py:333:101: E501 line too long (111 > 100 characters)
+src/research\trends.py:336:101: E501 line too long (102 > 100 characters)
+src/research\trends.py:340:101: E501 line too long (101 > 100 characters)
+src/research\trends.py:351:101: E501 line too long (132 > 100 characters)
+src/research\trends.py:352:101: E501 line too long (107 > 100 characters)
+src/research\trends.py:559:41: E226 missing whitespace around arithmetic operator
+src/research\trends.py:596:41: E226 missing whitespace around arithmetic operator
+src/research\trends.py:598:41: E226 missing whitespace around arithmetic operator
+src/research\trends.py:618:21: E226 missing whitespace around arithmetic operator
+src/research\trends.py:620:14: E226 missing whitespace around arithmetic operator
+src/research\trends.py:631:21: E226 missing whitespace around arithmetic operator
+src/research\trends.py:633:14: E226 missing whitespace around arithmetic operator
+src/scheduler\content_calendar.py:40:1: F401 'os' imported but unused
+src/scheduler\content_calendar.py:49:1: F401 'collections.Counter' imported but unused
+src/scheduler\content_calendar.py:126:101: E501 line too long (103 > 100 characters)
+src/scheduler\content_calendar.py:127:101: E501 line too long (103 > 100 characters)
+src/scheduler\content_calendar.py:260:101: E501 line too long (110 > 100 characters)
+src/scheduler\content_calendar.py:571:27: E226 missing whitespace around arithmetic operator
+src/scheduler\content_calendar.py:726:23: E128 continuation line under-indented for visual indent
+src/scheduler\content_calendar.py:768:19: E128 continuation line under-indented for visual indent
+src/scheduler\content_calendar.py:791:101: E501 line too long (134 > 100 characters)
+src/scheduler\content_calendar.py:952:101: E501 line too long (112 > 100 characters)
+src/scheduler\content_calendar.py:1008:101: E501 line too long (118 > 100 characters)
+src/scheduler\content_calendar.py:1133:101: E501 line too long (109 > 100 characters)
+src/scheduler\content_calendar.py:1158:23: F541 f-string is missing placeholders
+src/scheduler\daily_scheduler.py:28:1: F401 'datetime.timedelta' imported but unused
+src/scheduler\daily_scheduler.py:35:1: E402 module level import not at top of file
+src/scheduler\daily_scheduler.py:41:101: E501 line too long (111 > 100 characters)
+src/scheduler\daily_scheduler.py:83:101: E501 line too long (101 > 100 characters)
+src/scheduler\daily_scheduler.py:223:101: E501 line too long (109 > 100 characters)
+src/scheduler\daily_scheduler.py:290:17: F541 f-string is missing placeholders
+src/scheduler\daily_scheduler.py:291:23: E226 missing whitespace around arithmetic operator
+src/scheduler\daily_scheduler.py:295:23: E226 missing whitespace around arithmetic operator
+src/scheduler\daily_scheduler.py:411:61: E226 missing whitespace around arithmetic operator
+src/scheduler\daily_scheduler.py:414:60: E226 missing whitespace around arithmetic operator
+src/scheduler\daily_scheduler.py:417:17: F541 f-string is missing placeholders
+src/scheduler\daily_scheduler.py:418:23: E226 missing whitespace around arithmetic operator
+src/scheduler\daily_scheduler.py:422:17: F541 f-string is missing placeholders
+src/scheduler\daily_scheduler.py:423:23: E226 missing whitespace around arithmetic operator
+src/scheduler\daily_scheduler.py:484:101: E501 line too long (108 > 100 characters)
+src/scheduler\daily_scheduler.py:540:101: E501 line too long (102 > 100 characters)
+src/scheduler\daily_scheduler.py:575:101: E501 line too long (102 > 100 characters)
+src/scheduler\daily_scheduler.py:588:101: E501 line too long (116 > 100 characters)
+src/scheduler\daily_scheduler.py:608:101: E501 line too long (102 > 100 characters)
+src/scheduler\daily_scheduler.py:621:60: E226 missing whitespace around arithmetic operator
+src/scheduler\daily_scheduler.py:625:62: E226 missing whitespace around arithmetic operator
+src/scheduler\daily_scheduler.py:639:11: F541 f-string is missing placeholders
+src/scheduler\daily_scheduler.py:841:101: E501 line too long (121 > 100 characters)
+src/scheduler\daily_scheduler.py:849:23: F541 f-string is missing placeholders
+src/scheduler\daily_scheduler.py:851:19: F541 f-string is missing placeholders
+src/scheduler\daily_scheduler.py:876:15: F541 f-string is missing placeholders
+src/scheduler\daily_scheduler.py:903:101: E501 line too long (127 > 100 characters)
+src/scheduler\daily_scheduler.py:918:101: E501 line too long (107 > 100 characters)
+src/scheduler\daily_scheduler.py:919:101: E501 line too long (106 > 100 characters)
+src/scheduler\smart_scheduler.py:36:1: F401 'datetime.time as dt_time' imported but unused
+src/scheduler\smart_scheduler.py:38:1: F401 'typing.Set' imported but unused
+src/scheduler\smart_scheduler.py:43:1: F401 'random' imported but unused
+src/scheduler\smart_scheduler.py:282:21: F841 local variable 'avg_views' is assigned to but never used
+src/scheduler\smart_scheduler.py:1276:101: E501 line too long (103 > 100 characters)
+src/seo\free_keyword_research.py:33:1: F401 'dataclasses.field' imported but unused
+src/seo\free_keyword_research.py:34:1: F401 'typing.Optional' imported but unused
+src/seo\free_keyword_research.py:34:1: F401 'typing.Tuple' imported but unused
+src/seo\free_keyword_research.py:237:13: E722 do not use bare 'except'
+src/seo\free_keyword_research.py:310:13: E722 do not use bare 'except'
+src/seo\keyword_intelligence.py:32:1: F401 'math' imported but unused
+src/seo\keyword_intelligence.py:33:1: F401 're' imported but unused
+src/seo\keyword_intelligence.py:36:1: F401 'collections.Counter' imported but unused
+src/seo\keyword_intelligence.py:41:1: F401 'urllib.parse.quote_plus' imported but unused
+src/seo\keyword_intelligence.py:60:5: F401 'numpy as np' imported but unused
+src/seo\keyword_intelligence.py:353:17: E722 do not use bare 'except'
+src/seo\keyword_intelligence.py:491:101: E501 line too long (107 > 100 characters)
+src/seo\keyword_intelligence.py:494:32: W504 line break after binary operator
+src/seo\keyword_intelligence.py:495:37: W504 line break after binary operator
+src/seo\keyword_intelligence.py:562:101: E501 line too long (101 > 100 characters)
+src/seo\keyword_intelligence.py:776:40: E226 missing whitespace around arithmetic operator
+src/seo\keyword_intelligence.py:812:21: W504 line break after binary operator
+src/seo\keyword_intelligence.py:813:29: W504 line break after binary operator
+src/seo\keyword_intelligence.py:877:86: E226 missing whitespace around arithmetic operator
+src/seo\keyword_intelligence.py:892:13: E722 do not use bare 'except'
+src/seo\keyword_intelligence.py:1037:101: E501 line too long (144 > 100 characters)
+src/seo\keyword_intelligence.py:1662:101: E501 line too long (102 > 100 characters)
+src/seo\keyword_intelligence.py:1682:33: E226 missing whitespace around arithmetic operator
+src/seo\keyword_intelligence.py:1749:9: E722 do not use bare 'except'
+src/seo\keyword_intelligence.py:2104:101: E501 line too long (106 > 100 characters)
+src/seo\keyword_intelligence.py:2261:101: E501 line too long (111 > 100 characters)
+src/seo\keyword_intelligence.py:2266:101: E501 line too long (102 > 100 characters)
+src/seo\metadata_optimizer.py:33:1: F401 'typing.Tuple' imported but unused
+src/seo\metadata_optimizer.py:315:13: F541 f-string is missing placeholders
+src/seo\metadata_optimizer.py:316:13: F541 f-string is missing placeholders
+src/seo\metadata_optimizer.py:317:13: F541 f-string is missing placeholders
+src/seo\metadata_optimizer.py:385:77: E226 missing whitespace around arithmetic operator
+src/seo\metadata_optimizer.py:508:5: F401 'json' imported but unused
+src/seo\metadata_optimizer.py:527:101: E501 line too long (114 > 100 characters)
+src/social\multi_platform.py:39:1: F401 'subprocess' imported but unused
+src/social\multi_platform.py:48:5: F401 'moviepy.editor.AudioFileClip' imported but unused
+src/social\multi_platform.py:48:5: F401 'moviepy.editor.TextClip' imported but unused
+src/social\multi_platform.py:48:5: F401 'moviepy.editor.ColorClip' imported but unused
+src/social\multi_platform.py:48:5: F401 'moviepy.editor.concatenate_videoclips' imported but unused
+src/social\multi_platform.py:201:37: E226 missing whitespace around arithmetic operator
+src/social\multi_platform.py:201:63: E226 missing whitespace around arithmetic operator
+src/social\multi_platform.py:212:101: E501 line too long (112 > 100 characters)
+src/social\multi_platform.py:213:101: E501 line too long (101 > 100 characters)
+src/social\multi_platform.py:229:101: E501 line too long (113 > 100 characters)
+src/social\multi_platform.py:244:101: E501 line too long (102 > 100 characters)
+src/social\multi_platform.py:312:101: E501 line too long (114 > 100 characters)
+src/social\multi_platform.py:566:101: E501 line too long (106 > 100 characters)
+src/social\multi_platform.py:567:101: E501 line too long (106 > 100 characters)
+src/social\multi_platform.py:628:48: E226 missing whitespace around arithmetic operator
+src/social\multi_platform.py:758:9: F841 local variable 'spec' is assigned to but never used
+src/social\multi_platform.py:775:48: E226 missing whitespace around arithmetic operator
+src/social\multi_platform.py:790:47: E226 missing whitespace around arithmetic operator
+src/social\multi_platform.py:793:57: E226 missing whitespace around arithmetic operator
+src/social\multi_platform.py:808:101: E501 line too long (101 > 100 characters)
+src/social\multi_platform.py:866:101: E501 line too long (115 > 100 characters)
+src/social\multi_platform.py:904:101: E501 line too long (107 > 100 characters)
+src/social\multi_platform.py:907:101: E501 line too long (105 > 100 characters)
+src/social\multi_platform.py:909:101: E501 line too long (113 > 100 characters)
+src/social\multi_platform.py:1025:101: E501 line too long (101 > 100 characters)
+src/social\multi_platform.py:1061:101: E501 line too long (102 > 100 characters)
+src/social\multi_platform.py:1077:101: E501 line too long (102 > 100 characters)
+src/social\platform_base.py:11:1: F401 'typing.Tuple' imported but unused
+src/social\platform_base.py:108:101: E501 line too long (102 > 100 characters)
+src/social\social_poster.py:10:1: F401 'typing.Callable' imported but unused
+src/social\social_poster.py:11:1: F401 'pathlib.Path' imported but unused
+src/social\social_poster.py:16:1: F401 'asyncio' imported but unused
+src/social\social_poster.py:23:1: F401 '.social_utils.parse_http_error' imported but unused
+src/social\social_poster.py:193:101: E501 line too long (103 > 100 characters)
+src/social\social_poster.py:318:101: E501 line too long (104 > 100 characters)
+src/social\social_poster.py:342:101: E501 line too long (103 > 100 characters)
+src/social\social_poster.py:426:101: E501 line too long (104 > 100 characters)
+src/social\social_poster.py:488:101: E501 line too long (104 > 100 characters)
+src/social\social_poster.py:585:101: E501 line too long (104 > 100 characters)
+src/social\social_poster.py:586:101: E501 line too long (111 > 100 characters)
+src/social\social_poster.py:587:101: E501 line too long (110 > 100 characters)
+src/social\social_poster.py:590:101: E501 line too long (102 > 100 characters)
+src/social\social_poster.py:615:101: E501 line too long (101 > 100 characters)
+src/social\social_poster.py:704:20: E128 continuation line under-indented for visual indent
+src/social\social_poster.py:825:28: E128 continuation line under-indented for visual indent
+src/social\social_poster.py:826:28: E128 continuation line under-indented for visual indent
+src/social\social_utils.py:12:1: F401 'typing.Optional' imported but unused
+src/social\social_utils.py:75:101: E501 line too long (108 > 100 characters)
+src/templates\efficient_prompts.py:7:1: F401 'typing.List' imported but unused
+src/templates\efficient_prompts.py:71:101: E501 line too long (112 > 100 characters)
+src/templates\efficient_prompts.py:84:101: E501 line too long (112 > 100 characters)
+src/templates\efficient_prompts.py:97:101: E501 line too long (112 > 100 characters)
+src/templates\efficient_prompts.py:180:101: E501 line too long (111 > 100 characters)
+src/templates\efficient_prompts.py:456:1: F811 redefinition of unused 'estimate_tokens' from line 351
+src/templates\efficient_prompts.py:580:101: E501 line too long (109 > 100 characters)
+src/testing\ab_tester.py:33:1: F401 'os' imported but unused
+src/testing\ab_tester.py:35:1: F401 'dataclasses.field' imported but unused
+src/testing\ab_tester.py:35:1: F401 'dataclasses.asdict' imported but unused
+src/testing\ab_tester.py:39:1: F401 'typing.Tuple' imported but unused
+src/testing\ab_tester.py:149:101: E501 line too long (110 > 100 characters)
+src/testing\ab_tester.py:167:101: E501 line too long (129 > 100 characters)
+src/testing\ab_tester.py:571:101: E501 line too long (101 > 100 characters)
+src/testing\ab_tester.py:573:30: E131 continuation line unaligned for hanging indent
+src/testing\ab_tester.py:621:101: E501 line too long (103 > 100 characters)
+src/testing\ab_tester.py:673:101: E501 line too long (114 > 100 characters)
+src/testing\ab_testing.py:29:1: F401 'datetime.timedelta' imported but unused
+src/testing\ab_testing.py:52:5: F401 'PIL.ImageFilter' imported but unused
+src/testing\ab_testing.py:292:101: E501 line too long (103 > 100 characters)
+src/testing\ab_testing.py:483:101: E501 line too long (111 > 100 characters)
+src/testing\ab_testing.py:669:101: E501 line too long (101 > 100 characters)
+src/testing\ab_testing.py:797:101: E501 line too long (111 > 100 characters)
+src/testing\ab_testing.py:798:101: E501 line too long (125 > 100 characters)
+src/testing\ab_testing.py:799:101: E501 line too long (111 > 100 characters)
+src/testing\ab_testing.py:810:101: E501 line too long (105 > 100 characters)
+src/testing\ab_testing.py:1146:101: E501 line too long (101 > 100 characters)
+src/testing\ab_testing.py:1322:101: E501 line too long (109 > 100 characters)
+src/testing\ab_testing.py:1324:101: E501 line too long (106 > 100 characters)
+src/testing\ab_testing.py:1348:101: E501 line too long (109 > 100 characters)
+src/testing\ab_testing.py:1350:101: E501 line too long (106 > 100 characters)
+src/testing\ab_testing.py:1368:101: E501 line too long (108 > 100 characters)
+src/testing\ab_testing.py:1393:101: E501 line too long (109 > 100 characters)
+src/testing\ab_testing.py:1453:54: E261 at least two spaces before inline comment
+src/testing\ab_testing.py:1455:53: E261 at least two spaces before inline comment
+src/testing\ab_testing.py:1573:101: E501 line too long (112 > 100 characters)
+src/testing\ab_testing.py:1708:101: E501 line too long (110 > 100 characters)
+src/testing\ab_testing.py:1709:101: E501 line too long (105 > 100 characters)
+src/utils\best_practices.py:27:1: F401 'typing.Optional' imported but unused
+src/utils\best_practices.py:175:101: E501 line too long (132 > 100 characters)
+src/utils\best_practices.py:183:101: E501 line too long (155 > 100 characters)
+src/utils\best_practices.py:191:101: E501 line too long (134 > 100 characters)
+src/utils\best_practices.py:207:101: E501 line too long (119 > 100 characters)
+src/utils\best_practices.py:214:101: E501 line too long (114 > 100 characters)
+src/utils\best_practices.py:220:101: E501 line too long (103 > 100 characters)
+src/utils\best_practices.py:256:101: E501 line too long (124 > 100 characters)
+src/utils\best_practices.py:339:101: E501 line too long (110 > 100 characters)
+src/utils\best_practices.py:453:101: E501 line too long (108 > 100 characters)
+src/utils\best_practices.py:464:101: E501 line too long (111 > 100 characters)
+src/utils\best_practices.py:640:101: E501 line too long (135 > 100 characters)
+src/utils\best_practices.py:644:101: E501 line too long (139 > 100 characters)
+src/utils\best_practices.py:662:101: E501 line too long (132 > 100 characters)
+src/utils\best_practices.py:688:101: E501 line too long (101 > 100 characters)
+src/utils\best_practices.py:720:67: W504 line break after binary operator
+src/utils\best_practices.py:725:77: W504 line break after binary operator
+src/utils\best_practices.py:733:101: E501 line too long (106 > 100 characters)
+src/utils\best_practices.py:738:101: E501 line too long (104 > 100 characters)
+src/utils\best_practices.py:849:11: F541 f-string is missing placeholders
+src/utils\best_practices.py:850:101: E501 line too long (107 > 100 characters)
+src/utils\best_practices.py:851:101: E501 line too long (136 > 100 characters)
+src/utils\best_practices.py:864:11: F541 f-string is missing placeholders
+src/utils\best_practices.py:872:101: E501 line too long (108 > 100 characters)
+src/utils\best_practices.py:874:17: E128 continuation line under-indented for visual indent
+src/utils\best_practices.py:879:101: E501 line too long (109 > 100 characters)
+src/utils\cleanup.py:20:1: F401 'os' imported but unused
+src/utils\cleanup.py:25:1: F401 'datetime.timedelta' imported but unused
+src/utils\cleanup.py:138:101: E501 line too long (121 > 100 characters)
+src/utils\cleanup.py:496:101: E501 line too long (110 > 100 characters)
+src/utils\cleanup.py:512:17: F841 local variable 'e' is assigned to but never used
+src/utils\cleanup.py:730:101: E501 line too long (116 > 100 characters)
+src/utils\cleanup.py:1274:101: E501 line too long (107 > 100 characters)
+src/utils\db_optimizer.py:33:1: F401 'typing.Tuple' imported but unused
+src/utils\db_optimizer.py:35:1: F401 'dataclasses.field' imported but unused
+src/utils\db_optimizer.py:91:101: E501 line too long (103 > 100 characters)
+src/utils\db_optimizer.py:455:23: F541 f-string is missing placeholders
+src/utils\db_optimizer.py:457:67: E226 missing whitespace around arithmetic operator
+src/utils\gpu_utils.py:16:1: F401 'os' imported but unused
+src/utils\gpu_utils.py:152:101: E501 line too long (108 > 100 characters)
+src/utils\gpu_utils.py:155:9: E722 do not use bare 'except'
+src/utils\gpu_utils.py:187:9: E722 do not use bare 'except'
+src/utils\gpu_utils.py:411:101: E501 line too long (117 > 100 characters)
+src/utils\gpu_utils.py:419:25: E226 missing whitespace around arithmetic operator
+src/utils\gpu_utils.py:421:18: E226 missing whitespace around arithmetic operator
+src/utils\gpu_utils.py:432:18: E226 missing whitespace around arithmetic operator
+src/utils\gpu_utils.py:439:101: E501 line too long (101 > 100 characters)
+src/utils\json_emitter.py:4:1: F401 'typing.Any' imported but unused
+src/utils\json_emitter.py:4:1: F401 'typing.Dict' imported but unused
+src/utils\json_emitter.py:4:1: F401 'typing.Optional' imported but unused
+src/utils\memory_monitor.py:19:1: F401 'typing.Optional' imported but unused
+src/utils\profiler.py:40:1: F401 'typing.Optional' imported but unused
+src/utils\profiler.py:187:24: E226 missing whitespace around arithmetic operator
+src/utils\profiler.py:187:29: E226 missing whitespace around arithmetic operator
+src/utils\profiler.py:334:101: E501 line too long (107 > 100 characters)
+src/utils\query_cache.py:3:1: F401 'typing.Optional' imported but unused
+src/utils\segment_cache.py:38:1: F401 'hashlib' imported but unused
+src/utils\segment_cache.py:42:1: F401 'typing.List' imported but unused
+src/utils\segment_cache.py:218:101: E501 line too long (104 > 100 characters)
+src/utils\segment_cache.py:428:101: E501 line too long (109 > 100 characters)
+src/utils\smart_provider_router.py:13:1: F401 'datetime.timedelta' imported but unused
+src/utils\smart_provider_router.py:14:1: F401 'typing.Tuple' imported but unused
+src/utils\smart_provider_router.py:332:101: E501 line too long (108 > 100 characters)
+src/utils\text_similarity.py:649:101: E501 line too long (105 > 100 characters)
+src/utils\text_similarity.py:651:101: E501 line too long (108 > 100 characters)
+src/utils\text_similarity.py:652:101: E501 line too long (101 > 100 characters)
+src/utils\token_manager.py:13:1: F401 'json' imported but unused
+src/utils\token_manager.py:26:1: E305 expected 2 blank lines after class or function definition, found 1
+src/utils\token_manager.py:87:101: E501 line too long (102 > 100 characters)
+src/utils\token_manager.py:90:101: E501 line too long (102 > 100 characters)
+src/utils\token_manager.py:95:101: E501 line too long (122 > 100 characters)
+src/utils\token_manager.py:119:101: E501 line too long (117 > 100 characters)
+src/utils\token_manager.py:134:101: E501 line too long (118 > 100 characters)
+src/utils\token_manager.py:149:101: E501 line too long (118 > 100 characters)
+src/utils\token_manager.py:163:101: E501 line too long (142 > 100 characters)
+src/utils\token_manager.py:165:101: E501 line too long (108 > 100 characters)
+src/utils\token_manager.py:171:101: E501 line too long (176 > 100 characters)
+src/utils\token_manager.py:173:101: E501 line too long (124 > 100 characters)
+src/utils\token_manager.py:215:101: E501 line too long (110 > 100 characters)
+src/utils\token_manager.py:249:41: E261 at least two spaces before inline comment
+src/utils\token_manager.py:256:43: E261 at least two spaces before inline comment
+src/utils\token_manager.py:310:9: E722 do not use bare 'except'
+src/utils\token_manager.py:325:101: E501 line too long (113 > 100 characters)
+src/utils\token_manager.py:332:101: E501 line too long (120 > 100 characters)
+src/utils\token_manager.py:445:21: E226 missing whitespace around arithmetic operator
+src/utils\token_manager.py:447:14: E226 missing whitespace around arithmetic operator
+src/utils\token_manager.py:450:14: E226 missing whitespace around arithmetic operator
+src/utils\token_manager.py:451:101: E501 line too long (109 > 100 characters)
+src/utils\token_manager.py:452:101: E501 line too long (116 > 100 characters)
+src/utils\token_manager.py:453:101: E501 line too long (120 > 100 characters)
+src/utils\token_manager.py:456:14: E226 missing whitespace around arithmetic operator
+src/utils\token_manager.py:458:101: E501 line too long (107 > 100 characters)
+src/utils\token_manager.py:462:18: E226 missing whitespace around arithmetic operator
+src/utils\token_manager.py:466:11: F541 f-string is missing placeholders
+src/utils\token_manager.py:468:101: E501 line too long (135 > 100 characters)
+src/utils\token_manager.py:479:15: F541 f-string is missing placeholders
+src/utils\token_manager.py:483:21: E226 missing whitespace around arithmetic operator
+src/utils\token_manager.py:510:101: E501 line too long (111 > 100 characters)
+src/utils\token_manager.py:519:101: E501 line too long (103 > 100 characters)
+src/utils\token_manager.py:585:101: E501 line too long (106 > 100 characters)
+src/utils\token_optimizer.py:66:1: F401 'functools.lru_cache' imported but unused
+src/utils\token_optimizer.py:68:1: F401 'typing.Generic' imported but unused
+src/utils\token_optimizer.py:68:1: F401 'typing.Union' imported but unused
+src/utils\token_optimizer.py:84:5: F401 'src.utils.text_similarity.word_overlap_similarity' imported but unused
+src/utils\token_optimizer.py:84:5: F401 'src.utils.text_similarity.character_ngram_similarity' imported but unused
+src/utils\token_optimizer.py:84:5: F401 'src.utils.text_similarity.combined_similarity' imported but unused
+src/utils\token_optimizer.py:100:5: F401 'src.utils.token_manager.TokenTracker' imported but unused
+src/utils\token_optimizer.py:100:5: F401 'src.utils.token_manager.CostOptimizer' imported but unused
+src/utils\token_optimizer.py:100:5: F401 'src.utils.token_manager.PromptCache' imported but unused
+src/utils\token_optimizer.py:100:5: F401 'src.utils.token_manager.get_cost_optimizer' imported but unused
+src/utils\token_optimizer.py:100:5: F401 'src.utils.token_manager.get_prompt_cache' imported but unused
+src/utils\token_optimizer.py:201:58: W504 line break after binary operator
+src/utils\token_optimizer.py:253:101: E501 line too long (122 > 100 characters)
+src/utils\token_optimizer.py:327:17: F841 local variable 'kept' is assigned to but never used
+src/utils\token_optimizer.py:761:26: F541 f-string is missing placeholders
+src/utils\token_optimizer.py:860:101: E501 line too long (107 > 100 characters)
+src/utils\token_optimizer.py:1409:101: E501 line too long (111 > 100 characters)
+src/utils\token_optimizer.py:1488:41: E261 at least two spaces before inline comment
+src/utils\token_optimizer.py:1494:43: E261 at least two spaces before inline comment
+src/utils\token_optimizer.py:1592:28: F541 f-string is missing placeholders
+src/utils\token_optimizer.py:1606:24: F541 f-string is missing placeholders
+src/utils\token_optimizer.py:1623:20: F541 f-string is missing placeholders
+src/utils\token_optimizer.py:1760:20: E128 continuation line under-indented for visual indent
+src/utils\token_optimizer.py:1761:20: E128 continuation line under-indented for visual indent
+src/utils\token_optimizer.py:1803:101: E501 line too long (110 > 100 characters)
+src/utils\token_optimizer.py:1809:21: E128 continuation line under-indented for visual indent
+src/utils\token_optimizer.py:1844:101: E501 line too long (101 > 100 characters)
+src/utils\token_optimizer.py:2090:101: E501 line too long (102 > 100 characters)
+src/utils\token_optimizer.py:2130:101: E501 line too long (108 > 100 characters)
+src/utils\token_optimizer.py:2237:48: E226 missing whitespace around arithmetic operator
+src/utils\token_optimizer.py:2309:23: F541 f-string is missing placeholders
+src/utils\token_optimizer.py:2320:101: E501 line too long (107 > 100 characters)
+src/utils\token_optimizer.py:2323:19: F541 f-string is missing placeholders
+src/utils\token_optimizer.py:2489:13: F841 local variable 'e' is assigned to but never used
+src/utils\token_optimizer.py:2495:35: E128 continuation line under-indented for visual indent
+src/utils\youtube_optimizer.py:33:1: F401 'typing.Tuple' imported but unused
+src/utils\youtube_optimizer.py:35:1: F401 'enum.Enum' imported but unused
+src/utils\youtube_optimizer.py:212:28: F541 f-string is missing placeholders
+src/utils\youtube_optimizer.py:717:101: E501 line too long (115 > 100 characters)
+src/utils\youtube_optimizer.py:796:101: E501 line too long (107 > 100 characters)
+src/youtube\analytics_api.py:23:1: F401 'os' imported but unused
+src/youtube\analytics_api.py:25:1: F401 'typing.Any' imported but unused
+src/youtube\analytics_api.py:245:101: E501 line too long (115 > 100 characters)
+src/youtube\analytics_api.py:246:101: E501 line too long (110 > 100 characters)
+src/youtube\analytics_api.py:247:101: E501 line too long (134 > 100 characters)
+src/youtube\analytics_api.py:248:101: E501 line too long (148 > 100 characters)
+src/youtube\analytics_api.py:254:35: W504 line break after binary operator
+src/youtube\analytics_api.py:255:33: W504 line break after binary operator
+src/youtube\analytics_api.py:256:39: W504 line break after binary operator
+src/youtube\analytics_api.py:398:101: E501 line too long (138 > 100 characters)
+src/youtube\analytics_api.py:635:101: E501 line too long (111 > 100 characters)
+src/youtube\analytics_api.py:636:101: E501 line too long (101 > 100 characters)
+src/youtube\analytics_api.py:646:39: W504 line break after binary operator
+src/youtube\analytics_api.py:647:46: W504 line break after binary operator
+src/youtube\analytics_api.py:672:21: F841 local variable 'watch_time' is assigned to but never used
+src/youtube\analytics_api.py:715:101: E501 line too long (101 > 100 characters)
+src/youtube\analytics_api.py:738:101: E501 line too long (110 > 100 characters)
+src/youtube\analytics_api.py:740:101: E501 line too long (102 > 100 characters)
+src/youtube\analytics_api.py:773:101: E501 line too long (111 > 100 characters)
+src/youtube\analytics_api.py:774:101: E501 line too long (105 > 100 characters)
+src/youtube\auth.py:171:21: E226 missing whitespace around arithmetic operator
+src/youtube\auth.py:173:14: E226 missing whitespace around arithmetic operator
+src/youtube\multi_channel.py:81:21: F541 f-string is missing placeholders
+src/youtube\multi_channel.py:114:18: E226 missing whitespace around arithmetic operator
+src/youtube\multi_channel.py:116:18: E226 missing whitespace around arithmetic operator
+src/youtube\multi_channel.py:119:15: F541 f-string is missing placeholders
+src/youtube\multi_channel.py:121:15: F541 f-string is missing placeholders
+src/youtube\multi_channel.py:248:17: E722 do not use bare 'except'
+src/youtube\multi_channel.py:260:18: E226 missing whitespace around arithmetic operator
+src/youtube\multi_channel.py:262:18: E226 missing whitespace around arithmetic operator
+src/youtube\uploader.py:21:1: F401 'pathlib.Path' imported but unused
+src/youtube\uploader.py:23:1: F401 'datetime.timedelta' imported but unused
+src/youtube\uploader.py:51:5: F401 'src.compliance.ai_disclosure.DisclosureMetadata' imported but unused
+src/youtube\uploader.py:59:5: F401 'src.seo.metadata_optimizer.OptimizedMetadata' imported but unused
+src/youtube\uploader.py:301:26: E128 continuation line under-indented for visual indent
+src/youtube\uploader.py:302:26: E128 continuation line under-indented for visual indent
+src/youtube\uploader.py:334:101: E501 line too long (102 > 100 characters)
+src/youtube\uploader.py:468:101: E501 line too long (108 > 100 characters)
+src/youtube\uploader.py:698:41: F541 f-string is missing placeholders
+src/youtube\uploader.py:1256:5: E303 too many blank lines (2)
+src/youtube\uploader.py:1365:101: E501 line too long (101 > 100 characters)
+src/youtube\uploader.py:1416:21: E226 missing whitespace around arithmetic operator
+src/youtube\uploader.py:1418:14: E226 missing whitespace around arithmetic operator
+8     E127 continuation line over-indented for visual indent
+50    E128 continuation line under-indented for visual indent
+6     E131 continuation line unaligned for hanging indent
+227   E226 missing whitespace around arithmetic operator
+2     E228 missing whitespace around modulo operator
+10    E261 at least two spaces before inline comment
+2     E302 expected 2 blank lines, found 1
+1     E303 too many blank lines (2)
+2     E305 expected 2 blank lines after class or function definition, found 1
+2     E306 expected 1 blank line before a nested definition, found 0
+17    E402 module level import not at top of file
+824   E501 line too long (103 > 100 characters)
+52    E722 do not use bare 'except'
+2     E741 ambiguous variable name 'l'
+203   F401 'pathlib.Path' imported but unused
+127   F541 f-string is missing placeholders
+7     F811 redefinition of unused 'FFMPEG_PARAMS_REGULAR' from line 32
+1     F821 undefined name 'topic'
+51    F841 local variable 'avg_views' is assigned to but never used
+28    W504 line break after binary operator

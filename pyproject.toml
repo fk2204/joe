@@ -103,7 +103,7 @@ exclude_lines = [
     "if TYPE_CHECKING:",
 ]
 show_missing = true
-fail_under = 50
+fail_under = 65
 
 [tool.mypy]
 python_version = "3.10"

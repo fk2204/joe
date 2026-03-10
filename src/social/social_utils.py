@@ -9,15 +9,17 @@ Consolidates:
 """
 
 import os
-from typing import Dict, Any, Optional
-from dataclasses import dataclass
 from contextlib import contextmanager
+from dataclasses import dataclass
+from typing import Any, Dict
+
 from loguru import logger
 
 
 @dataclass
 class VideoInfo:
     """Basic video metadata."""
+
     duration: float
     width: int
     height: int

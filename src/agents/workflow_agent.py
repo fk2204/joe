@@ -23,13 +23,13 @@ Usage:
 """
 
 import json
-import time
 import threading
+import time
+from dataclasses import asdict, dataclass, field
 from datetime import datetime
-from pathlib import Path
-from typing import Dict, Any, List, Optional, Callable
-from dataclasses import dataclass, field, asdict
 from enum import Enum
+from typing import Any, Callable, Dict, List, Optional
+
 from loguru import logger
 
 # Import canonical BaseAgent
@@ -38,6 +38,7 @@ from src.agents.base_agent import BaseAgent
 
 class WorkflowStatus(Enum):
     """Workflow status states."""
+
     PENDING = "pending"
     RUNNING = "running"
     COMPLETED = "completed"
@@ -47,6 +48,7 @@ class WorkflowStatus(Enum):
 
 class WorkflowStep(Enum):
     """Pipeline steps in order."""
+
     RESEARCH = "research"
     SCRIPT = "script"
     AUDIO = "audio"
@@ -71,6 +73,7 @@ STEP_ORDER = [
 @dataclass
 class WorkflowResult:
     """Result from workflow agent operations."""
+
     workflow_id: str
     status: str
     current_step: str
@@ -89,6 +92,7 @@ class WorkflowResult:
 @dataclass
 class WorkflowState:
     """Persistent workflow state."""
+
     workflow_id: str
     channel_id: str
     topic: str
@@ -214,7 +218,9 @@ class WorkflowAgent(BaseAgent):
                 return False
         return True
 
-    def _get_parallel_steps(self, current_step: WorkflowStep, state: WorkflowState) -> List[WorkflowStep]:
+    def _get_parallel_steps(
+        self, current_step: WorkflowStep, state: WorkflowState
+    ) -> List[WorkflowStep]:
         """Get steps that can run in parallel with the current step."""
         parallel_steps = []
         for group in self.PARALLEL_GROUPS:
@@ -225,13 +231,7 @@ class WorkflowAgent(BaseAgent):
                             parallel_steps.append(step)
         return parallel_steps
 
-    def run(
-        self,
-        channel_id: str,
-        topic: str,
-        upload: bool = False,
-        **kwargs
-    ) -> WorkflowResult:
+    def run(self, channel_id: str, topic: str, upload: bool = False, **kwargs) -> WorkflowResult:
         """
         Execute a complete workflow for video creation.
 
@@ -270,7 +270,7 @@ class WorkflowAgent(BaseAgent):
                     state.step_results[step.value] = {
                         "success": True,
                         "skipped": True,
-                        "reason": "upload=False"
+                        "reason": "upload=False",
                     }
                     continue
 
@@ -283,7 +283,9 @@ class WorkflowAgent(BaseAgent):
 
                 # Update current step
                 state.current_step = step.value
-                completed_steps = [s for s in state.step_results if state.step_results[s].get("success")]
+                completed_steps = [
+                    s for s in state.step_results if state.step_results[s].get("success")
+                ]
                 state.progress_percent = self._calculate_progress(step, completed_steps)
                 state.updated_at = datetime.now().isoformat()
                 self._save_workflow(state)
@@ -299,8 +301,7 @@ class WorkflowAgent(BaseAgent):
                     results = {}
                     for pstep in parallel:
                         t = threading.Thread(
-                            target=self._execute_step_thread,
-                            args=(pstep, state, results, kwargs)
+                            target=self._execute_step_thread, args=(pstep, state, results, kwargs)
                         )
                         threads.append(t)
                         t.start()
@@ -324,7 +325,9 @@ class WorkflowAgent(BaseAgent):
 
                 # Check for failure
                 if not result.get("success", False):
-                    state.errors.append(f"Step {step.value} failed: {result.get('error', 'Unknown')}")
+                    state.errors.append(
+                        f"Step {step.value} failed: {result.get('error', 'Unknown')}"
+                    )
                     state.status = WorkflowStatus.FAILED.value
                     break
 
@@ -357,7 +360,7 @@ class WorkflowAgent(BaseAgent):
             errors=state.errors,
             started_at=state.created_at,
             completed_at=state.completed_at,
-            duration_seconds=duration
+            duration_seconds=duration,
         )
 
     def _execute_step(self, step: WorkflowStep, state: WorkflowState, **kwargs) -> Dict[str, Any]:
@@ -376,7 +379,7 @@ class WorkflowAgent(BaseAgent):
         step: WorkflowStep,
         state: WorkflowState,
         results: Dict[str, Any],
-        kwargs: Dict[str, Any]
+        kwargs: Dict[str, Any],
     ):
         """Execute a step in a thread for parallel processing."""
         result = self._execute_step(step, state, **kwargs)
@@ -400,7 +403,7 @@ class WorkflowAgent(BaseAgent):
                 current_step="",
                 progress_percent=0,
                 success=False,
-                errors=[f"Workflow {workflow_id} not found"]
+                errors=[f"Workflow {workflow_id} not found"],
             )
 
         return WorkflowResult(
@@ -412,7 +415,7 @@ class WorkflowAgent(BaseAgent):
             data=state.step_results,
             errors=state.errors,
             started_at=state.created_at,
-            completed_at=state.completed_at
+            completed_at=state.completed_at,
         )
 
     def resume(self, workflow_id: str, **kwargs) -> WorkflowResult:
@@ -434,7 +437,7 @@ class WorkflowAgent(BaseAgent):
                 current_step="",
                 progress_percent=0,
                 success=False,
-                errors=[f"Workflow {workflow_id} not found"]
+                errors=[f"Workflow {workflow_id} not found"],
             )
 
         if state.status not in [WorkflowStatus.FAILED.value, WorkflowStatus.PAUSED.value]:
@@ -444,10 +447,12 @@ class WorkflowAgent(BaseAgent):
                 current_step=state.current_step,
                 progress_percent=state.progress_percent,
                 success=False,
-                errors=[f"Workflow is {state.status}, cannot resume"]
+                errors=[f"Workflow is {state.status}, cannot resume"],
             )
 
-        logger.info(f"[{self.name}] Resuming workflow: {workflow_id} from step {state.current_step}")
+        logger.info(
+            f"[{self.name}] Resuming workflow: {workflow_id} from step {state.current_step}"
+        )
 
         # Find the step to resume from
         current_step_enum = WorkflowStep(state.current_step)
@@ -465,7 +470,9 @@ class WorkflowAgent(BaseAgent):
                     continue
 
                 state.current_step = step.value
-                completed_steps = [s for s in state.step_results if state.step_results[s].get("success")]
+                completed_steps = [
+                    s for s in state.step_results if state.step_results[s].get("success")
+                ]
                 state.progress_percent = self._calculate_progress(step, completed_steps)
                 state.updated_at = datetime.now().isoformat()
                 self._save_workflow(state)
@@ -502,7 +509,7 @@ class WorkflowAgent(BaseAgent):
             success=state.status == WorkflowStatus.COMPLETED.value,
             data=state.step_results,
             errors=state.errors,
-            duration_seconds=duration
+            duration_seconds=duration,
         )
 
     def pause(self, workflow_id: str) -> WorkflowResult:
@@ -515,7 +522,7 @@ class WorkflowAgent(BaseAgent):
                 current_step="",
                 progress_percent=0,
                 success=False,
-                errors=[f"Workflow {workflow_id} not found"]
+                errors=[f"Workflow {workflow_id} not found"],
             )
 
         if state.status == WorkflowStatus.RUNNING.value:
@@ -527,9 +534,7 @@ class WorkflowAgent(BaseAgent):
         return self.get_status(workflow_id)
 
     def list_workflows(
-        self,
-        status: Optional[str] = None,
-        channel_id: Optional[str] = None
+        self, status: Optional[str] = None, channel_id: Optional[str] = None
     ) -> List[WorkflowResult]:
         """
         List all workflows, optionally filtered by status or channel.

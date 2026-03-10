@@ -12,20 +12,22 @@ Usage:
     result = crew.run_pipeline(niche="python tutorials")
 """
 
-import os
 import asyncio
-from typing import Optional, Dict, Any, List
+import os
 from dataclasses import dataclass
 from pathlib import Path
-from loguru import logger
+from typing import Any, Dict, List, Optional
+
 from dotenv import load_dotenv
+from loguru import logger
 
 # Load environment variables
 load_dotenv()
 
 # Try to import CrewAI (optional dependency)
 try:
-    from crewai import Agent, Task, Crew, Process
+    from crewai import Agent
+
     CREWAI_AVAILABLE = True
 except ImportError:
     CREWAI_AVAILABLE = False
@@ -35,6 +37,7 @@ except ImportError:
 @dataclass
 class PipelineResult:
     """Result of the video pipeline."""
+
     success: bool
     video_id: Optional[str]
     video_url: Optional[str]
@@ -53,10 +56,7 @@ class YouTubeCrew:
     """
 
     def __init__(
-        self,
-        provider: str = None,
-        api_key: Optional[str] = None,
-        output_dir: str = "output"
+        self, provider: str = None, api_key: Optional[str] = None, output_dir: str = "output"
     ):
         """
         Initialize the YouTube crew.
@@ -86,10 +86,10 @@ class YouTubeCrew:
         logger.info("Setting up CrewAI agents...")
 
         # Import tools
-        from ..research.idea_generator import IdeaGenerator
         from ..content.script_writer import ScriptWriter
         from ..content.tts import TextToSpeech
         from ..content.video_assembler import VideoAssembler
+        from ..research.idea_generator import IdeaGenerator
 
         # Store components for agents
         self.idea_gen = IdeaGenerator(provider=self.provider, api_key=self.api_key)
@@ -106,7 +106,7 @@ class YouTubeCrew:
             Google Trends, Reddit discussions, and competitor content to identify
             opportunities.""",
             verbose=True,
-            allow_delegation=False
+            allow_delegation=False,
         )
 
         self.scriptwriter = Agent(
@@ -116,7 +116,7 @@ class YouTubeCrew:
             experience creating viral educational content. You know how to hook
             viewers in the first 10 seconds and keep them engaged throughout.""",
             verbose=True,
-            allow_delegation=False
+            allow_delegation=False,
         )
 
         self.producer = Agent(
@@ -126,7 +126,7 @@ class YouTubeCrew:
             educational content. You handle text-to-speech narration, video
             assembly, and thumbnail creation.""",
             verbose=True,
-            allow_delegation=False
+            allow_delegation=False,
         )
 
         self.publisher = Agent(
@@ -136,17 +136,17 @@ class YouTubeCrew:
             titles, descriptions, and tags for maximum discoverability. You
             understand the YouTube algorithm.""",
             verbose=True,
-            allow_delegation=False
+            allow_delegation=False,
         )
 
     def _setup_simple_pipeline(self):
         """Setup simple sequential pipeline (no CrewAI)."""
         logger.info("Setting up simple pipeline (CrewAI not available)...")
 
-        from ..research.idea_generator import IdeaGenerator
         from ..content.script_writer import ScriptWriter
         from ..content.tts import TextToSpeech
         from ..content.video_fast import FastVideoGenerator
+        from ..research.idea_generator import IdeaGenerator
 
         self.idea_gen = IdeaGenerator(provider=self.provider, api_key=self.api_key)
         self.script_writer = ScriptWriter(provider=self.provider, api_key=self.api_key)
@@ -154,10 +154,7 @@ class YouTubeCrew:
         self.video_generator = FastVideoGenerator()
 
     def run_pipeline(
-        self,
-        niche: str,
-        upload: bool = False,
-        privacy: str = "unlisted"
+        self, niche: str, upload: bool = False, privacy: str = "unlisted"
     ) -> PipelineResult:
         """
         Run the complete video creation pipeline.
@@ -185,17 +182,14 @@ class YouTubeCrew:
                     video_file=None,
                     title="",
                     topic=niche,
-                    error="No video ideas generated"
+                    error="No video ideas generated",
                 )
 
             logger.info(f"Selected topic: {idea.title}")
 
             # Step 2: Script
             logger.info("Step 2/4: Writing script...")
-            script = self.script_writer.generate_script(
-                topic=idea.title,
-                duration_minutes=10
-            )
+            script = self.script_writer.generate_script(topic=idea.title, duration_minutes=10)
 
             logger.info(f"Script generated: {len(script.sections)} sections")
 
@@ -211,7 +205,7 @@ class YouTubeCrew:
                     video_file=None,
                     title=script.title,
                     topic=idea.title,
-                    error=result.get("error", "Video creation failed")
+                    error=result.get("error", "Video creation failed"),
                 )
 
             video_file = result["video_file"]
@@ -232,7 +226,7 @@ class YouTubeCrew:
                     description=script.description,
                     tags=script.tags,
                     privacy=privacy,
-                    thumbnail_file=thumbnail_file
+                    thumbnail_file=thumbnail_file,
                 )
 
                 if upload_result.success:
@@ -251,7 +245,7 @@ class YouTubeCrew:
                 video_file=video_file,
                 title=script.title,
                 topic=idea.title,
-                error=None
+                error=None,
             )
 
         except Exception as e:
@@ -263,7 +257,7 @@ class YouTubeCrew:
                 video_file=None,
                 title="",
                 topic=niche,
-                error=str(e)
+                error=str(e),
             )
 
     async def _create_video(self, script, topic: str) -> Dict[str, Any]:
@@ -271,8 +265,8 @@ class YouTubeCrew:
         import re
 
         # Generate safe filename
-        safe_title = re.sub(r'[^\w\s-]', '', script.title)[:50]
-        safe_title = safe_title.replace(' ', '_')
+        safe_title = re.sub(r"[^\w\s-]", "", script.title)[:50]
+        safe_title = safe_title.replace(" ", "_")
 
         audio_file = self.output_dir / f"{safe_title}_audio.mp3"
         video_file = self.output_dir / f"{safe_title}.mp4"
@@ -285,31 +279,24 @@ class YouTubeCrew:
 
             # Create video
             self.video_generator.create_video(
-                audio_file=str(audio_file),
-                output_file=str(video_file),
-                title=script.title
+                audio_file=str(audio_file), output_file=str(video_file), title=script.title
             )
 
             # Create thumbnail
             self.video_generator.create_thumbnail(
-                output_file=str(thumbnail_file),
-                title=script.title[:30],
-                subtitle=topic[:40]
+                output_file=str(thumbnail_file), title=script.title[:30], subtitle=topic[:40]
             )
 
             return {
                 "success": True,
                 "video_file": str(video_file),
                 "audio_file": str(audio_file),
-                "thumbnail_file": str(thumbnail_file)
+                "thumbnail_file": str(thumbnail_file),
             }
 
         except Exception as e:
             logger.error(f"Video creation failed: {e}")
-            return {
-                "success": False,
-                "error": str(e)
-            }
+            return {"success": False, "error": str(e)}
 
     def run_daily(self, channels: List[Dict[str, Any]]) -> List[PipelineResult]:
         """
@@ -333,7 +320,7 @@ class YouTubeCrew:
             result = self.run_pipeline(
                 niche=niche,
                 upload=True,
-                privacy=channel.get("settings", {}).get("default_privacy", "unlisted")
+                privacy=channel.get("settings", {}).get("default_privacy", "unlisted"),
             )
 
             results.append(result)
@@ -354,9 +341,9 @@ class SimplePipeline:
 
 # Example usage
 if __name__ == "__main__":
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print("JOE CREW")
-    print("="*60 + "\n")
+    print("=" * 60 + "\n")
 
     # Uses AI_PROVIDER from environment, falls back to "ollama"
     crew = YouTubeCrew()
@@ -366,8 +353,7 @@ if __name__ == "__main__":
     print(f"(Using {provider} for AI)\n")
 
     result = crew.run_pipeline(
-        niche="python programming tutorials",
-        upload=False  # Don't upload, just create video
+        niche="python programming tutorials", upload=False  # Don't upload, just create video
     )
 
     if result.success:

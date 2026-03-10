@@ -67,20 +67,21 @@ Usage:
     is_animated = guaranteed_gen.validate_hook_is_animated(hook_video)
 """
 
-import os
 import math
+import os
 import random
 import shutil
 import subprocess
 import tempfile
-from pathlib import Path
-from typing import Dict, List, Optional, Tuple, Any
 from dataclasses import dataclass, field
 from enum import Enum
+from pathlib import Path
+from typing import Any, Dict, List, Optional, Tuple
+
 from loguru import logger
 
 try:
-    from PIL import Image, ImageDraw, ImageFont, ImageFilter, ImageEnhance
+    from PIL import Image, ImageDraw, ImageEnhance, ImageFont
 except ImportError:
     raise ImportError("Please install pillow: pip install pillow")
 
@@ -90,6 +91,7 @@ from .video_utils import find_ffmpeg as _find_ffmpeg_shared
 
 class HookAnimationType(Enum):
     """Types of hook animations available."""
+
     ZOOM_IN = "zoom_in"
     ZOOM_OUT = "zoom_out"
     FADE_IN = "fade_in"
@@ -104,6 +106,7 @@ class HookAnimationType(Enum):
 @dataclass
 class HookTemplate:
     """Template configuration for a hook."""
+
     name: str
     animation_type: HookAnimationType
     text_position: str  # "center", "top", "bottom"
@@ -121,6 +124,7 @@ class HookTemplate:
 @dataclass
 class HookValidationResult:
     """Result of hook validation."""
+
     is_valid: bool
     has_visual_interest: bool
     first_frame_not_blank: bool
@@ -173,7 +177,11 @@ class VideoHookGenerator:
                 {"template": "$X,XXX to $XX,XXX", "type": "counter", "style": "growth"},
                 {"template": "This costs you ${amount}/year", "type": "statistic", "style": "loss"},
                 {"template": "Rich people know this...", "type": "text", "style": "secret"},
-                {"template": "{percentage}% of millionaires...", "type": "statistic", "style": "fact"},
+                {
+                    "template": "{percentage}% of millionaires...",
+                    "type": "statistic",
+                    "style": "fact",
+                },
                 {"template": "Wall Street hates this...", "type": "text", "style": "controversy"},
             ],
             "visual_elements": ["rising_chart", "gold_coins", "money_stack", "upward_arrow"],
@@ -190,7 +198,11 @@ class VideoHookGenerator:
             "hooks": [
                 {"template": "What if I told you...", "type": "text", "style": "question"},
                 {"template": "Your brain is lying to you", "type": "text", "style": "revelation"},
-                {"template": "{percentage}% of people don't know this", "type": "statistic", "style": "fact"},
+                {
+                    "template": "{percentage}% of people don't know this",
+                    "type": "statistic",
+                    "style": "fact",
+                },
                 {"template": "This changes everything...", "type": "text", "style": "teaser"},
                 {"template": "Scientists discovered...", "type": "text", "style": "authority"},
             ],
@@ -206,10 +218,22 @@ class VideoHookGenerator:
             "icon_theme": "dramatic",  # book, silhouette, mystery
             "animation_style": "cinematic",
             "hooks": [
-                {"template": "Nobody expected what happened next...", "type": "text", "style": "suspense"},
-                {"template": "This is the story they don't want you to hear", "type": "text", "style": "conspiracy"},
+                {
+                    "template": "Nobody expected what happened next...",
+                    "type": "text",
+                    "style": "suspense",
+                },
+                {
+                    "template": "This is the story they don't want you to hear",
+                    "type": "text",
+                    "style": "conspiracy",
+                },
                 {"template": "Wait for it...", "type": "text", "style": "teaser"},
-                {"template": "Everything changed in {timeframe}", "type": "text", "style": "dramatic"},
+                {
+                    "template": "Everything changed in {timeframe}",
+                    "type": "text",
+                    "style": "dramatic",
+                },
                 {"template": "The truth will shock you...", "type": "text", "style": "revelation"},
             ],
             "visual_elements": ["dramatic_shadow", "spotlight", "film_grain", "mystery_figure"],
@@ -230,7 +254,7 @@ class VideoHookGenerator:
             ],
             "visual_elements": ["abstract_glow", "light_rays", "particle_effect"],
             "sound_cues": ["whoosh", "notification", "impact"],
-        }
+        },
     }
 
     # Animation presets
@@ -266,12 +290,7 @@ class VideoHookGenerator:
         },
     }
 
-    def __init__(
-        self,
-        resolution: Tuple[int, int] = None,
-        fps: int = 30,
-        is_shorts: bool = False
-    ):
+    def __init__(self, resolution: Tuple[int, int] = None, fps: int = 30, is_shorts: bool = False):
         """
         Initialize the Video Hook Generator.
 
@@ -331,10 +350,22 @@ class VideoHookGenerator:
         """Load available fonts."""
         fonts = {}
         font_paths = {
-            "bold": ["C:\\Windows\\Fonts\\arialbd.ttf", "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"],
-            "regular": ["C:\\Windows\\Fonts\\arial.ttf", "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"],
-            "impact": ["C:\\Windows\\Fonts\\impact.ttf", "/usr/share/fonts/truetype/msttcorefonts/Impact.ttf"],
-            "black": ["C:\\Windows\\Fonts\\ariblk.ttf", "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"],
+            "bold": [
+                "C:\\Windows\\Fonts\\arialbd.ttf",
+                "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
+            ],
+            "regular": [
+                "C:\\Windows\\Fonts\\arial.ttf",
+                "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+            ],
+            "impact": [
+                "C:\\Windows\\Fonts\\impact.ttf",
+                "/usr/share/fonts/truetype/msttcorefonts/Impact.ttf",
+            ],
+            "black": [
+                "C:\\Windows\\Fonts\\ariblk.ttf",
+                "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
+            ],
         }
 
         for name, paths in font_paths:
@@ -359,18 +390,15 @@ class VideoHookGenerator:
 
     def _parse_color(self, color: str) -> Tuple[int, int, int]:
         """Parse hex color string to RGB tuple."""
-        color = color.lstrip('#')
-        return tuple(int(color[i:i+2], 16) for i in (0, 2, 4))
+        color = color.lstrip("#")
+        return tuple(int(color[i : i + 2], 16) for i in (0, 2, 4))
 
     def _create_gradient_background(
-        self,
-        size: Tuple[int, int],
-        colors: List[str],
-        style: str = "vertical"
+        self, size: Tuple[int, int], colors: List[str], style: str = "vertical"
     ) -> Image.Image:
         """Create a gradient background image."""
         width, height = size
-        img = Image.new('RGB', size)
+        img = Image.new("RGB", size)
         draw = ImageDraw.Draw(img)
 
         # Parse colors
@@ -394,7 +422,10 @@ class VideoHookGenerator:
                         color = rgb_colors[-1]
                     else:
                         color = tuple(
-                            int(rgb_colors[idx][i] + (rgb_colors[idx+1][i] - rgb_colors[idx][i]) * local_ratio)
+                            int(
+                                rgb_colors[idx][i]
+                                + (rgb_colors[idx + 1][i] - rgb_colors[idx][i]) * local_ratio
+                            )
                             for i in range(3)
                         )
                 draw.line([(0, y), (width, y)], fill=color)
@@ -409,10 +440,7 @@ class VideoHookGenerator:
                     int(rgb_colors[0][i] * (1 - ratio) + rgb_colors[-1][i] * ratio)
                     for i in range(3)
                 )
-                draw.ellipse(
-                    [center_x - r, center_y - r, center_x + r, center_y + r],
-                    fill=color
-                )
+                draw.ellipse([center_x - r, center_y - r, center_x + r, center_y + r], fill=color)
 
         return img
 
@@ -421,7 +449,7 @@ class VideoHookGenerator:
         width, height = img.size
 
         # Create vignette mask
-        vignette = Image.new('L', (width, height), 255)
+        vignette = Image.new("L", (width, height), 255)
         draw = ImageDraw.Draw(vignette)
 
         center_x, center_y = width // 2, height // 2
@@ -429,17 +457,10 @@ class VideoHookGenerator:
 
         for r in range(max_radius, 0, -3):
             intensity = int(255 * (1 - (1 - r / max_radius) ** 2 * strength))
-            draw.ellipse(
-                [center_x - r, center_y - r, center_x + r, center_y + r],
-                fill=intensity
-            )
+            draw.ellipse([center_x - r, center_y - r, center_x + r, center_y + r], fill=intensity)
 
         # Apply vignette
-        result = Image.composite(
-            img,
-            Image.new('RGB', img.size, (0, 0, 0)),
-            vignette
-        )
+        result = Image.composite(img, Image.new("RGB", img.size, (0, 0, 0)), vignette)
 
         return result
 
@@ -450,7 +471,7 @@ class VideoHookGenerator:
         position: Tuple[int, int],
         font: ImageFont.FreeTypeFont,
         text_color: Tuple[int, int, int],
-        effects: Dict[str, Any] = None
+        effects: Dict[str, Any] = None,
     ) -> Image.Image:
         """Draw text with shadow, outline, and glow effects."""
         draw = ImageDraw.Draw(img)
@@ -478,11 +499,7 @@ class VideoHookGenerator:
         return img
 
     def generate_hook_frame(
-        self,
-        topic: str,
-        niche: str,
-        hook_text: str,
-        include_visuals: bool = True
+        self, topic: str, niche: str, hook_text: str, include_visuals: bool = True
     ) -> Image.Image:
         """
         Generate a single hook frame image.
@@ -502,7 +519,7 @@ class VideoHookGenerator:
         img = self._create_gradient_background(
             self.resolution,
             template["gradient_colors"],
-            style="radial" if niche == "psychology" else "vertical"
+            style="radial" if niche == "psychology" else "vertical",
         )
 
         # Add vignette
@@ -517,7 +534,9 @@ class VideoHookGenerator:
             # Use impact or bold for maximum readability
             font_path = self.fonts.get("impact", self.fonts.get("bold", ""))
             font_size = int(self.HOOK_FONT_SIZE * (self.width / 1920))
-            font = ImageFont.truetype(font_path, font_size) if font_path else ImageFont.load_default()
+            font = (
+                ImageFont.truetype(font_path, font_size) if font_path else ImageFont.load_default()
+            )
         except (OSError, IOError):
             font = ImageFont.load_default()
 
@@ -543,13 +562,17 @@ class VideoHookGenerator:
             y = start_y + i * line_height
 
             img = self._draw_text_with_effects(
-                img, line, (x, y), font, text_color,
+                img,
+                line,
+                (x, y),
+                font,
+                text_color,
                 effects={
                     "shadow": True,
                     "shadow_offset": 5,
                     "outline": True,
                     "outline_width": 4,
-                }
+                },
             )
 
         # Add accent bar below text
@@ -561,19 +584,15 @@ class VideoHookGenerator:
                 (self.width - bar_width) // 2,
                 bar_y,
                 (self.width + bar_width) // 2,
-                bar_y + bar_height
+                bar_y + bar_height,
             ],
-            fill=accent_color
+            fill=accent_color,
         )
 
         return img
 
     def _wrap_text(
-        self,
-        draw: ImageDraw.ImageDraw,
-        text: str,
-        font: ImageFont.FreeTypeFont,
-        max_width: int
+        self, draw: ImageDraw.ImageDraw, text: str, font: ImageFont.FreeTypeFont, max_width: int
     ) -> List[str]:
         """Wrap text to fit within max_width."""
         words = text.split()
@@ -596,10 +615,7 @@ class VideoHookGenerator:
         return lines
 
     def _add_niche_visuals(
-        self,
-        img: Image.Image,
-        niche: str,
-        template: Dict[str, Any]
+        self, img: Image.Image, niche: str, template: Dict[str, Any]
     ) -> Image.Image:
         """Add niche-specific visual elements."""
         draw = ImageDraw.Draw(img)
@@ -624,7 +640,7 @@ class VideoHookGenerator:
         self,
         draw: ImageDraw.ImageDraw,
         primary_color: Tuple[int, int, int],
-        accent_color: Tuple[int, int, int]
+        accent_color: Tuple[int, int, int],
     ):
         """Draw rising chart visual for finance niche."""
         # Draw subtle chart bars in background
@@ -638,7 +654,9 @@ class VideoHookGenerator:
 
             # Use lower opacity
             color = tuple(min(255, c + 20) for c in primary_color)
-            draw.rectangle([x, y, x + bar_width - 5, self.height - int(self.height * 0.15)], fill=color)
+            draw.rectangle(
+                [x, y, x + bar_width - 5, self.height - int(self.height * 0.15)], fill=color
+            )
 
         # Draw upward arrow
         arrow_size = self.width // 8
@@ -661,7 +679,7 @@ class VideoHookGenerator:
         self,
         draw: ImageDraw.ImageDraw,
         primary_color: Tuple[int, int, int],
-        accent_color: Tuple[int, int, int]
+        accent_color: Tuple[int, int, int],
     ):
         """Draw neural network pattern for psychology niche."""
         # Draw random connected nodes
@@ -674,9 +692,9 @@ class VideoHookGenerator:
 
         # Draw connections (lines)
         for i, (x1, y1, _) in enumerate(nodes):
-            for j, (x2, y2, _) in enumerate(nodes[i+1:], i+1):
+            for j, (x2, y2, _) in enumerate(nodes[i + 1 :], i + 1):
                 if random.random() < 0.15:  # 15% chance of connection
-                    distance = math.sqrt((x2-x1)**2 + (y2-y1)**2)
+                    distance = math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2)
                     if distance < self.width // 4:
                         opacity = int(255 * (1 - distance / (self.width // 4)))
                         line_color = tuple(c // 4 for c in primary_color)
@@ -685,13 +703,13 @@ class VideoHookGenerator:
         # Draw nodes
         for x, y, size in nodes:
             node_color = tuple(c // 3 for c in accent_color)
-            draw.ellipse([x-size, y-size, x+size, y+size], fill=node_color)
+            draw.ellipse([x - size, y - size, x + size, y + size], fill=node_color)
 
     def _draw_light_rays(
         self,
         draw: ImageDraw.ImageDraw,
         primary_color: Tuple[int, int, int],
-        accent_color: Tuple[int, int, int]
+        accent_color: Tuple[int, int, int],
     ):
         """Draw dramatic light rays for storytelling niche."""
         center_x = self.width // 2
@@ -713,7 +731,7 @@ class VideoHookGenerator:
                 draw.line(
                     [(center_x + offset, center_y), (end_x + offset * 3, end_y)],
                     fill=ray_color,
-                    width=2
+                    width=2,
                 )
 
     def generate_counter_animation_frames(
@@ -723,7 +741,7 @@ class VideoHookGenerator:
         niche: str,
         num_frames: int = 30,
         prefix: str = "$",
-        suffix: str = ""
+        suffix: str = "",
     ) -> List[Image.Image]:
         """
         Generate frames for an animated counter (e.g., $100 -> $10,000).
@@ -751,10 +769,7 @@ class VideoHookGenerator:
             formatted = f"{prefix}{current_value:,}{suffix}"
 
             # Create frame
-            frame = self._create_gradient_background(
-                self.resolution,
-                template["gradient_colors"]
-            )
+            frame = self._create_gradient_background(self.resolution, template["gradient_colors"])
             frame = self._add_vignette(frame)
 
             # Add the number
@@ -763,7 +778,11 @@ class VideoHookGenerator:
             try:
                 font_path = self.fonts.get("impact", self.fonts.get("bold", ""))
                 font_size = int(self.COUNTER_FONT_SIZE * (self.width / 1920))
-                font = ImageFont.truetype(font_path, font_size) if font_path else ImageFont.load_default()
+                font = (
+                    ImageFont.truetype(font_path, font_size)
+                    if font_path
+                    else ImageFont.load_default()
+                )
             except (OSError, IOError):
                 font = ImageFont.load_default()
 
@@ -777,8 +796,12 @@ class VideoHookGenerator:
             # Draw with effects
             text_color = self._parse_color(template["accent_color"])  # Use accent for numbers
             frame = self._draw_text_with_effects(
-                frame, formatted, (x, y), font, text_color,
-                effects={"shadow": True, "outline": True, "outline_width": 5}
+                frame,
+                formatted,
+                (x, y),
+                font,
+                text_color,
+                effects={"shadow": True, "outline": True, "outline_width": 5},
             )
 
             frames.append(frame)
@@ -791,7 +814,7 @@ class VideoHookGenerator:
         niche: str,
         duration: float = 3.0,
         animation_type: str = "zoom_in",
-        output_path: Optional[str] = None
+        output_path: Optional[str] = None,
     ) -> Optional[str]:
         """
         Create an animated intro clip with the hook text.
@@ -814,9 +837,7 @@ class VideoHookGenerator:
         num_frames = int(duration * self.fps)
 
         # Generate frames
-        frames = self._generate_animation_frames(
-            hook_text, niche, num_frames, animation_type
-        )
+        frames = self._generate_animation_frames(hook_text, niche, num_frames, animation_type)
 
         if not frames:
             logger.error("Failed to generate animation frames")
@@ -834,14 +855,21 @@ class VideoHookGenerator:
 
         try:
             cmd = [
-                self.ffmpeg, '-y',
-                '-framerate', str(self.fps),
-                '-i', str(self.temp_dir / "hook_frame_%04d.png"),
-                '-c:v', 'libx264',
-                '-preset', 'fast',
-                '-crf', '23',
-                '-pix_fmt', 'yuv420p',
-                output_path
+                self.ffmpeg,
+                "-y",
+                "-framerate",
+                str(self.fps),
+                "-i",
+                str(self.temp_dir / "hook_frame_%04d.png"),
+                "-c:v",
+                "libx264",
+                "-preset",
+                "fast",
+                "-crf",
+                "23",
+                "-pix_fmt",
+                "yuv420p",
+                output_path,
             ]
 
             result = subprocess.run(cmd, capture_output=True, timeout=120)
@@ -865,11 +893,7 @@ class VideoHookGenerator:
                     pass
 
     def _generate_animation_frames(
-        self,
-        hook_text: str,
-        niche: str,
-        num_frames: int,
-        animation_type: str
+        self, hook_text: str, niche: str, num_frames: int, animation_type: str
     ) -> List[Image.Image]:
         """Generate frames for the specified animation type."""
         template = self.get_hook_template(niche)
@@ -877,10 +901,7 @@ class VideoHookGenerator:
 
         # Create base frame
         base_frame = self.generate_hook_frame(
-            topic="",
-            niche=niche,
-            hook_text=hook_text,
-            include_visuals=True
+            topic="", niche=niche, hook_text=hook_text, include_visuals=True
         )
 
         for i in range(num_frames):
@@ -899,13 +920,15 @@ class VideoHookGenerator:
             elif animation_type == "fade_in":
                 # Fade from black
                 opacity = self._ease_in_out_cubic(progress)
-                black = Image.new('RGB', base_frame.size, (0, 0, 0))
+                black = Image.new("RGB", base_frame.size, (0, 0, 0))
                 frame = Image.blend(black, base_frame, opacity)
 
             elif animation_type == "slide_up":
                 # Slide up from bottom
                 offset = int((1 - self._ease_out_cubic(progress)) * self.height * 0.3)
-                frame = Image.new('RGB', self.resolution, self._parse_color(template["secondary_color"]))
+                frame = Image.new(
+                    "RGB", self.resolution, self._parse_color(template["secondary_color"])
+                )
                 frame.paste(base_frame, (0, offset))
 
             elif animation_type == "pulse":
@@ -941,7 +964,7 @@ class VideoHookGenerator:
         scaled = img.resize((new_width, new_height), Image.Resampling.LANCZOS)
 
         # Create output at original size
-        result = Image.new('RGB', (width, height), (0, 0, 0))
+        result = Image.new("RGB", (width, height), (0, 0, 0))
 
         # Paste centered
         x = (width - new_width) // 2
@@ -964,7 +987,7 @@ class VideoHookGenerator:
         niche: str,
         hook_duration: float = 3.0,
         animation_type: str = "zoom_in",
-        output_path: Optional[str] = None
+        output_path: Optional[str] = None,
     ) -> Optional[str]:
         """
         Add a hook intro to the beginning of an existing video.
@@ -986,10 +1009,7 @@ class VideoHookGenerator:
 
         # Create animated hook intro
         hook_clip = self.create_animated_intro(
-            hook_text=hook_text,
-            niche=niche,
-            duration=hook_duration,
-            animation_type=animation_type
+            hook_text=hook_text, niche=niche, duration=hook_duration, animation_type=animation_type
         )
 
         if not hook_clip:
@@ -1003,22 +1023,31 @@ class VideoHookGenerator:
 
         # Concatenate hook + original video
         concat_file = self.temp_dir / "concat_hook.txt"
-        with open(concat_file, 'w') as f:
+        with open(concat_file, "w") as f:
             f.write(f"file '{hook_clip}'\n")
             f.write(f"file '{video_path}'\n")
 
         try:
             cmd = [
-                self.ffmpeg, '-y',
-                '-f', 'concat',
-                '-safe', '0',
-                '-i', str(concat_file),
-                '-c:v', 'libx264',
-                '-preset', 'fast',
-                '-crf', '23',
-                '-c:a', 'aac',
-                '-b:a', '192k',
-                output_path
+                self.ffmpeg,
+                "-y",
+                "-f",
+                "concat",
+                "-safe",
+                "0",
+                "-i",
+                str(concat_file),
+                "-c:v",
+                "libx264",
+                "-preset",
+                "fast",
+                "-crf",
+                "23",
+                "-c:a",
+                "aac",
+                "-b:a",
+                "192k",
+                output_path,
             ]
 
             result = subprocess.run(cmd, capture_output=True, timeout=300)
@@ -1044,10 +1073,7 @@ class VideoHookGenerator:
                 pass
 
     def create_teaser_flash(
-        self,
-        climax_frame: Image.Image,
-        niche: str,
-        flash_duration: float = 0.3
+        self, climax_frame: Image.Image, niche: str, flash_duration: float = 0.3
     ) -> List[Image.Image]:
         """
         Create a split-second flash of the climax moment.
@@ -1083,7 +1109,7 @@ class VideoHookGenerator:
                 opacity = 1.0
 
             # Blend with black
-            black = Image.new('RGB', climax_frame.size, (0, 0, 0))
+            black = Image.new("RGB", climax_frame.size, (0, 0, 0))
             frame = Image.blend(black, climax_frame, opacity)
 
             # Add "Wait for it..." text if early in flash
@@ -1091,7 +1117,9 @@ class VideoHookGenerator:
                 draw = ImageDraw.Draw(frame)
                 try:
                     font_path = self.fonts.get("bold", "")
-                    font = ImageFont.truetype(font_path, 36) if font_path else ImageFont.load_default()
+                    font = (
+                        ImageFont.truetype(font_path, 36) if font_path else ImageFont.load_default()
+                    )
                 except (OSError, IOError):
                     font = ImageFont.load_default()
 
@@ -1108,11 +1136,7 @@ class VideoHookGenerator:
 
         return frames
 
-    def validate_hook(
-        self,
-        video_path: str,
-        hook_duration: float = 3.0
-    ) -> HookValidationResult:
+    def validate_hook(self, video_path: str, hook_duration: float = 3.0) -> HookValidationResult:
         """
         Validate that a video has a proper hook/intro.
 
@@ -1136,7 +1160,7 @@ class VideoHookGenerator:
                 first_frame_not_blank=False,
                 hook_text_visible=False,
                 has_audio=False,
-                suggestions=["Video file not found"]
+                suggestions=["Video file not found"],
             )
 
         suggestions = []
@@ -1144,12 +1168,16 @@ class VideoHookGenerator:
         # Check first frame
         first_frame_ok, first_frame_brightness = self._check_first_frame(video_path)
         if not first_frame_ok:
-            suggestions.append(f"First frame is too dark (brightness: {first_frame_brightness:.1f}). Add visual hook.")
+            suggestions.append(
+                f"First frame is too dark (brightness: {first_frame_brightness:.1f}). Add visual hook."
+            )
 
         # Check for visual activity in first seconds
         visual_interest = self._check_visual_activity(video_path, hook_duration)
         if not visual_interest:
-            suggestions.append("Insufficient visual activity in first seconds. Add animation or dynamic visuals.")
+            suggestions.append(
+                "Insufficient visual activity in first seconds. Add animation or dynamic visuals."
+            )
 
         # Check audio start
         has_audio = self._check_audio_start(video_path)
@@ -1165,7 +1193,7 @@ class VideoHookGenerator:
             first_frame_not_blank=first_frame_ok,
             hook_text_visible=True,  # Assumed if visuals pass
             has_audio=has_audio,
-            suggestions=suggestions
+            suggestions=suggestions,
         )
 
     def _check_first_frame(self, video_path: str) -> Tuple[bool, float]:
@@ -1177,11 +1205,15 @@ class VideoHookGenerator:
             # Extract first frame
             frame_path = self.temp_dir / "first_frame_check.png"
             cmd = [
-                self.ffmpeg, '-y',
-                '-i', video_path,
-                '-vframes', '1',
-                '-f', 'image2',
-                str(frame_path)
+                self.ffmpeg,
+                "-y",
+                "-i",
+                video_path,
+                "-vframes",
+                "1",
+                "-f",
+                "image2",
+                str(frame_path),
             ]
             subprocess.run(cmd, capture_output=True, timeout=30)
 
@@ -1190,7 +1222,7 @@ class VideoHookGenerator:
 
             # Check brightness
             img = Image.open(frame_path)
-            grayscale = img.convert('L')
+            grayscale = img.convert("L")
             pixels = list(grayscale.getdata())
             avg_brightness = sum(pixels) / len(pixels)
 
@@ -1219,18 +1251,23 @@ class VideoHookGenerator:
 
                 frame_path = self.temp_dir / f"activity_frame_{t}.png"
                 cmd = [
-                    self.ffmpeg, '-y',
-                    '-ss', str(t),
-                    '-i', video_path,
-                    '-vframes', '1',
-                    '-f', 'image2',
-                    str(frame_path)
+                    self.ffmpeg,
+                    "-y",
+                    "-ss",
+                    str(t),
+                    "-i",
+                    video_path,
+                    "-vframes",
+                    "1",
+                    "-f",
+                    "image2",
+                    str(frame_path),
                 ]
                 subprocess.run(cmd, capture_output=True, timeout=30)
 
                 if frame_path.exists():
                     img = Image.open(frame_path)
-                    grayscale = img.convert('L')
+                    grayscale = img.convert("L")
                     pixels = list(grayscale.getdata())
                     avg = sum(pixels) / len(pixels)
                     frame_brightnesses.append(avg)
@@ -1240,7 +1277,10 @@ class VideoHookGenerator:
                 return True  # Can't check, assume OK
 
             # Check for variance (visual activity = changing brightness)
-            variance = sum((b - sum(frame_brightnesses)/len(frame_brightnesses))**2 for b in frame_brightnesses) / len(frame_brightnesses)
+            variance = sum(
+                (b - sum(frame_brightnesses) / len(frame_brightnesses)) ** 2
+                for b in frame_brightnesses
+            ) / len(frame_brightnesses)
 
             # Low variance = static image = not visually interesting
             return variance > 50  # Threshold for "interesting"
@@ -1257,15 +1297,20 @@ class VideoHookGenerator:
         try:
             # Check for audio stream
             cmd = [
-                self.ffprobe, '-v', 'error',
-                '-select_streams', 'a:0',
-                '-show_entries', 'stream=codec_type',
-                '-of', 'default=noprint_wrappers=1:nokey=1',
-                video_path
+                self.ffprobe,
+                "-v",
+                "error",
+                "-select_streams",
+                "a:0",
+                "-show_entries",
+                "stream=codec_type",
+                "-of",
+                "default=noprint_wrappers=1:nokey=1",
+                video_path,
             ]
             result = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
 
-            has_audio = 'audio' in result.stdout.lower()
+            has_audio = "audio" in result.stdout.lower()
 
             if not has_audio:
                 return False
@@ -1301,18 +1346,15 @@ class VideoHookGenerator:
             hook = hook_template.replace("{topic}", topic[:30])
             hook = hook.replace("{percentage}", str(random.randint(70, 97)))
             hook = hook.replace("{amount}", f"{random.randint(1, 20) * 1000:,}")
-            hook = hook.replace("{timeframe}", random.choice(["24 hours", "one moment", "an instant"]))
+            hook = hook.replace(
+                "{timeframe}", random.choice(["24 hours", "one moment", "an instant"])
+            )
 
             suggestions.append(hook)
 
         return suggestions
 
-    def create_guaranteed_animated_hook(
-        self,
-        topic: str,
-        niche: str,
-        duration: float = 3.0
-    ) -> str:
+    def create_guaranteed_animated_hook(self, topic: str, niche: str, duration: float = 3.0) -> str:
         """
         Create a GUARANTEED animated hook using GuaranteedHookGenerator.
 
@@ -1330,16 +1372,12 @@ class VideoHookGenerator:
         """
         # Use GuaranteedHookGenerator for reliable animated hooks
         guaranteed_generator = GuaranteedHookGenerator(
-            resolution=self.resolution,
-            fps=self.fps,
-            is_shorts=self.is_shorts
+            resolution=self.resolution, fps=self.fps, is_shorts=self.is_shorts
         )
 
         try:
             return guaranteed_generator.generate_guaranteed_hook(
-                topic=topic,
-                niche=niche,
-                duration=duration
+                topic=topic, niche=niche, duration=duration
             )
         finally:
             # Clean up the guaranteed generator's temp files
@@ -1443,12 +1481,7 @@ class GuaranteedHookGenerator:
     # Minimum animated duration in the first portion of hook
     MINIMUM_ANIMATED_DURATION = 0.8  # seconds
 
-    def __init__(
-        self,
-        resolution: Tuple[int, int] = None,
-        fps: int = 30,
-        is_shorts: bool = False
-    ):
+    def __init__(self, resolution: Tuple[int, int] = None, fps: int = 30, is_shorts: bool = False):
         """
         Initialize the Guaranteed Hook Generator.
 
@@ -1459,9 +1492,7 @@ class GuaranteedHookGenerator:
         """
         # Initialize base video hook generator for shared functionality
         self.base_generator = VideoHookGenerator(
-            resolution=resolution,
-            fps=fps,
-            is_shorts=is_shorts
+            resolution=resolution, fps=fps, is_shorts=is_shorts
         )
 
         self.width = self.base_generator.width
@@ -1474,14 +1505,11 @@ class GuaranteedHookGenerator:
         self.temp_dir = self.base_generator.temp_dir
         self.fonts = self.base_generator.fonts
 
-        logger.info(f"GuaranteedHookGenerator initialized ({self.width}x{self.height} @ {self.fps}fps)")
+        logger.info(
+            f"GuaranteedHookGenerator initialized ({self.width}x{self.height} @ {self.fps}fps)"
+        )
 
-    def generate_guaranteed_hook(
-        self,
-        topic: str,
-        niche: str,
-        duration: float = 3.0
-    ) -> str:
+    def generate_guaranteed_hook(self, topic: str, niche: str, duration: float = 3.0) -> str:
         """
         Generate a guaranteed animated hook video.
 
@@ -1516,7 +1544,7 @@ class GuaranteedHookGenerator:
                 hook_text=hook_text,
                 niche=niche,
                 duration=duration,
-                animation_type=random.choice(["zoom_in", "fade_in", "slide_up"])
+                animation_type=random.choice(["zoom_in", "fade_in", "slide_up"]),
             )
 
             if animated_hook_path and self.validate_hook_is_animated(animated_hook_path):
@@ -1530,13 +1558,13 @@ class GuaranteedHookGenerator:
         # Method 2: Kinetic typography fallback (guaranteed to work)
         try:
             animated_hook_path = self.create_kinetic_typography(
-                text=hook_text,
-                niche=niche,
-                duration=duration
+                text=hook_text, niche=niche, duration=duration
             )
 
             if animated_hook_path and self.validate_hook_is_animated(animated_hook_path):
-                logger.success(f"Generated animated hook via kinetic typography: {animated_hook_path}")
+                logger.success(
+                    f"Generated animated hook via kinetic typography: {animated_hook_path}"
+                )
                 return animated_hook_path
         except Exception as e:
             logger.error(f"Kinetic typography failed: {e}")
@@ -1544,9 +1572,7 @@ class GuaranteedHookGenerator:
         # Method 3: Ultimate fallback - simple zoom animation on text
         try:
             animated_hook_path = self._create_simple_zoom_text(
-                text=hook_text,
-                niche=niche,
-                duration=duration
+                text=hook_text, niche=niche, duration=duration
             )
 
             if animated_hook_path:
@@ -1561,12 +1587,7 @@ class GuaranteedHookGenerator:
             "All animation methods failed. Check FFmpeg installation."
         )
 
-    def create_kinetic_typography(
-        self,
-        text: str,
-        niche: str,
-        duration: float
-    ) -> str:
+    def create_kinetic_typography(self, text: str, niche: str, duration: float) -> str:
         """
         Create animated kinetic typography video.
 
@@ -1613,9 +1634,7 @@ class GuaranteedHookGenerator:
                 words, theme, num_frames, min_animated_frames
             )
         elif preferred_style == "typewriter_modern":
-            frames = self._generate_typewriter_frames(
-                text, theme, num_frames, min_animated_frames
-            )
+            frames = self._generate_typewriter_frames(text, theme, num_frames, min_animated_frames)
         else:
             # Default to word_by_word
             frames = self._generate_word_by_word_frames(
@@ -1632,11 +1651,7 @@ class GuaranteedHookGenerator:
         return self._frames_to_video(frames, f"kinetic_hook_{os.urandom(4).hex()}.mp4")
 
     def _generate_word_by_word_frames(
-        self,
-        words: List[str],
-        theme: Dict[str, Any],
-        total_frames: int,
-        min_animated_frames: int
+        self, words: List[str], theme: Dict[str, Any], total_frames: int, min_animated_frames: int
     ) -> List[Image.Image]:
         """Generate frames for word-by-word animation with zoom effect."""
         frames = []
@@ -1665,9 +1680,12 @@ class GuaranteedHookGenerator:
                 if len(accumulated_words) > 1:
                     prev_text = " ".join(accumulated_words[:-1])
                     self._draw_centered_text(
-                        draw, prev_text, font,
+                        draw,
+                        prev_text,
+                        font,
                         self._parse_color(theme["secondary_text_color"]),
-                        y_offset=-50, alpha=1.0
+                        y_offset=-50,
+                        alpha=1.0,
                     )
 
                 # Draw current word with animation
@@ -1675,11 +1693,13 @@ class GuaranteedHookGenerator:
                 alpha = self._ease_out_cubic(progress)
 
                 # Calculate word position
-                word_font_size = int(font.size * scale) if hasattr(font, 'size') else int(72 * scale)
+                word_font_size = (
+                    int(font.size * scale) if hasattr(font, "size") else int(72 * scale)
+                )
                 try:
                     word_font = ImageFont.truetype(
                         self.fonts.get("impact", self.fonts.get("bold", "")),
-                        max(24, word_font_size)
+                        max(24, word_font_size),
                     )
                 except (OSError, IOError):
                     word_font = font
@@ -1687,8 +1707,7 @@ class GuaranteedHookGenerator:
                 # Draw the new word with zoom effect
                 accent_color = self._parse_color(theme["accent_color"])
                 self._draw_centered_text(
-                    draw, word, word_font, accent_color,
-                    y_offset=50, alpha=alpha
+                    draw, word, word_font, accent_color, y_offset=50, alpha=alpha
                 )
 
                 # Add glow effect
@@ -1705,11 +1724,7 @@ class GuaranteedHookGenerator:
         return frames[:total_frames]
 
     def _generate_phrase_cascade_frames(
-        self,
-        words: List[str],
-        theme: Dict[str, Any],
-        total_frames: int,
-        min_animated_frames: int
+        self, words: List[str], theme: Dict[str, Any], total_frames: int, min_animated_frames: int
     ) -> List[Image.Image]:
         """Generate frames for phrase cascade animation."""
         frames = []
@@ -1717,7 +1732,7 @@ class GuaranteedHookGenerator:
         # Group words into phrases (2-3 words each)
         phrases = []
         for i in range(0, len(words), 2):
-            phrase = " ".join(words[i:i+2])
+            phrase = " ".join(words[i : i + 2])
             phrases.append(phrase)
 
         if not phrases:
@@ -1743,7 +1758,7 @@ class GuaranteedHookGenerator:
                 # Draw all accumulated phrases
                 y_position = self.height // 3
                 for p_idx, (p_text, p_dir) in enumerate(accumulated_phrases):
-                    is_current = (p_idx == len(accumulated_phrases) - 1)
+                    is_current = p_idx == len(accumulated_phrases) - 1
 
                     if is_current:
                         # Animate current phrase sliding in
@@ -1763,9 +1778,12 @@ class GuaranteedHookGenerator:
                         color = self._parse_color(theme["secondary_text_color"])
 
                     self._draw_centered_text(
-                        draw, p_text, font, color,
+                        draw,
+                        p_text,
+                        font,
+                        color,
                         y_offset=y_position - self.height // 2 + x_offset,
-                        alpha=alpha
+                        alpha=alpha,
                     )
                     y_position += 80
 
@@ -1778,11 +1796,7 @@ class GuaranteedHookGenerator:
         return frames[:total_frames]
 
     def _generate_impact_burst_frames(
-        self,
-        words: List[str],
-        theme: Dict[str, Any],
-        total_frames: int,
-        min_animated_frames: int
+        self, words: List[str], theme: Dict[str, Any], total_frames: int, min_animated_frames: int
     ) -> List[Image.Image]:
         """Generate frames for impact burst animation."""
         frames = []
@@ -1802,9 +1816,11 @@ class GuaranteedHookGenerator:
                     prev_words = " ".join(words[:word_idx])
                     small_font = self._get_kinetic_font(theme, size_multiplier=0.5)
                     self._draw_centered_text(
-                        draw, prev_words, small_font,
+                        draw,
+                        prev_words,
+                        small_font,
                         self._parse_color(theme["secondary_text_color"]),
-                        y_offset=-self.height // 4
+                        y_offset=-self.height // 4,
                     )
 
                 # Impact burst effect: start large, shrink to normal with bounce
@@ -1822,7 +1838,7 @@ class GuaranteedHookGenerator:
                     burst_font_size = int(72 * scale)
                     burst_font = ImageFont.truetype(
                         self.fonts.get("impact", self.fonts.get("bold", "")),
-                        max(24, burst_font_size)
+                        max(24, burst_font_size),
                     )
                 except (OSError, IOError):
                     burst_font = font
@@ -1837,8 +1853,7 @@ class GuaranteedHookGenerator:
         draw = ImageDraw.Draw(final_frame)
         full_text = " ".join(words)
         self._draw_centered_text(
-            draw, full_text, font,
-            self._parse_color(theme["secondary_text_color"])
+            draw, full_text, font, self._parse_color(theme["secondary_text_color"])
         )
 
         while len(frames) < total_frames:
@@ -1847,11 +1862,7 @@ class GuaranteedHookGenerator:
         return frames[:total_frames]
 
     def _generate_typewriter_frames(
-        self,
-        text: str,
-        theme: Dict[str, Any],
-        total_frames: int,
-        min_animated_frames: int
+        self, text: str, theme: Dict[str, Any], total_frames: int, min_animated_frames: int
     ) -> List[Image.Image]:
         """Generate frames for modern typewriter animation."""
         frames = []
@@ -1891,8 +1902,7 @@ class GuaranteedHookGenerator:
             if chars_shown > 0 and chars_shown <= len(text):
                 glow_intensity = 50 if frame_idx % 3 == 0 else 30
                 self._add_text_glow(
-                    frame, current_text[-1:], font,
-                    theme["glow_color"], glow_intensity
+                    frame, current_text[-1:], font, theme["glow_color"], glow_intensity
                 )
 
             frames.append(frame)
@@ -1902,15 +1912,11 @@ class GuaranteedHookGenerator:
     def _create_base_frame(self, theme: Dict[str, Any]) -> Image.Image:
         """Create a base frame with gradient background."""
         return self.base_generator._create_gradient_background(
-            self.resolution,
-            theme["background_colors"],
-            style="vertical"
+            self.resolution, theme["background_colors"], style="vertical"
         )
 
     def _get_kinetic_font(
-        self,
-        theme: Dict[str, Any],
-        size_multiplier: float = 1.0
+        self, theme: Dict[str, Any], size_multiplier: float = 1.0
     ) -> ImageFont.FreeTypeFont:
         """Get font for kinetic typography."""
         base_size = int(72 * (self.width / 1920) * size_multiplier)
@@ -1939,7 +1945,7 @@ class GuaranteedHookGenerator:
         font: ImageFont.FreeTypeFont,
         color: Tuple[int, int, int],
         y_offset: int = 0,
-        alpha: float = 1.0
+        alpha: float = 1.0,
     ):
         """Draw text centered on the frame."""
         bbox = draw.textbbox((0, 0), text, font=font)
@@ -1972,11 +1978,11 @@ class GuaranteedHookGenerator:
         text: str,
         font: ImageFont.FreeTypeFont,
         glow_color: str,
-        intensity: int = 50
+        intensity: int = 50,
     ):
         """Add a glow effect around text (simplified)."""
         # Create glow layer
-        glow = Image.new('RGBA', frame.size, (0, 0, 0, 0))
+        glow = Image.new("RGBA", frame.size, (0, 0, 0, 0))
         draw = ImageDraw.Draw(glow)
 
         color = self._parse_color(glow_color)
@@ -1994,23 +2000,20 @@ class GuaranteedHookGenerator:
             for dx in [-offset, 0, offset]:
                 for dy in [-offset, 0, offset]:
                     draw.text(
-                        (x + dx, y + dy), text, font=font,
-                        fill=(*color, max(10, intensity // offset))
+                        (x + dx, y + dy),
+                        text,
+                        font=font,
+                        fill=(*color, max(10, intensity // offset)),
                     )
 
         # Composite glow onto frame (simplified - just blend)
-        if frame.mode != 'RGBA':
-            frame = frame.convert('RGBA')
+        if frame.mode != "RGBA":
+            frame = frame.convert("RGBA")
 
         # Note: Full alpha compositing would require more complex blending
         # This is a simplified version
 
-    def _create_simple_zoom_text(
-        self,
-        text: str,
-        niche: str,
-        duration: float
-    ) -> str:
+    def _create_simple_zoom_text(self, text: str, niche: str, duration: float) -> str:
         """Create a simple zoom animation as ultimate fallback."""
         theme = self.NICHE_KINETIC_THEMES.get(niche, self.NICHE_KINETIC_THEMES["default"])
         num_frames = int(duration * self.fps)
@@ -2031,8 +2034,7 @@ class GuaranteedHookGenerator:
             try:
                 scaled_size = int(72 * (self.width / 1920) * scale)
                 scaled_font = ImageFont.truetype(
-                    self.fonts.get("impact", self.fonts.get("bold", "")),
-                    max(24, scaled_size)
+                    self.fonts.get("impact", self.fonts.get("bold", "")), max(24, scaled_size)
                 )
             except (OSError, IOError):
                 scaled_font = font
@@ -2056,21 +2058,28 @@ class GuaranteedHookGenerator:
         for i, frame in enumerate(frames):
             frame_path = self.temp_dir / f"kinetic_frame_{i:04d}.png"
             # Ensure frame is RGB mode
-            if frame.mode != 'RGB':
-                frame = frame.convert('RGB')
+            if frame.mode != "RGB":
+                frame = frame.convert("RGB")
             frame.save(str(frame_path))
             frame_paths.append(str(frame_path))
 
         try:
             cmd = [
-                self.ffmpeg, '-y',
-                '-framerate', str(self.fps),
-                '-i', str(self.temp_dir / "kinetic_frame_%04d.png"),
-                '-c:v', 'libx264',
-                '-preset', 'fast',
-                '-crf', '23',
-                '-pix_fmt', 'yuv420p',
-                output_path
+                self.ffmpeg,
+                "-y",
+                "-framerate",
+                str(self.fps),
+                "-i",
+                str(self.temp_dir / "kinetic_frame_%04d.png"),
+                "-c:v",
+                "libx264",
+                "-preset",
+                "fast",
+                "-crf",
+                "23",
+                "-pix_fmt",
+                "yuv420p",
+                output_path,
             ]
 
             result = subprocess.run(cmd, capture_output=True, timeout=120)
@@ -2079,7 +2088,9 @@ class GuaranteedHookGenerator:
                 return output_path
             else:
                 logger.error(f"FFmpeg failed: {result.stderr.decode()[:500]}")
-                raise RuntimeError(f"Failed to create video from frames: {result.stderr.decode()[:200]}")
+                raise RuntimeError(
+                    f"Failed to create video from frames: {result.stderr.decode()[:200]}"
+                )
 
         finally:
             # Clean up frame files
@@ -2119,12 +2130,17 @@ class GuaranteedHookGenerator:
             for t in frame_times:
                 frame_path = self.temp_dir / f"validate_frame_{t}.png"
                 cmd = [
-                    self.ffmpeg, '-y',
-                    '-ss', str(t),
-                    '-i', video_path,
-                    '-vframes', '1',
-                    '-f', 'image2',
-                    str(frame_path)
+                    self.ffmpeg,
+                    "-y",
+                    "-ss",
+                    str(t),
+                    "-i",
+                    video_path,
+                    "-vframes",
+                    "1",
+                    "-f",
+                    "image2",
+                    str(frame_path),
                 ]
 
                 result = subprocess.run(cmd, capture_output=True, timeout=30)
@@ -2134,7 +2150,7 @@ class GuaranteedHookGenerator:
                     img = Image.open(frame_path)
                     # Resize to small size for comparison
                     small = img.resize((32, 32), Image.Resampling.LANCZOS)
-                    grayscale = small.convert('L')
+                    grayscale = small.convert("L")
                     pixels = list(grayscale.getdata())
                     frame_hash = sum(pixels)
                     frame_hashes.append(frame_hash)
@@ -2172,8 +2188,7 @@ class GuaranteedHookGenerator:
 
 # Factory function for easy creation
 def create_hook_generator(
-    is_shorts: bool = False,
-    resolution: Tuple[int, int] = None
+    is_shorts: bool = False, resolution: Tuple[int, int] = None
 ) -> VideoHookGenerator:
     """
     Create a VideoHookGenerator with appropriate settings.
@@ -2189,8 +2204,7 @@ def create_hook_generator(
 
 
 def create_guaranteed_hook_generator(
-    is_shorts: bool = False,
-    resolution: Tuple[int, int] = None
+    is_shorts: bool = False, resolution: Tuple[int, int] = None
 ) -> GuaranteedHookGenerator:
     """
     Create a GuaranteedHookGenerator that NEVER falls back to static titles.
@@ -2230,9 +2244,7 @@ if __name__ == "__main__":
 
         # Generate a hook frame
         hook_frame = generator.generate_hook_frame(
-            topic="Test Topic",
-            niche=niche,
-            hook_text=hooks[0] if hooks else "Test Hook"
+            topic="Test Topic", niche=niche, hook_text=hooks[0] if hooks else "Test Hook"
         )
 
         # Save test frame
@@ -2260,9 +2272,7 @@ if __name__ == "__main__":
             print(f"\n--- {niche.upper()} GUARANTEED HOOK ---")
             try:
                 hook_path = guaranteed_gen.generate_guaranteed_hook(
-                    topic="Investment Secrets",
-                    niche=niche,
-                    duration=2.0
+                    topic="Investment Secrets", niche=niche, duration=2.0
                 )
                 print(f"  Generated: {hook_path}")
 
@@ -2277,9 +2287,7 @@ if __name__ == "__main__":
         print("\n--- KINETIC TYPOGRAPHY TEST ---")
         try:
             kinetic_path = guaranteed_gen.create_kinetic_typography(
-                text="This changes everything...",
-                niche="psychology",
-                duration=2.5
+                text="This changes everything...", niche="psychology", duration=2.5
             )
             print(f"  Kinetic Typography: {kinetic_path}")
             is_animated = guaranteed_gen.validate_hook_is_animated(kinetic_path)

@@ -23,43 +23,45 @@ Usage:
         print(f"Quality check failed: {report.issues}")
 """
 
-import os
 import json
+import os
 import subprocess
-import tempfile
-from pathlib import Path
-from typing import Optional, Dict, Any, List, Tuple
 from dataclasses import dataclass, field
-from loguru import logger
 from enum import Enum
+from typing import Any, Dict, List, Optional, Tuple
+
+from loguru import logger
 
 
 class IssueSeverity(Enum):
     """Severity levels for quality issues."""
-    INFO = "info"           # Minor suggestion, doesn't affect score
-    WARNING = "warning"     # Affects score slightly (-5 to -10)
-    ERROR = "error"         # Affects score significantly (-15 to -25)
-    CRITICAL = "critical"   # Fails the check entirely (-50 or auto-fail)
+
+    INFO = "info"  # Minor suggestion, doesn't affect score
+    WARNING = "warning"  # Affects score slightly (-5 to -10)
+    ERROR = "error"  # Affects score significantly (-15 to -25)
+    CRITICAL = "critical"  # Fails the check entirely (-50 or auto-fail)
 
 
 @dataclass
 class QualityIssue:
     """Represents a single quality issue found during checking."""
-    category: str           # file, content, technical
-    issue: str              # Description of the issue
+
+    category: str  # file, content, technical
+    issue: str  # Description of the issue
     severity: IssueSeverity
-    score_impact: int       # How much this affects the score (negative)
-    recommendation: str     # How to fix it
+    score_impact: int  # How much this affects the score (negative)
+    recommendation: str  # How to fix it
 
 
 @dataclass
 class QualityReport:
     """Complete quality report for a video."""
+
     video_file: str
     is_short: bool
-    overall_score: int                          # 0-100
-    passed: bool                                # True if score >= threshold
-    threshold: int                              # Passing threshold used
+    overall_score: int  # 0-100
+    passed: bool  # True if score >= threshold
+    threshold: int  # Passing threshold used
     issues: List[QualityIssue] = field(default_factory=list)
     recommendations: List[str] = field(default_factory=list)
     file_checks: Dict[str, Any] = field(default_factory=dict)
@@ -80,14 +82,14 @@ class QualityReport:
                     "issue": issue.issue,
                     "severity": issue.severity.value,
                     "score_impact": issue.score_impact,
-                    "recommendation": issue.recommendation
+                    "recommendation": issue.recommendation,
                 }
                 for issue in self.issues
             ],
             "recommendations": self.recommendations,
             "file_checks": self.file_checks,
             "content_checks": self.content_checks,
-            "technical_checks": self.technical_checks
+            "technical_checks": self.technical_checks,
         }
 
     def summary(self) -> str:
@@ -98,7 +100,7 @@ class QualityReport:
             f"Score: {self.overall_score}/100 (threshold: {self.threshold})",
             f"Video: {self.video_file}",
             f"Format: {'YouTube Short' if self.is_short else 'Regular Video'}",
-            ""
+            "",
         ]
 
         if self.issues:
@@ -108,7 +110,7 @@ class QualityReport:
                     IssueSeverity.INFO: "i",
                     IssueSeverity.WARNING: "!",
                     IssueSeverity.ERROR: "X",
-                    IssueSeverity.CRITICAL: "XX"
+                    IssueSeverity.CRITICAL: "XX",
                 }.get(issue.severity, "?")
                 lines.append(f"  [{severity_icon}] {issue.category}: {issue.issue}")
 
@@ -132,40 +134,45 @@ class VideoQualityChecker:
     """
 
     # File size requirements (in bytes)
-    MIN_SIZE_REGULAR = 5 * 1024 * 1024      # 5MB for regular videos
-    MIN_SIZE_SHORTS = 2 * 1024 * 1024       # 2MB for Shorts
+    MIN_SIZE_REGULAR = 5 * 1024 * 1024  # 5MB for regular videos
+    MIN_SIZE_SHORTS = 2 * 1024 * 1024  # 2MB for Shorts
     MAX_SIZE_REGULAR = 256 * 1024 * 1024 * 1024  # 256GB (YouTube limit)
 
     # Duration requirements (in seconds)
-    MIN_DURATION_REGULAR = 60               # 1 minute minimum
-    MAX_DURATION_REGULAR = 12 * 60 * 60     # 12 hours (YouTube limit)
-    MIN_DURATION_SHORTS = 15                # 15 seconds minimum
-    MAX_DURATION_SHORTS = 60                # 60 seconds maximum for Shorts
-    OPTIMAL_DURATION_SHORTS = 30            # Optimal for engagement
+    MIN_DURATION_REGULAR = 60  # 1 minute minimum
+    MAX_DURATION_REGULAR = 12 * 60 * 60  # 12 hours (YouTube limit)
+    MIN_DURATION_SHORTS = 15  # 15 seconds minimum
+    MAX_DURATION_SHORTS = 60  # 60 seconds maximum for Shorts
+    OPTIMAL_DURATION_SHORTS = 30  # Optimal for engagement
 
     # Resolution requirements
-    RESOLUTION_REGULAR = (1920, 1080)       # 16:9 landscape
-    RESOLUTION_SHORTS = (1080, 1920)        # 9:16 portrait
+    RESOLUTION_REGULAR = (1920, 1080)  # 16:9 landscape
+    RESOLUTION_SHORTS = (1080, 1920)  # 9:16 portrait
 
     # Audio requirements
-    MAX_SILENT_GAP_SECONDS = 3              # Maximum allowed silent gap
-    MIN_AUDIO_LEVEL_DB = -50                # Minimum audio level (very quiet threshold)
+    MAX_SILENT_GAP_SECONDS = 3  # Maximum allowed silent gap
+    MIN_AUDIO_LEVEL_DB = -50  # Minimum audio level (very quiet threshold)
 
     # Engagement check thresholds
-    HOOK_WINDOW_SECONDS = 15                # First 15 seconds for hook check
-    MIN_HOOK_WORDS = 20                     # Minimum words in hook
+    HOOK_WINDOW_SECONDS = 15  # First 15 seconds for hook check
+    MIN_HOOK_WORDS = 20  # Minimum words in hook
 
     # Title requirements
-    MAX_TITLE_LENGTH = 100                  # YouTube limit
-    MIN_TITLE_LENGTH = 10                   # Minimum for quality
+    MAX_TITLE_LENGTH = 100  # YouTube limit
+    MIN_TITLE_LENGTH = 10  # Minimum for quality
     GENERIC_TITLE_PATTERNS = [
-        "video", "my video", "new video", "untitled",
-        "test", "clip", "upload"
+        "video",
+        "my video",
+        "new video",
+        "untitled",
+        "test",
+        "clip",
+        "upload",
     ]
 
     # Description requirements
-    MIN_DESCRIPTION_LENGTH = 50             # Minimum characters
-    OPTIMAL_DESCRIPTION_LENGTH = 200        # Recommended
+    MIN_DESCRIPTION_LENGTH = 50  # Minimum characters
+    OPTIMAL_DESCRIPTION_LENGTH = 200  # Recommended
 
     def __init__(self, ai_provider: Optional[str] = None):
         """
@@ -184,6 +191,7 @@ class VideoQualityChecker:
         if self._ai_instance is None:
             try:
                 from src.content.script_writer import get_provider
+
                 self._ai_instance = get_provider(self.ai_provider)
             except Exception as e:
                 logger.warning(f"Could not initialize AI provider: {e}")
@@ -196,7 +204,7 @@ class VideoQualityChecker:
         script_data: Optional[Dict[str, Any]] = None,
         is_short: bool = False,
         threshold: int = 70,
-        skip_ai_checks: bool = False
+        skip_ai_checks: bool = False,
     ) -> QualityReport:
         """
         Perform comprehensive quality check on a video.
@@ -224,11 +232,9 @@ class VideoQualityChecker:
         # ============================================================
         # FILE QUALITY CHECKS
         # ============================================================
-        file_issues, file_score, file_checks = self._check_file_quality(
-            video_file, is_short
-        )
+        file_issues, file_score, file_checks = self._check_file_quality(video_file, is_short)
         issues.extend(file_issues)
-        score -= (100 - file_score)
+        score -= 100 - file_score
 
         # ============================================================
         # CONTENT QUALITY CHECKS (if script data provided)
@@ -238,7 +244,7 @@ class VideoQualityChecker:
                 script_data, is_short, skip_ai_checks
             )
             issues.extend(content_issues)
-            score -= (100 - content_score)
+            score -= 100 - content_score
         else:
             content_checks = {"skipped": True, "reason": "No script data provided"}
 
@@ -249,15 +255,17 @@ class VideoQualityChecker:
             video_file, is_short
         )
         issues.extend(technical_issues)
-        score -= (100 - technical_score)
+        score -= 100 - technical_score
 
         # Ensure score is in valid range
         score = max(0, min(100, score))
 
         # Generate recommendations from issues
         recommendations = [
-            issue.recommendation for issue in issues
-            if issue.severity in [IssueSeverity.WARNING, IssueSeverity.ERROR, IssueSeverity.CRITICAL]
+            issue.recommendation
+            for issue in issues
+            if issue.severity
+            in [IssueSeverity.WARNING, IssueSeverity.ERROR, IssueSeverity.CRITICAL]
         ]
 
         # Create report
@@ -271,16 +279,14 @@ class VideoQualityChecker:
             recommendations=recommendations,
             file_checks=file_checks,
             content_checks=content_checks,
-            technical_checks=technical_checks
+            technical_checks=technical_checks,
         )
 
         logger.info(f"Quality check complete: {score}/100 ({'PASS' if report.passed else 'FAIL'})")
         return report
 
     def _check_file_quality(
-        self,
-        video_file: str,
-        is_short: bool
+        self, video_file: str, is_short: bool
     ) -> Tuple[List[QualityIssue], int, Dict[str, Any]]:
         """
         Check file-level quality metrics.
@@ -294,13 +300,15 @@ class VideoQualityChecker:
 
         # Check file exists
         if not os.path.exists(video_file):
-            issues.append(QualityIssue(
-                category="file",
-                issue="Video file does not exist",
-                severity=IssueSeverity.CRITICAL,
-                score_impact=-100,
-                recommendation="Ensure video file is created before upload"
-            ))
+            issues.append(
+                QualityIssue(
+                    category="file",
+                    issue="Video file does not exist",
+                    severity=IssueSeverity.CRITICAL,
+                    score_impact=-100,
+                    recommendation="Ensure video file is created before upload",
+                )
+            )
             checks["exists"] = False
             return issues, 0, checks
 
@@ -314,23 +322,27 @@ class VideoQualityChecker:
         min_size = self.MIN_SIZE_SHORTS if is_short else self.MIN_SIZE_REGULAR
         if file_size < min_size:
             min_mb = min_size / (1024 * 1024)
-            issues.append(QualityIssue(
-                category="file",
-                issue=f"File size too small ({checks['file_size_mb']}MB < {min_mb}MB)",
-                severity=IssueSeverity.ERROR,
-                score_impact=-20,
-                recommendation="Ensure video has sufficient content and quality"
-            ))
+            issues.append(
+                QualityIssue(
+                    category="file",
+                    issue=f"File size too small ({checks['file_size_mb']}MB < {min_mb}MB)",
+                    severity=IssueSeverity.ERROR,
+                    score_impact=-20,
+                    recommendation="Ensure video has sufficient content and quality",
+                )
+            )
             score -= 20
 
         if file_size > self.MAX_SIZE_REGULAR:
-            issues.append(QualityIssue(
-                category="file",
-                issue="File exceeds YouTube's 256GB limit",
-                severity=IssueSeverity.CRITICAL,
-                score_impact=-100,
-                recommendation="Reduce file size by lowering bitrate or resolution"
-            ))
+            issues.append(
+                QualityIssue(
+                    category="file",
+                    issue="File exceeds YouTube's 256GB limit",
+                    severity=IssueSeverity.CRITICAL,
+                    score_impact=-100,
+                    recommendation="Reduce file size by lowering bitrate or resolution",
+                )
+            )
             score -= 100
 
         # Check if file is corrupted (try to read video metadata)
@@ -344,71 +356,80 @@ class VideoQualityChecker:
             # Check duration
             if is_short:
                 if duration < self.MIN_DURATION_SHORTS:
-                    issues.append(QualityIssue(
-                        category="file",
-                        issue=f"Short too brief ({duration}s < {self.MIN_DURATION_SHORTS}s)",
-                        severity=IssueSeverity.ERROR,
-                        score_impact=-15,
-                        recommendation="Shorts should be at least 15 seconds"
-                    ))
+                    issues.append(
+                        QualityIssue(
+                            category="file",
+                            issue=f"Short too brief ({duration}s < {self.MIN_DURATION_SHORTS}s)",
+                            severity=IssueSeverity.ERROR,
+                            score_impact=-15,
+                            recommendation="Shorts should be at least 15 seconds",
+                        )
+                    )
                     score -= 15
                 elif duration > self.MAX_DURATION_SHORTS:
-                    issues.append(QualityIssue(
-                        category="file",
-                        issue=f"Short too long ({duration}s > {self.MAX_DURATION_SHORTS}s)",
-                        severity=IssueSeverity.CRITICAL,
-                        score_impact=-50,
-                        recommendation="Shorts must be 60 seconds or less"
-                    ))
+                    issues.append(
+                        QualityIssue(
+                            category="file",
+                            issue=f"Short too long ({duration}s > {self.MAX_DURATION_SHORTS}s)",
+                            severity=IssueSeverity.CRITICAL,
+                            score_impact=-50,
+                            recommendation="Shorts must be 60 seconds or less",
+                        )
+                    )
                     score -= 50
                 elif duration < self.OPTIMAL_DURATION_SHORTS - 10:
-                    issues.append(QualityIssue(
-                        category="file",
-                        issue=f"Short duration ({duration}s) below optimal (~30s)",
-                        severity=IssueSeverity.INFO,
-                        score_impact=-5,
-                        recommendation="Research shows 20-35 seconds performs best"
-                    ))
+                    issues.append(
+                        QualityIssue(
+                            category="file",
+                            issue=f"Short duration ({duration}s) below optimal (~30s)",
+                            severity=IssueSeverity.INFO,
+                            score_impact=-5,
+                            recommendation="Research shows 20-35 seconds performs best",
+                        )
+                    )
                     score -= 5
             else:
                 if duration < self.MIN_DURATION_REGULAR:
-                    issues.append(QualityIssue(
-                        category="file",
-                        issue=f"Video too short ({duration}s < {self.MIN_DURATION_REGULAR}s)",
-                        severity=IssueSeverity.WARNING,
-                        score_impact=-10,
-                        recommendation="Regular videos should be at least 1 minute"
-                    ))
+                    issues.append(
+                        QualityIssue(
+                            category="file",
+                            issue=f"Video too short ({duration}s < {self.MIN_DURATION_REGULAR}s)",
+                            severity=IssueSeverity.WARNING,
+                            score_impact=-10,
+                            recommendation="Regular videos should be at least 1 minute",
+                        )
+                    )
                     score -= 10
                 elif duration > self.MAX_DURATION_REGULAR:
-                    issues.append(QualityIssue(
-                        category="file",
-                        issue="Video exceeds YouTube's 12-hour limit",
-                        severity=IssueSeverity.CRITICAL,
-                        score_impact=-100,
-                        recommendation="Split video into multiple parts"
-                    ))
+                    issues.append(
+                        QualityIssue(
+                            category="file",
+                            issue="Video exceeds YouTube's 12-hour limit",
+                            severity=IssueSeverity.CRITICAL,
+                            score_impact=-100,
+                            recommendation="Split video into multiple parts",
+                        )
+                    )
                     score -= 100
 
         except Exception as e:
             logger.error(f"Could not read video info: {e}")
-            issues.append(QualityIssue(
-                category="file",
-                issue=f"Could not read video file (possibly corrupted): {str(e)[:50]}",
-                severity=IssueSeverity.CRITICAL,
-                score_impact=-100,
-                recommendation="Re-generate the video file"
-            ))
+            issues.append(
+                QualityIssue(
+                    category="file",
+                    issue=f"Could not read video file (possibly corrupted): {str(e)[:50]}",
+                    severity=IssueSeverity.CRITICAL,
+                    score_impact=-100,
+                    recommendation="Re-generate the video file",
+                )
+            )
             checks["corrupted"] = True
             score -= 100
 
         return issues, max(0, score), checks
 
     def _check_content_quality(
-        self,
-        script_data: Dict[str, Any],
-        is_short: bool,
-        skip_ai_checks: bool
+        self, script_data: Dict[str, Any], is_short: bool, skip_ai_checks: bool
     ) -> Tuple[List[QualityIssue], int, Dict[str, Any]]:
         """
         Check content quality using script data.
@@ -428,65 +449,89 @@ class VideoQualityChecker:
         checks["title_length"] = len(title)
 
         if not title:
-            issues.append(QualityIssue(
-                category="content",
-                issue="Missing title",
-                severity=IssueSeverity.CRITICAL,
-                score_impact=-30,
-                recommendation="Add a compelling title for the video"
-            ))
+            issues.append(
+                QualityIssue(
+                    category="content",
+                    issue="Missing title",
+                    severity=IssueSeverity.CRITICAL,
+                    score_impact=-30,
+                    recommendation="Add a compelling title for the video",
+                )
+            )
             score -= 30
         else:
             # Check title length
             if len(title) > self.MAX_TITLE_LENGTH:
-                issues.append(QualityIssue(
-                    category="content",
-                    issue=f"Title too long ({len(title)} > {self.MAX_TITLE_LENGTH} chars)",
-                    severity=IssueSeverity.ERROR,
-                    score_impact=-15,
-                    recommendation="Shorten title to under 100 characters"
-                ))
+                issues.append(
+                    QualityIssue(
+                        category="content",
+                        issue=f"Title too long ({len(title)} > {self.MAX_TITLE_LENGTH} chars)",
+                        severity=IssueSeverity.ERROR,
+                        score_impact=-15,
+                        recommendation="Shorten title to under 100 characters",
+                    )
+                )
                 score -= 15
             elif len(title) < self.MIN_TITLE_LENGTH:
-                issues.append(QualityIssue(
-                    category="content",
-                    issue=f"Title too short ({len(title)} < {self.MIN_TITLE_LENGTH} chars)",
-                    severity=IssueSeverity.WARNING,
-                    score_impact=-10,
-                    recommendation="Make title more descriptive"
-                ))
+                issues.append(
+                    QualityIssue(
+                        category="content",
+                        issue=f"Title too short ({len(title)} < {self.MIN_TITLE_LENGTH} chars)",
+                        severity=IssueSeverity.WARNING,
+                        score_impact=-10,
+                        recommendation="Make title more descriptive",
+                    )
+                )
                 score -= 10
 
             # Check for generic titles
             title_lower = title.lower()
             if any(generic in title_lower for generic in self.GENERIC_TITLE_PATTERNS):
-                issues.append(QualityIssue(
-                    category="content",
-                    issue="Title appears generic or placeholder",
-                    severity=IssueSeverity.WARNING,
-                    score_impact=-10,
-                    recommendation="Use a specific, compelling title with keywords"
-                ))
+                issues.append(
+                    QualityIssue(
+                        category="content",
+                        issue="Title appears generic or placeholder",
+                        severity=IssueSeverity.WARNING,
+                        score_impact=-10,
+                        recommendation="Use a specific, compelling title with keywords",
+                    )
+                )
                 score -= 10
 
             # Check for engagement elements
             has_numbers = any(c.isdigit() for c in title)
-            has_power_words = any(word in title_lower for word in [
-                "how", "why", "what", "secret", "proven", "best", "top",
-                "ultimate", "complete", "guide", "free", "fast", "easy"
-            ])
+            has_power_words = any(
+                word in title_lower
+                for word in [
+                    "how",
+                    "why",
+                    "what",
+                    "secret",
+                    "proven",
+                    "best",
+                    "top",
+                    "ultimate",
+                    "complete",
+                    "guide",
+                    "free",
+                    "fast",
+                    "easy",
+                ]
+            )
 
             checks["title_has_numbers"] = has_numbers
             checks["title_has_power_words"] = has_power_words
 
             if not has_numbers and not has_power_words:
-                issues.append(QualityIssue(
-                    category="content",
-                    issue="Title lacks engagement triggers (numbers or power words)",
-                    severity=IssueSeverity.INFO,
-                    score_impact=-5,
-                    recommendation="Add numbers or power words to boost CTR"
-                ))
+                issues.append(
+                    QualityIssue(
+                        category="content",
+                        issue="Title lacks engagement triggers (numbers or power words)",
+                        severity=IssueSeverity.INFO,
+                        score_impact=-5,
+                        recommendation="Add numbers or power words to boost CTR",
+                    )
+                )
                 score -= 5
 
         # ============================================================
@@ -496,44 +541,52 @@ class VideoQualityChecker:
         checks["description_length"] = len(description)
 
         if not description:
-            issues.append(QualityIssue(
-                category="content",
-                issue="Missing description",
-                severity=IssueSeverity.ERROR,
-                score_impact=-20,
-                recommendation="Add a detailed description with timestamps and keywords"
-            ))
+            issues.append(
+                QualityIssue(
+                    category="content",
+                    issue="Missing description",
+                    severity=IssueSeverity.ERROR,
+                    score_impact=-20,
+                    recommendation="Add a detailed description with timestamps and keywords",
+                )
+            )
             score -= 20
         elif len(description) < self.MIN_DESCRIPTION_LENGTH:
-            issues.append(QualityIssue(
-                category="content",
-                issue=f"Description too short ({len(description)} < {self.MIN_DESCRIPTION_LENGTH} chars)",
-                severity=IssueSeverity.WARNING,
-                score_impact=-10,
-                recommendation="Expand description with timestamps and relevant keywords"
-            ))
+            issues.append(
+                QualityIssue(
+                    category="content",
+                    issue=f"Description too short ({len(description)} < {self.MIN_DESCRIPTION_LENGTH} chars)",
+                    severity=IssueSeverity.WARNING,
+                    score_impact=-10,
+                    recommendation="Expand description with timestamps and relevant keywords",
+                )
+            )
             score -= 10
         elif len(description) < self.OPTIMAL_DESCRIPTION_LENGTH:
-            issues.append(QualityIssue(
-                category="content",
-                issue="Description could be more detailed",
-                severity=IssueSeverity.INFO,
-                score_impact=-3,
-                recommendation="Add timestamps, links, and social media handles"
-            ))
+            issues.append(
+                QualityIssue(
+                    category="content",
+                    issue="Description could be more detailed",
+                    severity=IssueSeverity.INFO,
+                    score_impact=-3,
+                    recommendation="Add timestamps, links, and social media handles",
+                )
+            )
             score -= 3
 
         # Check for timestamps in description
         has_timestamps = "0:00" in description or "00:00" in description
         checks["description_has_timestamps"] = has_timestamps
         if not has_timestamps and not is_short:
-            issues.append(QualityIssue(
-                category="content",
-                issue="Description lacks timestamps",
-                severity=IssueSeverity.INFO,
-                score_impact=-3,
-                recommendation="Add chapter timestamps for better user experience"
-            ))
+            issues.append(
+                QualityIssue(
+                    category="content",
+                    issue="Description lacks timestamps",
+                    severity=IssueSeverity.INFO,
+                    score_impact=-3,
+                    recommendation="Add chapter timestamps for better user experience",
+                )
+            )
             score -= 3
 
         # ============================================================
@@ -544,31 +597,37 @@ class VideoQualityChecker:
         checks["tags"] = tags
 
         if not tags:
-            issues.append(QualityIssue(
-                category="content",
-                issue="No tags provided",
-                severity=IssueSeverity.ERROR,
-                score_impact=-15,
-                recommendation="Add 10-15 relevant tags for discoverability"
-            ))
+            issues.append(
+                QualityIssue(
+                    category="content",
+                    issue="No tags provided",
+                    severity=IssueSeverity.ERROR,
+                    score_impact=-15,
+                    recommendation="Add 10-15 relevant tags for discoverability",
+                )
+            )
             score -= 15
         elif len(tags) < 5:
-            issues.append(QualityIssue(
-                category="content",
-                issue=f"Too few tags ({len(tags)} < 5)",
-                severity=IssueSeverity.WARNING,
-                score_impact=-8,
-                recommendation="Add more relevant tags (aim for 10-15)"
-            ))
+            issues.append(
+                QualityIssue(
+                    category="content",
+                    issue=f"Too few tags ({len(tags)} < 5)",
+                    severity=IssueSeverity.WARNING,
+                    score_impact=-8,
+                    recommendation="Add more relevant tags (aim for 10-15)",
+                )
+            )
             score -= 8
         elif len(tags) > 30:
-            issues.append(QualityIssue(
-                category="content",
-                issue=f"Too many tags ({len(tags)} > 30)",
-                severity=IssueSeverity.INFO,
-                score_impact=-3,
-                recommendation="YouTube recommends 10-15 highly relevant tags"
-            ))
+            issues.append(
+                QualityIssue(
+                    category="content",
+                    issue=f"Too many tags ({len(tags)} > 30)",
+                    severity=IssueSeverity.INFO,
+                    score_impact=-3,
+                    recommendation="YouTube recommends 10-15 highly relevant tags",
+                )
+            )
             score -= 3
 
         # ============================================================
@@ -591,36 +650,50 @@ class VideoQualityChecker:
 
             hook_words = len(hook_text.split())
             checks["hook_word_count"] = hook_words
-            checks["hook_text_preview"] = hook_text[:200] + "..." if len(hook_text) > 200 else hook_text
+            checks["hook_text_preview"] = (
+                hook_text[:200] + "..." if len(hook_text) > 200 else hook_text
+            )
 
             if hook_words < self.MIN_HOOK_WORDS:
-                issues.append(QualityIssue(
-                    category="content",
-                    issue=f"Hook too short ({hook_words} < {self.MIN_HOOK_WORDS} words)",
-                    severity=IssueSeverity.WARNING,
-                    score_impact=-10,
-                    recommendation="First 15 seconds should have a compelling hook"
-                ))
+                issues.append(
+                    QualityIssue(
+                        category="content",
+                        issue=f"Hook too short ({hook_words} < {self.MIN_HOOK_WORDS} words)",
+                        severity=IssueSeverity.WARNING,
+                        score_impact=-10,
+                        recommendation="First 15 seconds should have a compelling hook",
+                    )
+                )
                 score -= 10
 
             # Check for engagement patterns in hook
             hook_lower = hook_text.lower()
             engagement_patterns = [
-                "you", "your", "?",  # Direct address and questions
-                "secret", "mistake", "wrong", "truth",  # Curiosity triggers
-                "never", "always", "everyone", "nobody",  # Absolutes
+                "you",
+                "your",
+                "?",  # Direct address and questions
+                "secret",
+                "mistake",
+                "wrong",
+                "truth",  # Curiosity triggers
+                "never",
+                "always",
+                "everyone",
+                "nobody",  # Absolutes
             ]
             engagement_count = sum(1 for p in engagement_patterns if p in hook_lower)
             checks["hook_engagement_elements"] = engagement_count
 
             if engagement_count < 2:
-                issues.append(QualityIssue(
-                    category="content",
-                    issue="Hook lacks engagement elements",
-                    severity=IssueSeverity.WARNING,
-                    score_impact=-8,
-                    recommendation="Use questions, 'you', or curiosity triggers in the hook"
-                ))
+                issues.append(
+                    QualityIssue(
+                        category="content",
+                        issue="Hook lacks engagement elements",
+                        severity=IssueSeverity.WARNING,
+                        score_impact=-8,
+                        recommendation="Use questions, 'you', or curiosity triggers in the hook",
+                    )
+                )
                 score -= 8
 
         # ============================================================
@@ -637,12 +710,7 @@ class VideoQualityChecker:
         return issues, max(0, score), checks
 
     def _ai_content_analysis(
-        self,
-        title: str,
-        description: str,
-        narration: str,
-        tags: List[str],
-        is_short: bool
+        self, title: str, description: str, narration: str, tags: List[str], is_short: bool
     ) -> Tuple[List[QualityIssue], int, Dict[str, Any]]:
         """
         Use AI to analyze content quality.
@@ -701,46 +769,54 @@ Analyze and respond with ONLY a JSON object (no markdown, no explanation):
             # Convert scores to issues
             title_score = analysis.get("title_score", 7)
             if title_score < 6:
-                issues.append(QualityIssue(
-                    category="content",
-                    issue=f"AI: Title needs improvement ({title_score}/10)",
-                    severity=IssueSeverity.WARNING,
-                    score_impact=-8,
-                    recommendation=analysis.get("title_feedback", "Improve title")
-                ))
+                issues.append(
+                    QualityIssue(
+                        category="content",
+                        issue=f"AI: Title needs improvement ({title_score}/10)",
+                        severity=IssueSeverity.WARNING,
+                        score_impact=-8,
+                        recommendation=analysis.get("title_feedback", "Improve title"),
+                    )
+                )
                 score -= 8
 
             hook_score = analysis.get("hook_score", 7)
             if hook_score < 6:
-                issues.append(QualityIssue(
-                    category="content",
-                    issue=f"AI: Hook/engagement weak ({hook_score}/10)",
-                    severity=IssueSeverity.WARNING,
-                    score_impact=-10,
-                    recommendation=analysis.get("hook_feedback", "Strengthen hook")
-                ))
+                issues.append(
+                    QualityIssue(
+                        category="content",
+                        issue=f"AI: Hook/engagement weak ({hook_score}/10)",
+                        severity=IssueSeverity.WARNING,
+                        score_impact=-10,
+                        recommendation=analysis.get("hook_feedback", "Strengthen hook"),
+                    )
+                )
                 score -= 10
 
             description_score = analysis.get("description_score", 7)
             if description_score < 5:
-                issues.append(QualityIssue(
-                    category="content",
-                    issue=f"AI: Description needs work ({description_score}/10)",
-                    severity=IssueSeverity.INFO,
-                    score_impact=-5,
-                    recommendation=analysis.get("description_feedback", "Improve description")
-                ))
+                issues.append(
+                    QualityIssue(
+                        category="content",
+                        issue=f"AI: Description needs work ({description_score}/10)",
+                        severity=IssueSeverity.INFO,
+                        score_impact=-5,
+                        recommendation=analysis.get("description_feedback", "Improve description"),
+                    )
+                )
                 score -= 5
 
             tags_score = analysis.get("tags_relevance_score", 7)
             if tags_score < 5:
-                issues.append(QualityIssue(
-                    category="content",
-                    issue=f"AI: Tags not optimal ({tags_score}/10)",
-                    severity=IssueSeverity.INFO,
-                    score_impact=-5,
-                    recommendation=analysis.get("tags_feedback", "Use more relevant tags")
-                ))
+                issues.append(
+                    QualityIssue(
+                        category="content",
+                        issue=f"AI: Tags not optimal ({tags_score}/10)",
+                        severity=IssueSeverity.INFO,
+                        score_impact=-5,
+                        recommendation=analysis.get("tags_feedback", "Use more relevant tags"),
+                    )
+                )
                 score -= 5
 
             # Overall engagement
@@ -748,13 +824,15 @@ Analyze and respond with ONLY a JSON object (no markdown, no explanation):
             checks["ai_engagement_score"] = engagement_score
             if engagement_score < 5:
                 top_issue = analysis.get("top_issue", "Improve overall engagement")
-                issues.append(QualityIssue(
-                    category="content",
-                    issue=f"AI: Low engagement potential ({engagement_score}/10)",
-                    severity=IssueSeverity.ERROR,
-                    score_impact=-15,
-                    recommendation=top_issue
-                ))
+                issues.append(
+                    QualityIssue(
+                        category="content",
+                        issue=f"AI: Low engagement potential ({engagement_score}/10)",
+                        severity=IssueSeverity.ERROR,
+                        score_impact=-15,
+                        recommendation=top_issue,
+                    )
+                )
                 score -= 15
 
         except json.JSONDecodeError as e:
@@ -767,9 +845,7 @@ Analyze and respond with ONLY a JSON object (no markdown, no explanation):
         return issues, max(0, score), checks
 
     def _check_technical_quality(
-        self,
-        video_file: str,
-        is_short: bool
+        self, video_file: str, is_short: bool
     ) -> Tuple[List[QualityIssue], int, Dict[str, Any]]:
         """
         Check technical quality of the video.
@@ -799,22 +875,26 @@ Analyze and respond with ONLY a JSON object (no markdown, no explanation):
                 aspect_diff = abs(expected_aspect - actual_aspect)
 
                 if aspect_diff > 0.1:  # More than 10% aspect ratio difference
-                    issues.append(QualityIssue(
-                        category="technical",
-                        issue=f"Wrong aspect ratio ({width}x{height}, expected {expected_res[0]}x{expected_res[1]})",
-                        severity=IssueSeverity.ERROR if is_short else IssueSeverity.WARNING,
-                        score_impact=-20 if is_short else -10,
-                        recommendation=f"Use {'9:16 portrait' if is_short else '16:9 landscape'} aspect ratio"
-                    ))
+                    issues.append(
+                        QualityIssue(
+                            category="technical",
+                            issue=f"Wrong aspect ratio ({width}x{height}, expected {expected_res[0]}x{expected_res[1]})",
+                            severity=IssueSeverity.ERROR if is_short else IssueSeverity.WARNING,
+                            score_impact=-20 if is_short else -10,
+                            recommendation=f"Use {'9:16 portrait' if is_short else '16:9 landscape'} aspect ratio",
+                        )
+                    )
                     score -= 20 if is_short else 10
                 elif width < expected_res[0] or height < expected_res[1]:
-                    issues.append(QualityIssue(
-                        category="technical",
-                        issue=f"Resolution below recommended ({width}x{height} < {expected_res[0]}x{expected_res[1]})",
-                        severity=IssueSeverity.WARNING,
-                        score_impact=-10,
-                        recommendation="Use higher resolution for better quality"
-                    ))
+                    issues.append(
+                        QualityIssue(
+                            category="technical",
+                            issue=f"Resolution below recommended ({width}x{height} < {expected_res[0]}x{expected_res[1]})",
+                            severity=IssueSeverity.WARNING,
+                            score_impact=-10,
+                            recommendation="Use higher resolution for better quality",
+                        )
+                    )
                     score -= 10
             else:
                 checks["resolution_correct"] = True
@@ -828,37 +908,45 @@ Analyze and respond with ONLY a JSON object (no markdown, no explanation):
             checks["silent_gaps"] = silent_gaps
 
             if not has_audio:
-                issues.append(QualityIssue(
-                    category="technical",
-                    issue="No audio track detected",
-                    severity=IssueSeverity.CRITICAL,
-                    score_impact=-50,
-                    recommendation="Ensure video has audio/narration"
-                ))
+                issues.append(
+                    QualityIssue(
+                        category="technical",
+                        issue="No audio track detected",
+                        severity=IssueSeverity.CRITICAL,
+                        score_impact=-50,
+                        recommendation="Ensure video has audio/narration",
+                    )
+                )
                 score -= 50
             else:
                 # Check audio level
                 if audio_level is not None and audio_level < self.MIN_AUDIO_LEVEL_DB:
-                    issues.append(QualityIssue(
-                        category="technical",
-                        issue=f"Audio level very low ({audio_level:.1f}dB)",
-                        severity=IssueSeverity.WARNING,
-                        score_impact=-10,
-                        recommendation="Increase audio volume or check narration"
-                    ))
+                    issues.append(
+                        QualityIssue(
+                            category="technical",
+                            issue=f"Audio level very low ({audio_level:.1f}dB)",
+                            severity=IssueSeverity.WARNING,
+                            score_impact=-10,
+                            recommendation="Increase audio volume or check narration",
+                        )
+                    )
                     score -= 10
 
                 # Check for long silent gaps
-                long_gaps = [gap for gap in silent_gaps if gap['duration'] > self.MAX_SILENT_GAP_SECONDS]
+                long_gaps = [
+                    gap for gap in silent_gaps if gap["duration"] > self.MAX_SILENT_GAP_SECONDS
+                ]
                 if long_gaps:
-                    max_gap = max(g['duration'] for g in long_gaps)
-                    issues.append(QualityIssue(
-                        category="technical",
-                        issue=f"Silent gap detected ({max_gap:.1f}s > {self.MAX_SILENT_GAP_SECONDS}s)",
-                        severity=IssueSeverity.WARNING,
-                        score_impact=-8,
-                        recommendation="Fill silent gaps with music or narration"
-                    ))
+                    max_gap = max(g["duration"] for g in long_gaps)
+                    issues.append(
+                        QualityIssue(
+                            category="technical",
+                            issue=f"Silent gap detected ({max_gap:.1f}s > {self.MAX_SILENT_GAP_SECONDS}s)",
+                            severity=IssueSeverity.WARNING,
+                            score_impact=-8,
+                            recommendation="Fill silent gaps with music or narration",
+                        )
+                    )
                     score -= 8
                     checks["long_silent_gaps"] = len(long_gaps)
 
@@ -869,25 +957,29 @@ Analyze and respond with ONLY a JSON object (no markdown, no explanation):
             checks["fps"] = fps
 
             if fps and fps < 24:
-                issues.append(QualityIssue(
-                    category="technical",
-                    issue=f"Low framerate ({fps} fps < 24 fps)",
-                    severity=IssueSeverity.WARNING,
-                    score_impact=-8,
-                    recommendation="Use at least 24 fps for smooth playback"
-                ))
+                issues.append(
+                    QualityIssue(
+                        category="technical",
+                        issue=f"Low framerate ({fps} fps < 24 fps)",
+                        severity=IssueSeverity.WARNING,
+                        score_impact=-8,
+                        recommendation="Use at least 24 fps for smooth playback",
+                    )
+                )
                 score -= 8
 
         except Exception as e:
             logger.error(f"Technical check failed: {e}")
             checks["error"] = str(e)
-            issues.append(QualityIssue(
-                category="technical",
-                issue=f"Could not complete technical checks: {str(e)[:50]}",
-                severity=IssueSeverity.WARNING,
-                score_impact=-10,
-                recommendation="Verify video file is valid"
-            ))
+            issues.append(
+                QualityIssue(
+                    category="technical",
+                    issue=f"Could not complete technical checks: {str(e)[:50]}",
+                    severity=IssueSeverity.WARNING,
+                    score_impact=-10,
+                    recommendation="Verify video file is valid",
+                )
+            )
             score -= 10
 
         return issues, max(0, score), checks
@@ -901,12 +993,17 @@ Analyze and respond with ONLY a JSON object (no markdown, no explanation):
         """
         cmd = [
             "ffprobe",
-            "-v", "error",
-            "-select_streams", "v:0",
-            "-show_entries", "stream=width,height,duration",
-            "-show_entries", "format=duration",
-            "-of", "json",
-            video_file
+            "-v",
+            "error",
+            "-select_streams",
+            "v:0",
+            "-show_entries",
+            "stream=width,height,duration",
+            "-show_entries",
+            "format=duration",
+            "-of",
+            "json",
+            video_file,
         ]
 
         result = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
@@ -932,11 +1029,15 @@ Analyze and respond with ONLY a JSON object (no markdown, no explanation):
         try:
             cmd = [
                 "ffprobe",
-                "-v", "error",
-                "-select_streams", "v:0",
-                "-show_entries", "stream=r_frame_rate",
-                "-of", "json",
-                video_file
+                "-v",
+                "error",
+                "-select_streams",
+                "v:0",
+                "-show_entries",
+                "stream=r_frame_rate",
+                "-of",
+                "json",
+                video_file,
             ]
 
             result = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
@@ -954,10 +1055,7 @@ Analyze and respond with ONLY a JSON object (no markdown, no explanation):
         except Exception:
             return None
 
-    def _check_audio(
-        self,
-        video_file: str
-    ) -> Tuple[bool, Optional[float], List[Dict]]:
+    def _check_audio(self, video_file: str) -> Tuple[bool, Optional[float], List[Dict]]:
         """
         Check audio presence, level, and silent gaps.
 
@@ -967,11 +1065,15 @@ Analyze and respond with ONLY a JSON object (no markdown, no explanation):
         # Check if audio stream exists
         cmd_check = [
             "ffprobe",
-            "-v", "error",
-            "-select_streams", "a",
-            "-show_entries", "stream=codec_type",
-            "-of", "json",
-            video_file
+            "-v",
+            "error",
+            "-select_streams",
+            "a",
+            "-show_entries",
+            "stream=codec_type",
+            "-of",
+            "json",
+            video_file,
         ]
 
         result = subprocess.run(cmd_check, capture_output=True, text=True, timeout=30)
@@ -990,19 +1092,17 @@ Analyze and respond with ONLY a JSON object (no markdown, no explanation):
         try:
             cmd_volume = [
                 "ffmpeg",
-                "-i", video_file,
-                "-af", "volumedetect",
-                "-f", "null",
+                "-i",
+                video_file,
+                "-af",
+                "volumedetect",
+                "-f",
+                "null",
                 "-y",
-                "NUL" if os.name == "nt" else "/dev/null"
+                "NUL" if os.name == "nt" else "/dev/null",
             ]
 
-            result = subprocess.run(
-                cmd_volume,
-                capture_output=True,
-                text=True,
-                timeout=120
-            )
+            result = subprocess.run(cmd_volume, capture_output=True, text=True, timeout=120)
 
             # Parse mean volume from stderr
             for line in result.stderr.split("\n"):
@@ -1018,19 +1118,17 @@ Analyze and respond with ONLY a JSON object (no markdown, no explanation):
         try:
             cmd_silence = [
                 "ffmpeg",
-                "-i", video_file,
-                "-af", f"silencedetect=noise=-40dB:d={self.MAX_SILENT_GAP_SECONDS}",
-                "-f", "null",
+                "-i",
+                video_file,
+                "-af",
+                f"silencedetect=noise=-40dB:d={self.MAX_SILENT_GAP_SECONDS}",
+                "-f",
+                "null",
                 "-y",
-                "NUL" if os.name == "nt" else "/dev/null"
+                "NUL" if os.name == "nt" else "/dev/null",
             ]
 
-            result = subprocess.run(
-                cmd_silence,
-                capture_output=True,
-                text=True,
-                timeout=120
-            )
+            result = subprocess.run(cmd_silence, capture_output=True, text=True, timeout=120)
 
             # Parse silence_start and silence_end from stderr
             current_start = None
@@ -1041,14 +1139,14 @@ Analyze and respond with ONLY a JSON object (no markdown, no explanation):
                 elif "silence_end:" in line and current_start is not None:
                     parts = line.split("silence_end:")[1].split()
                     end = float(parts[0])
-                    duration_parts = line.split("silence_duration:")[1].split() if "silence_duration:" in line else None
+                    duration_parts = (
+                        line.split("silence_duration:")[1].split()
+                        if "silence_duration:" in line
+                        else None
+                    )
                     duration = float(duration_parts[0]) if duration_parts else end - current_start
 
-                    silent_gaps.append({
-                        "start": current_start,
-                        "end": end,
-                        "duration": duration
-                    })
+                    silent_gaps.append({"start": current_start, "end": end, "duration": duration})
                     current_start = None
         except Exception as e:
             logger.warning(f"Could not detect silent gaps: {e}")
@@ -1061,7 +1159,7 @@ def quick_quality_check(
     video_file: str,
     script_data: Optional[Dict[str, Any]] = None,
     is_short: bool = False,
-    threshold: int = 70
+    threshold: int = 70,
 ) -> Tuple[bool, int, str]:
     """
     Quick quality check that returns pass/fail, score, and summary.
@@ -1081,7 +1179,7 @@ def quick_quality_check(
         script_data=script_data,
         is_short=is_short,
         threshold=threshold,
-        skip_ai_checks=True  # Skip AI for quick checks
+        skip_ai_checks=True,  # Skip AI for quick checks
     )
 
     return report.passed, report.overall_score, report.summary()
@@ -1097,18 +1195,18 @@ if __name__ == "__main__":
 
         checker = VideoQualityChecker()
         report = checker.check_video(
-            video_file=video_path,
-            is_short=is_short,
-            skip_ai_checks="--no-ai" in sys.argv
+            video_file=video_path, is_short=is_short, skip_ai_checks="--no-ai" in sys.argv
         )
 
-        print("\n" + "="*60)
+        print("\n" + "=" * 60)
         print(report.summary())
-        print("="*60)
+        print("=" * 60)
 
         # Print detailed JSON if requested
         if "--json" in sys.argv:
             print("\nDetailed Report:")
             print(json.dumps(report.to_dict(), indent=2))
     else:
-        print("Usage: python -m src.content.quality_checker <video_file> [--short] [--no-ai] [--json]")
+        print(
+            "Usage: python -m src.content.quality_checker <video_file> [--short] [--no-ai] [--json]"
+        )

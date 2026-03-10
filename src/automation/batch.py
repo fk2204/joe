@@ -13,37 +13,40 @@ Usage:
     python -m src.automation.batch --parallel 3 --channels money_blueprints,mind_unlocked --videos 2
 """
 
-import os
-import sys
-import json
 import argparse
 import asyncio
+import json
+import sys
 import threading
-from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor, as_completed
-from pathlib import Path
-from datetime import datetime
-from typing import List, Dict, Optional, Tuple
+from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor, as_completed
 from dataclasses import dataclass, field
+from datetime import datetime
+from pathlib import Path
+from typing import Dict, List, Optional, Tuple
 
 # Add project root
 PROJECT_ROOT = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
 from dotenv import load_dotenv
+
 load_dotenv(PROJECT_ROOT / "config" / ".env")
 
-from loguru import logger
 import yaml
+from loguru import logger
 
 # Configure logging
 logger.remove()
-logger.add(sys.stderr, level="INFO", format="<green>{time:HH:mm:ss}</green> | <level>{message}</level>")
+logger.add(
+    sys.stderr, level="INFO", format="<green>{time:HH:mm:ss}</green> | <level>{message}</level>"
+)
 
 
 # Progress tracking
 @dataclass
 class JobProgress:
     """Track progress of a single video job."""
+
     job_id: str
     channel_id: str
     status: str = "pending"  # pending, running, completed, failed
@@ -63,6 +66,7 @@ class JobProgress:
 @dataclass
 class BatchProgress:
     """Track progress of entire batch."""
+
     total_jobs: int
     jobs: Dict[str, JobProgress] = field(default_factory=dict)
     started_at: Optional[datetime] = None
@@ -99,8 +103,10 @@ class BatchProgress:
 
     def progress_str(self) -> str:
         """Get progress string for logging."""
-        return f"[{self.completed + self.failed}/{self.total_jobs}] " \
-               f"OK:{self.completed} FAIL:{self.failed} RUN:{self.running} WAIT:{self.pending}"
+        return (
+            f"[{self.completed + self.failed}/{self.total_jobs}] "
+            f"OK:{self.completed} FAIL:{self.failed} RUN:{self.running} WAIT:{self.pending}"
+        )
 
     def summary(self) -> Dict:
         """Get summary statistics."""
@@ -108,9 +114,20 @@ class BatchProgress:
             "total": self.total_jobs,
             "completed": self.completed,
             "failed": self.failed,
-            "success_rate": f"{(self.completed / self.total_jobs * 100):.1f}%" if self.total_jobs > 0 else "0%",
-            "total_duration_seconds": (self.completed_at - self.started_at).total_seconds() if self.started_at and self.completed_at else 0,
-            "avg_duration_seconds": sum(j.duration_seconds() for j in self.jobs.values() if j.status in ["completed", "failed"]) / max(self.completed + self.failed, 1)
+            "success_rate": (
+                f"{(self.completed / self.total_jobs * 100):.1f}%" if self.total_jobs > 0 else "0%"
+            ),
+            "total_duration_seconds": (
+                (self.completed_at - self.started_at).total_seconds()
+                if self.started_at and self.completed_at
+                else 0
+            ),
+            "avg_duration_seconds": sum(
+                j.duration_seconds()
+                for j in self.jobs.values()
+                if j.status in ["completed", "failed"]
+            )
+            / max(self.completed + self.failed, 1),
         }
 
 
@@ -144,7 +161,7 @@ def create_video_for_channel(channel_id: str, upload: bool = True) -> Dict:
             channel_id=channel_id,
             title=result["results"]["title"],
             description=result["results"]["description"],
-            tags=result["results"]["tags"]
+            tags=result["results"]["tags"],
         )
 
         result["results"]["upload"] = upload_result
@@ -155,11 +172,7 @@ def create_video_for_channel(channel_id: str, upload: bool = True) -> Dict:
     return result
 
 
-def run_batch(
-    channels: List[str] = None,
-    videos_per_channel: int = 1,
-    upload: bool = True
-) -> Dict:
+def run_batch(channels: List[str] = None, videos_per_channel: int = 1, upload: bool = True) -> Dict:
     """
     Run batch video creation.
 
@@ -192,16 +205,12 @@ def run_batch(
         "total_videos": 0,
         "successful": 0,
         "failed": 0,
-        "uploaded": 0
+        "uploaded": 0,
     }
 
     for channel in target_channels:
         channel_id = channel["id"]
-        channel_results = {
-            "channel": channel_id,
-            "name": channel["name"],
-            "videos": []
-        }
+        channel_results = {"channel": channel_id, "name": channel["name"], "videos": []}
 
         for i in range(videos_per_channel):
             logger.info(f"\n[{channel_id}] Video {i+1}/{videos_per_channel}")
@@ -213,7 +222,7 @@ def run_batch(
                 "success": result["success"],
                 "title": result.get("results", {}).get("title", "Unknown"),
                 "video_file": result.get("results", {}).get("video_file"),
-                "video_url": result.get("results", {}).get("video_url")
+                "video_url": result.get("results", {}).get("video_url"),
             }
 
             if result["success"]:
@@ -252,10 +261,7 @@ def run_batch(
 
 
 def _run_single_video_job(
-    channel_id: str,
-    job_id: str,
-    progress: BatchProgress,
-    upload: bool = True
+    channel_id: str, job_id: str, progress: BatchProgress, upload: bool = True
 ) -> Tuple[str, Dict]:
     """
     Run a single video job. Called by executor threads.
@@ -263,7 +269,7 @@ def _run_single_video_job(
     Returns:
         Tuple of (job_id, result_dict)
     """
-    from src.automation.runner import task_full_with_upload, task_full_pipeline
+    from src.automation.runner import task_full_pipeline, task_full_with_upload
 
     # Update status to running
     progress.update_job(job_id, status="running", started_at=datetime.now())
@@ -279,10 +285,7 @@ def _run_single_video_job(
         # Update progress
         if result.get("success"):
             progress.update_job(
-                job_id,
-                status="completed",
-                completed_at=datetime.now(),
-                result=result
+                job_id, status="completed", completed_at=datetime.now(), result=result
             )
             video_url = result.get("results", {}).get("video_url", "N/A")
             title = result.get("results", {}).get("title", "Unknown")
@@ -292,11 +295,7 @@ def _run_single_video_job(
         else:
             error_msg = result.get("error", "Unknown error")
             progress.update_job(
-                job_id,
-                status="failed",
-                completed_at=datetime.now(),
-                error=error_msg,
-                result=result
+                job_id, status="failed", completed_at=datetime.now(), error=error_msg, result=result
             )
             logger.error(f"{progress.progress_str()} Failed {job_id}: {error_msg}")
 
@@ -304,12 +303,7 @@ def _run_single_video_job(
 
     except Exception as e:
         error_msg = str(e)
-        progress.update_job(
-            job_id,
-            status="failed",
-            completed_at=datetime.now(),
-            error=error_msg
-        )
+        progress.update_job(job_id, status="failed", completed_at=datetime.now(), error=error_msg)
         logger.error(f"{progress.progress_str()} Exception in {job_id}: {error_msg}")
         return (job_id, {"success": False, "error": error_msg})
 
@@ -318,7 +312,7 @@ def run_batch_parallel(
     channels: List[str] = None,
     videos_per_channel: int = 1,
     upload: bool = True,
-    max_workers: int = 3
+    max_workers: int = 3,
 ) -> Dict:
     """
     Run batch video creation with parallel processing.
@@ -375,13 +369,7 @@ def run_batch_parallel(
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
         # Submit all jobs
         future_to_job = {
-            executor.submit(
-                _run_single_video_job,
-                channel_id,
-                job_id,
-                progress,
-                upload
-            ): job_id
+            executor.submit(_run_single_video_job, channel_id, job_id, progress, upload): job_id
             for channel_id, job_id in jobs
         }
 
@@ -407,17 +395,13 @@ def run_batch_parallel(
         "total_videos": total_videos,
         "successful": progress.completed,
         "failed": progress.failed,
-        "uploaded": 0
+        "uploaded": 0,
     }
 
     # Organize results by channel
     for channel in target_channels:
         channel_id = channel["id"]
-        channel_results = {
-            "channel": channel_id,
-            "name": channel["name"],
-            "videos": []
-        }
+        channel_results = {"channel": channel_id, "name": channel["name"], "videos": []}
 
         for i in range(videos_per_channel):
             job_id = f"{channel_id}_{i+1}"
@@ -430,7 +414,7 @@ def run_batch_parallel(
                 "title": result.get("results", {}).get("title", "Unknown"),
                 "video_file": result.get("results", {}).get("video_file"),
                 "video_url": result.get("results", {}).get("video_url"),
-                "duration_seconds": job.duration_seconds() if job else 0
+                "duration_seconds": job.duration_seconds() if job else 0,
             }
 
             if result.get("success") and result.get("results", {}).get("video_url"):
@@ -477,10 +461,7 @@ def run_batch_parallel(
 
 
 async def batch_create_videos(
-    channels: List[str],
-    count: int,
-    max_workers: int = 3,
-    upload: bool = True
+    channels: List[str], count: int, max_workers: int = 3, upload: bool = True
 ) -> List[Dict]:
     """
     Process multiple videos in parallel using asyncio + ThreadPoolExecutor.
@@ -496,7 +477,7 @@ async def batch_create_videos(
     Returns:
         List of results for each job (success or exception)
     """
-    from src.automation.runner import task_full_with_upload, task_full_pipeline
+    from src.automation.runner import task_full_pipeline, task_full_with_upload
 
     executor = ThreadPoolExecutor(max_workers=max_workers)
     loop = asyncio.get_event_loop()
@@ -530,11 +511,9 @@ async def batch_create_videos(
     processed_results = []
     for result in results:
         if isinstance(result, Exception):
-            processed_results.append({
-                "success": False,
-                "error": str(result),
-                "exception_type": type(result).__name__
-            })
+            processed_results.append(
+                {"success": False, "error": str(result), "exception_type": type(result).__name__}
+            )
         else:
             processed_results.append(result)
 
@@ -556,7 +535,7 @@ def _process_video_task(args: Tuple[str, int, bool]) -> Dict:
     channel_id, video_index, upload = args
 
     # Import inside worker to avoid pickling issues
-    from src.automation.runner import task_full_with_upload, task_full_pipeline
+    from src.automation.runner import task_full_pipeline, task_full_with_upload
 
     job_id = f"{channel_id}_{video_index}"
     started_at = datetime.now()
@@ -577,7 +556,7 @@ def _process_video_task(args: Tuple[str, int, bool]) -> Dict:
             "success": result.get("success", False),
             "result": result,
             "duration_seconds": duration,
-            "error": result.get("error") if not result.get("success") else None
+            "error": result.get("error") if not result.get("success") else None,
         }
 
     except Exception as e:
@@ -591,15 +570,12 @@ def _process_video_task(args: Tuple[str, int, bool]) -> Dict:
             "success": False,
             "result": None,
             "duration_seconds": duration,
-            "error": error_msg
+            "error": error_msg,
         }
 
 
 def batch_create_videos_parallel(
-    channels: List[str],
-    count: int,
-    max_workers: int = 3,
-    upload: bool = True
+    channels: List[str], count: int, max_workers: int = 3, upload: bool = True
 ) -> Dict:
     """
     Create videos in parallel using multiple processes.
@@ -661,10 +637,7 @@ def batch_create_videos_parallel(
     # Execute with ProcessPoolExecutor
     with ProcessPoolExecutor(max_workers=max_workers) as executor:
         # Submit all tasks
-        future_to_task = {
-            executor.submit(_process_video_task, task): task
-            for task in tasks
-        }
+        future_to_task = {executor.submit(_process_video_task, task): task for task in tasks}
 
         # Track progress
         completed_count = 0
@@ -704,14 +677,16 @@ def batch_create_videos_parallel(
                     f"[{completed_count}/{total_videos}] "
                     f"Exception for task {task[0]}_{task[1]}: {error_msg}"
                 )
-                results_list.append({
-                    "job_id": f"{task[0]}_{task[1]}",
-                    "channel_id": task[0],
-                    "success": False,
-                    "result": None,
-                    "duration_seconds": 0,
-                    "error": error_msg
-                })
+                results_list.append(
+                    {
+                        "job_id": f"{task[0]}_{task[1]}",
+                        "channel_id": task[0],
+                        "success": False,
+                        "result": None,
+                        "duration_seconds": 0,
+                        "error": error_msg,
+                    }
+                )
 
     completed_at = datetime.now()
     total_duration = (completed_at - started_at).total_seconds()
@@ -728,10 +703,12 @@ def batch_create_videos_parallel(
         "statistics": {
             "total_duration_seconds": total_duration,
             "avg_duration_per_video": total_duration / max(total_videos, 1),
-            "success_rate": f"{(successful / total_videos * 100):.1f}%" if total_videos > 0 else "0%",
+            "success_rate": (
+                f"{(successful / total_videos * 100):.1f}%" if total_videos > 0 else "0%"
+            ),
             "throughput_per_minute": total_videos / max(total_duration / 60, 0.1),
-            "parallelism_factor": max_workers
-        }
+            "parallelism_factor": max_workers,
+        },
     }
 
     # Log summary
@@ -755,7 +732,7 @@ def batch_create_videos_parallel(
                 if video_url:
                     title = r.get("result", {}).get("results", {}).get("title", "Unknown")
                     logger.info(f"  {video_url}")
-                    logger.info(f"    \"{title}\"")
+                    logger.info(f'    "{title}"')
 
     # List failed jobs
     if failed > 0:
@@ -774,7 +751,9 @@ def main():
     parser.add_argument("--videos", "-v", type=int, default=1, help="Videos per channel")
     parser.add_argument("--all-channels", "-a", action="store_true", help="Run for all channels")
     parser.add_argument("--no-upload", action="store_true", help="Don't upload to YouTube")
-    parser.add_argument("--parallel", "-p", type=int, default=0, help="Parallel workers (0=sequential)")
+    parser.add_argument(
+        "--parallel", "-p", type=int, default=0, help="Parallel workers (0=sequential)"
+    )
     parser.add_argument("--output", "-o", help="Save results to JSON file")
 
     args = parser.parse_args()
@@ -797,19 +776,17 @@ def main():
             channels=channels,
             videos_per_channel=args.videos,
             upload=not args.no_upload,
-            max_workers=args.parallel
+            max_workers=args.parallel,
         )
     else:
         # Sequential processing (original behavior)
         results = run_batch(
-            channels=channels,
-            videos_per_channel=args.videos,
-            upload=not args.no_upload
+            channels=channels, videos_per_channel=args.videos, upload=not args.no_upload
         )
 
     # Save results
     if args.output:
-        with open(args.output, 'w') as f:
+        with open(args.output, "w") as f:
             json.dump(results, f, indent=2, default=str)
         logger.info(f"\nResults saved: {args.output}")
 

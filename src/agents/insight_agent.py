@@ -21,23 +21,19 @@ Usage:
     result = agent.executive_summary("money_blueprints", period="30d")
 """
 
-import os
-import json
-import sqlite3
 import hashlib
+import json
+import os
+import sqlite3
+from dataclasses import asdict, dataclass, field
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Dict, Any, List, Optional, Tuple
-from dataclasses import dataclass, field, asdict
+from typing import Any, Dict, List, Optional
+
 from loguru import logger
 
-from ..utils.token_manager import (
-    get_token_manager,
-    get_cost_optimizer,
-    get_prompt_cache
-)
 from ..utils.best_practices import get_best_practices, get_niche_metrics
-
+from ..utils.token_manager import get_cost_optimizer, get_prompt_cache, get_token_manager
 
 # Cache TTL for insights (7 days in hours)
 INSIGHT_CACHE_TTL_HOURS = 7 * 24
@@ -46,6 +42,7 @@ INSIGHT_CACHE_TTL_HOURS = 7 * 24
 @dataclass
 class PatternAnalysis:
     """Analysis of successful content patterns."""
+
     pattern_type: str  # title, hook, length, timing, etc.
     pattern: str
     occurrences: int
@@ -57,6 +54,7 @@ class PatternAnalysis:
 @dataclass
 class CompetitorInsight:
     """Insights from competitor analysis."""
+
     competitor: str
     strength: str
     weakness: str
@@ -67,6 +65,7 @@ class CompetitorInsight:
 @dataclass
 class InsightResult:
     """Result from insight agent operations."""
+
     success: bool
     operation: str
     patterns: Dict[str, List[PatternAnalysis]] = field(default_factory=dict)
@@ -86,13 +85,8 @@ class InsightResult:
 
     def to_dict(self) -> Dict[str, Any]:
         result = asdict(self)
-        result["patterns"] = {
-            k: [asdict(p) for p in v]
-            for k, v in self.patterns.items()
-        }
-        result["competitor_comparison"] = [
-            asdict(c) for c in self.competitor_comparison
-        ]
+        result["patterns"] = {k: [asdict(p) for p in v] for k, v in self.patterns.items()}
+        result["competitor_comparison"] = [asdict(c) for c in self.competitor_comparison]
         return result
 
     def summary(self) -> str:
@@ -102,7 +96,7 @@ class InsightResult:
             f"===============",
             f"Provider: {self.provider} {'(cached)' if self.cache_hit else ''}",
             f"Tokens used: {self.tokens_used}",
-            ""
+            "",
         ]
 
         if self.executive_summary:
@@ -116,8 +110,9 @@ class InsightResult:
                 lines.append(f"\n  {pattern_type.title()} Patterns:")
                 for p in patterns[:3]:
                     lines.append(f"    - {p.pattern}")
-                    lines.append(f"      Occurrences: {p.occurrences}, "
-                               f"Confidence: {p.confidence:.0%}")
+                    lines.append(
+                        f"      Occurrences: {p.occurrences}, " f"Confidence: {p.confidence:.0%}"
+                    )
             lines.append("")
 
         if self.top_performers_analysis:
@@ -134,7 +129,9 @@ class InsightResult:
         if self.action_items:
             lines.append("Action Items:")
             for item in self.action_items[:5]:
-                lines.append(f"  [{item.get('priority', 'medium').upper()}] {item.get('action', '')}")
+                lines.append(
+                    f"  [{item.get('priority', 'medium').upper()}] {item.get('action', '')}"
+                )
                 lines.append(f"    Impact: {item.get('impact', 'Unknown')}")
             lines.append("")
 
@@ -210,28 +207,35 @@ class InsightAgent:
         self.insights_db.parent.mkdir(parents=True, exist_ok=True)
 
         with sqlite3.connect(self.insights_db) as conn:
-            conn.execute("""
+            conn.execute(
+                """
                 CREATE TABLE IF NOT EXISTS insight_cache (
                     cache_key TEXT PRIMARY KEY,
                     insight_data TEXT,
                     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                     expires_at DATETIME
                 )
-            """)
+            """
+            )
 
-            conn.execute("""
+            conn.execute(
+                """
                 CREATE INDEX IF NOT EXISTS idx_expires
                 ON insight_cache(expires_at)
-            """)
+            """
+            )
 
     def _get_cached_insight(self, cache_key: str) -> Optional[Dict]:
         """Get cached insight if not expired."""
         try:
             with sqlite3.connect(self.insights_db) as conn:
-                row = conn.execute("""
+                row = conn.execute(
+                    """
                     SELECT insight_data FROM insight_cache
                     WHERE cache_key = ? AND expires_at > datetime('now')
-                """, (cache_key,)).fetchone()
+                """,
+                    (cache_key,),
+                ).fetchone()
 
                 if row:
                     return json.loads(row[0])
@@ -246,10 +250,13 @@ class InsightAgent:
             expires_at = (datetime.now() + timedelta(hours=ttl_hours)).isoformat()
 
             with sqlite3.connect(self.insights_db) as conn:
-                conn.execute("""
+                conn.execute(
+                    """
                     INSERT OR REPLACE INTO insight_cache (cache_key, insight_data, expires_at)
                     VALUES (?, ?, ?)
-                """, (cache_key, json.dumps(data), expires_at))
+                """,
+                    (cache_key, json.dumps(data), expires_at),
+                )
 
         except Exception as e:
             logger.warning(f"Cache write error: {e}")
@@ -260,10 +267,7 @@ class InsightAgent:
         return hashlib.sha256(key_data.encode()).hexdigest()[:32]
 
     def identify_patterns(
-        self,
-        channel: str = None,
-        niche: str = None,
-        period: str = "90d"
+        self, channel: str = None, niche: str = None, period: str = "90d"
     ) -> InsightResult:
         """
         Identify successful patterns from top performers.
@@ -300,7 +304,7 @@ class InsightAgent:
                 cache_hit=True,
                 tokens_used=0,
                 cost=0.0,
-                provider="cache"
+                provider="cache",
             )
 
         # Get video data
@@ -315,7 +319,7 @@ class InsightAgent:
                 operation=operation,
                 patterns={},
                 recommendations=["No video data available. Upload content first."],
-                provider="database"
+                provider="database",
             )
 
         # Rule-based pattern detection
@@ -341,31 +345,31 @@ class InsightAgent:
             recommendations=recommendations,
             top_performers_analysis=top_analysis,
             tokens_used=tokens_used,
-            cost=self.tracker.record_usage(
-                provider=self.provider,
-                input_tokens=tokens_used // 2,
-                output_tokens=tokens_used // 2,
-                operation="insight_patterns"
-            ) if tokens_used > 0 else 0.0,
-            provider=self.provider if tokens_used > 0 else "rule_based"
+            cost=(
+                self.tracker.record_usage(
+                    provider=self.provider,
+                    input_tokens=tokens_used // 2,
+                    output_tokens=tokens_used // 2,
+                    operation="insight_patterns",
+                )
+                if tokens_used > 0
+                else 0.0
+            ),
+            provider=self.provider if tokens_used > 0 else "rule_based",
         )
 
         # Cache the result
         cache_data = {
             "patterns": {k: [asdict(p) for p in v] for k, v in patterns.items()},
             "recommendations": recommendations,
-            "top_performers_analysis": top_analysis
+            "top_performers_analysis": top_analysis,
         }
         self._cache_insight(cache_key, cache_data)
 
         logger.success(f"[InsightAgent] Pattern identification complete")
         return result
 
-    def _load_video_data(
-        self,
-        channel: str = None,
-        cutoff: str = None
-    ) -> List[Dict]:
+    def _load_video_data(self, channel: str = None, cutoff: str = None) -> List[Dict]:
         """Load video data from performance database."""
         if not self.performance_db.exists():
             return []
@@ -391,16 +395,18 @@ class InsightAgent:
 
             videos = []
             for row in rows:
-                videos.append({
-                    "video_id": row[0],
-                    "title": row[1] or "",
-                    "views": row[2] or 0,
-                    "likes": row[3] or 0,
-                    "comments": row[4] or 0,
-                    "retention": row[5] or 0,
-                    "ctr": row[6] or 0,
-                    "uploaded_at": row[7]
-                })
+                videos.append(
+                    {
+                        "video_id": row[0],
+                        "title": row[1] or "",
+                        "views": row[2] or 0,
+                        "likes": row[3] or 0,
+                        "comments": row[4] or 0,
+                        "retention": row[5] or 0,
+                        "ctr": row[6] or 0,
+                        "uploaded_at": row[7],
+                    }
+                )
 
             return videos
 
@@ -408,23 +414,16 @@ class InsightAgent:
             logger.warning(f"Error loading video data: {e}")
             return []
 
-    def _detect_patterns_rule_based(
-        self,
-        videos: List[Dict]
-    ) -> Dict[str, List[PatternAnalysis]]:
+    def _detect_patterns_rule_based(self, videos: List[Dict]) -> Dict[str, List[PatternAnalysis]]:
         """Detect patterns using rule-based analysis."""
-        patterns = {
-            "title": [],
-            "length": [],
-            "timing": []
-        }
+        patterns = {"title": [], "length": [], "timing": []}
 
         if not videos:
             return patterns
 
         # Sort by views for top performer analysis
         sorted_videos = sorted(videos, key=lambda x: x["views"], reverse=True)
-        top_videos = sorted_videos[:max(len(sorted_videos) // 4, 3)]
+        top_videos = sorted_videos[: max(len(sorted_videos) // 4, 3)]
 
         # Title pattern analysis
         title_keywords = {}
@@ -441,52 +440,55 @@ class InsightAgent:
                         title_keywords[word]["examples"].append(video["title"][:50])
 
         # Find significant keywords
-        for word, data in sorted(title_keywords.items(), key=lambda x: x[1]["count"], reverse=True)[:5]:
+        for word, data in sorted(title_keywords.items(), key=lambda x: x[1]["count"], reverse=True)[
+            :5
+        ]:
             if data["count"] >= 2:
                 avg_views = data["total_views"] / data["count"]
-                patterns["title"].append(PatternAnalysis(
-                    pattern_type="title",
-                    pattern=f"Title contains '{word}'",
-                    occurrences=data["count"],
-                    avg_performance=avg_views,
-                    confidence=min(data["count"] / len(top_videos), 1.0),
-                    examples=data["examples"]
-                ))
+                patterns["title"].append(
+                    PatternAnalysis(
+                        pattern_type="title",
+                        pattern=f"Title contains '{word}'",
+                        occurrences=data["count"],
+                        avg_performance=avg_views,
+                        confidence=min(data["count"] / len(top_videos), 1.0),
+                        examples=data["examples"],
+                    )
+                )
 
         # Title structure patterns
         structure_patterns = {
             "numbers": lambda t: any(c.isdigit() for c in t),
             "questions": lambda t: "?" in t,
             "how_to": lambda t: t.lower().startswith("how"),
-            "why": lambda t: t.lower().startswith("why")
+            "why": lambda t: t.lower().startswith("why"),
         }
 
         for pattern_name, check_func in structure_patterns.items():
             matching = [v for v in top_videos if check_func(v.get("title", ""))]
             if matching and len(matching) >= 2:
                 avg_views = sum(v["views"] for v in matching) / len(matching)
-                patterns["title"].append(PatternAnalysis(
-                    pattern_type="title",
-                    pattern=f"Title structure: {pattern_name.replace('_', ' ')}",
-                    occurrences=len(matching),
-                    avg_performance=avg_views,
-                    confidence=len(matching) / len(top_videos),
-                    examples=[v["title"][:50] for v in matching[:3]]
-                ))
+                patterns["title"].append(
+                    PatternAnalysis(
+                        pattern_type="title",
+                        pattern=f"Title structure: {pattern_name.replace('_', ' ')}",
+                        occurrences=len(matching),
+                        avg_performance=avg_views,
+                        confidence=len(matching) / len(top_videos),
+                        examples=[v["title"][:50] for v in matching[:3]],
+                    )
+                )
 
         return patterns
 
-    def _analyze_patterns_with_ai(
-        self,
-        videos: List[Dict],
-        niche: str
-    ) -> Optional[Dict]:
+    def _analyze_patterns_with_ai(self, videos: List[Dict], niche: str) -> Optional[Dict]:
         """Use AI to analyze patterns (Groq for efficiency)."""
         if not videos:
             return None
 
         try:
             from ..content.script_writer import get_provider
+
             ai = get_provider(self.provider, self.api_key)
 
             # Prepare condensed data (keep tokens low)
@@ -501,7 +503,7 @@ class InsightAgent:
                 "underperformers": [
                     {"title": v["title"][:50], "views": v["views"], "retention": v["retention"]}
                     for v in bottom_videos
-                ]
+                ],
             }
 
             # Keep prompt concise for token efficiency
@@ -540,7 +542,7 @@ Respond with ONLY JSON:
                             pattern=p.get("pattern", ""),
                             occurrences=0,
                             avg_performance=0,
-                            confidence=p.get("confidence", 0.5)
+                            confidence=p.get("confidence", 0.5),
                         )
                         for p in result["patterns"]["content"]
                     ]
@@ -554,9 +556,7 @@ Respond with ONLY JSON:
         return None
 
     def _generate_rule_based_recommendations(
-        self,
-        patterns: Dict[str, List[PatternAnalysis]],
-        niche: str
+        self, patterns: Dict[str, List[PatternAnalysis]], niche: str
     ) -> List[str]:
         """Generate recommendations based on detected patterns."""
         recommendations = []
@@ -572,9 +572,7 @@ Respond with ONLY JSON:
 
         # From best practices
         if practices.get("viral_title_patterns"):
-            recommendations.append(
-                f"Try viral pattern: {practices['viral_title_patterns'][0]}"
-            )
+            recommendations.append(f"Try viral pattern: {practices['viral_title_patterns'][0]}")
 
         # Generic niche recommendations
         niche_metrics = get_niche_metrics(niche)
@@ -599,10 +597,7 @@ Respond with ONLY JSON:
         return f"Top performers: {'; '.join(summary_parts)}"
 
     def generate_recommendations(
-        self,
-        channel: str = None,
-        niche: str = None,
-        context: Dict = None
+        self, channel: str = None, niche: str = None, context: Dict = None
     ) -> InsightResult:
         """
         Generate strategic recommendations using AI.
@@ -633,7 +628,7 @@ Respond with ONLY JSON:
                 recommendations=cached.get("recommendations", []),
                 action_items=cached.get("action_items", []),
                 cache_hit=True,
-                provider="cache"
+                provider="cache",
             )
 
         # Get context data
@@ -643,6 +638,7 @@ Respond with ONLY JSON:
         # Generate AI recommendations
         try:
             from ..content.script_writer import get_provider
+
             ai = get_provider(self.provider, self.api_key)
 
             prompt = f"""Generate 5 actionable recommendations for a {niche} YouTube channel.
@@ -680,11 +676,19 @@ Respond with ONLY JSON:
                 f"Post on {', '.join(metrics.get('best_days', ['Mon', 'Wed', 'Fri']))}",
                 "Use numbers and power words in titles",
                 "Hook viewers in first 5 seconds",
-                "Add pattern interrupts every 30-60 seconds"
+                "Add pattern interrupts every 30-60 seconds",
             ]
             action_items = [
-                {"action": "Review top performing titles", "priority": "high", "impact": "Improve CTR"},
-                {"action": "Analyze retention graphs", "priority": "medium", "impact": "Identify drop-off points"}
+                {
+                    "action": "Review top performing titles",
+                    "priority": "high",
+                    "impact": "Improve CTR",
+                },
+                {
+                    "action": "Analyze retention graphs",
+                    "priority": "medium",
+                    "impact": "Identify drop-off points",
+                },
             ]
             tokens_used = 0
 
@@ -694,27 +698,27 @@ Respond with ONLY JSON:
             recommendations=recommendations,
             action_items=action_items,
             tokens_used=tokens_used,
-            cost=self.tracker.record_usage(
-                provider=self.provider,
-                input_tokens=tokens_used // 2,
-                output_tokens=tokens_used // 2,
-                operation="insight_recommendations"
-            ) if tokens_used > 0 else 0.0,
-            provider=self.provider if tokens_used > 0 else "rule_based"
+            cost=(
+                self.tracker.record_usage(
+                    provider=self.provider,
+                    input_tokens=tokens_used // 2,
+                    output_tokens=tokens_used // 2,
+                    operation="insight_recommendations",
+                )
+                if tokens_used > 0
+                else 0.0
+            ),
+            provider=self.provider if tokens_used > 0 else "rule_based",
         )
 
         # Cache result
-        self._cache_insight(cache_key, {
-            "recommendations": recommendations,
-            "action_items": action_items
-        })
+        self._cache_insight(
+            cache_key, {"recommendations": recommendations, "action_items": action_items}
+        )
 
         return result
 
-    def compare_competitors(
-        self,
-        niche: str
-    ) -> InsightResult:
+    def compare_competitors(self, niche: str) -> InsightResult:
         """
         Compare against competitors in the niche.
 
@@ -739,15 +743,15 @@ Respond with ONLY JSON:
                     strength="Deep business analysis, professional presentation",
                     weakness="Slow upload frequency",
                     opportunity="More trending content on recent events",
-                    threat="Highly polished content raises viewer expectations"
+                    threat="Highly polished content raises viewer expectations",
                 ),
                 CompetitorInsight(
                     competitor="Practical Wisdom",
                     strength="Consistent uploads, clear explanations",
                     weakness="Less unique visual style",
                     opportunity="Differentiate with storytelling approach",
-                    threat="Similar target audience"
-                )
+                    threat="Similar target audience",
+                ),
             ],
             "psychology": [
                 CompetitorInsight(
@@ -755,15 +759,15 @@ Respond with ONLY JSON:
                     strength="12.7M subscribers, strong brand recognition",
                     weakness="Animation style can feel repetitive",
                     opportunity="Deeper analysis content",
-                    threat="Dominant market presence"
+                    threat="Dominant market presence",
                 ),
                 CompetitorInsight(
                     competitor="Brainy Dose",
                     strength="Consistent viral content",
                     weakness="Surface-level analysis",
                     opportunity="Provide more scientific depth",
-                    threat="Similar topic selection"
-                )
+                    threat="Similar topic selection",
+                ),
             ],
             "storytelling": [
                 CompetitorInsight(
@@ -771,34 +775,37 @@ Respond with ONLY JSON:
                     strength="5M+ subs, unique interrogation analysis",
                     weakness="Limited topic range",
                     opportunity="Broader storytelling topics",
-                    threat="Sets high production standard"
+                    threat="Sets high production standard",
                 ),
                 CompetitorInsight(
                     competitor="Lazy Masquerade",
                     strength="1.7M subs, mystery content",
                     weakness="Niche focus limits growth",
                     opportunity="Expand to business/tech stories",
-                    threat="Strong mystery/horror audience"
-                )
-            ]
+                    threat="Strong mystery/horror audience",
+                ),
+            ],
         }
 
-        competitors = competitor_data.get(niche, [
-            CompetitorInsight(
-                competitor="Generic Competitor",
-                strength="Established audience",
-                weakness="Inconsistent quality",
-                opportunity="Content gaps to fill",
-                threat="Market saturation"
-            )
-        ])
+        competitors = competitor_data.get(
+            niche,
+            [
+                CompetitorInsight(
+                    competitor="Generic Competitor",
+                    strength="Established audience",
+                    weakness="Inconsistent quality",
+                    opportunity="Content gaps to fill",
+                    threat="Market saturation",
+                )
+            ],
+        )
 
         # Generate insights
         recommendations = [
             f"Differentiate from {competitors[0].competitor}: {competitors[0].opportunity}",
             f"Avoid weakness of competitors: {competitors[0].weakness}",
             "Focus on consistent upload schedule to build audience",
-            "Monitor competitor titles and thumbnails for trends"
+            "Monitor competitor titles and thumbnails for trends",
         ]
 
         result = InsightResult(
@@ -808,16 +815,12 @@ Respond with ONLY JSON:
             recommendations=recommendations,
             tokens_used=0,
             cost=0.0,
-            provider="competitor_database"
+            provider="competitor_database",
         )
 
         return result
 
-    def executive_summary(
-        self,
-        channel: str = None,
-        period: str = "30d"
-    ) -> InsightResult:
+    def executive_summary(self, channel: str = None, period: str = "30d") -> InsightResult:
         """
         Produce executive summary of channel performance.
 
@@ -843,7 +846,7 @@ Respond with ONLY JSON:
                 recommendations=cached.get("recommendations", []),
                 predicted_trends=cached.get("predicted_trends", []),
                 cache_hit=True,
-                provider="cache"
+                provider="cache",
             )
 
         # Get video data
@@ -857,12 +860,15 @@ Respond with ONLY JSON:
         total_videos = len(videos)
         total_views = sum(v["views"] for v in videos)
         avg_views = total_views / total_videos if total_videos > 0 else 0
-        avg_retention = sum(v["retention"] for v in videos) / total_videos if total_videos > 0 else 0
+        avg_retention = (
+            sum(v["retention"] for v in videos) / total_videos if total_videos > 0 else 0
+        )
         avg_ctr = sum(v["ctr"] for v in videos) / total_videos if total_videos > 0 else 0
 
         # Generate summary with AI
         try:
             from ..content.script_writer import get_provider
+
             ai = get_provider(self.provider, self.api_key)
 
             prompt = f"""Write a brief executive summary for this {niche} YouTube channel ({period} data):
@@ -913,21 +919,28 @@ Respond with ONLY JSON:
             predicted_trends=trends,
             recommendations=recommendations,
             tokens_used=tokens_used,
-            cost=self.tracker.record_usage(
-                provider=self.provider,
-                input_tokens=tokens_used // 2,
-                output_tokens=tokens_used // 2,
-                operation="insight_executive_summary"
-            ) if tokens_used > 0 else 0.0,
-            provider=self.provider if tokens_used > 0 else "rule_based"
+            cost=(
+                self.tracker.record_usage(
+                    provider=self.provider,
+                    input_tokens=tokens_used // 2,
+                    output_tokens=tokens_used // 2,
+                    operation="insight_executive_summary",
+                )
+                if tokens_used > 0
+                else 0.0
+            ),
+            provider=self.provider if tokens_used > 0 else "rule_based",
         )
 
         # Cache result
-        self._cache_insight(cache_key, {
-            "executive_summary": summary,
-            "predicted_trends": trends,
-            "recommendations": recommendations
-        })
+        self._cache_insight(
+            cache_key,
+            {
+                "executive_summary": summary,
+                "predicted_trends": trends,
+                "recommendations": recommendations,
+            },
+        )
 
         return result
 
@@ -975,7 +988,8 @@ def main():
     import sys
 
     if len(sys.argv) < 2:
-        print("""
+        print(
+            """
 Insight Agent - AI-powered Analytics Insights
 
 Usage:
@@ -999,7 +1013,8 @@ Examples:
     python -m src.agents.insight_agent --channel money_blueprints --summary
     python -m src.agents.insight_agent --patterns --channel mind_unlocked --period 90d
     python -m src.agents.insight_agent --competitors --niche finance
-        """)
+        """
+        )
         return
 
     # Parse arguments

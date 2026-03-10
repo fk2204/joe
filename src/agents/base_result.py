@@ -24,9 +24,9 @@ Usage:
     print(result)  # [SUCCESS] script_generation (agent=ScriptAgent, tokens=1500, cost=$0.0020)
 """
 
-from dataclasses import dataclass, field, asdict
-from typing import Any, Optional, Dict
+from dataclasses import asdict, dataclass, field
 from datetime import datetime
+from typing import Any, Dict, Optional
 
 
 @dataclass
@@ -61,6 +61,7 @@ class AgentResult:
         >>> print(result)
         [SUCCESS] video_analysis (agent=QualityAgent, tokens=500, cost=$0.0010, duration=2.5s)
     """
+
     success: bool
     operation: str
     data: Any = None
@@ -81,8 +82,8 @@ class AgentResult:
         """
         result = asdict(self)
         # Convert datetime to ISO string for JSON serialization
-        if isinstance(result.get('timestamp'), datetime):
-            result['timestamp'] = result['timestamp'].isoformat()
+        if isinstance(result.get("timestamp"), datetime):
+            result["timestamp"] = result["timestamp"].isoformat()
         return result
 
     def __str__(self) -> str:
@@ -125,7 +126,7 @@ def create_result(
     tokens_used: int = 0,
     cost: float = 0.0,
     duration_seconds: float = 0.0,
-    **metadata
+    **metadata,
 ) -> AgentResult:
     """
     Convenience factory function to create an AgentResult.
@@ -165,5 +166,5 @@ def create_result(
         tokens_used=tokens_used,
         cost=cost,
         duration_seconds=duration_seconds,
-        metadata=metadata
+        metadata=metadata,
     )

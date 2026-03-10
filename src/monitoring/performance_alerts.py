@@ -31,22 +31,23 @@ Usage:
     actions = alert_system.get_recommended_actions("abc123")
 """
 
-import os
-import json
 import asyncio
+import os
 import smtplib
 import sqlite3
-from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
-from dataclasses import dataclass, field, asdict
+from dataclasses import asdict, dataclass, field
 from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Any, Callable
-from pathlib import Path
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
 from enum import Enum
+from pathlib import Path
+from typing import Any, Dict, List, Optional
+
 from loguru import logger
 
 try:
     import requests
+
     REQUESTS_AVAILABLE = True
 except ImportError:
     REQUESTS_AVAILABLE = False
@@ -54,6 +55,7 @@ except ImportError:
 
 class AlertSeverity(Enum):
     """Alert severity levels."""
+
     INFO = "info"
     WARNING = "warning"
     CRITICAL = "critical"
@@ -62,6 +64,7 @@ class AlertSeverity(Enum):
 
 class AlertType(Enum):
     """Types of performance alerts."""
+
     LOW_CTR = "low_ctr"
     LOW_RETENTION = "low_retention"
     LOW_ENGAGEMENT = "low_engagement"
@@ -73,6 +76,7 @@ class AlertType(Enum):
 
 class ActionType(Enum):
     """Types of recommended actions."""
+
     SWAP_THUMBNAIL = "swap_thumbnail"
     UPDATE_TITLE = "update_title"
     PROMOTE_SOCIAL = "promote_social"
@@ -86,13 +90,14 @@ class ActionType(Enum):
 @dataclass
 class AlertThresholds:
     """Configurable alert thresholds."""
-    ctr_warning: float = 4.0      # CTR below this triggers warning
-    ctr_critical: float = 2.0     # CTR below this triggers critical
+
+    ctr_warning: float = 4.0  # CTR below this triggers warning
+    ctr_critical: float = 2.0  # CTR below this triggers critical
     retention_warning: float = 35.0  # Retention % below triggers warning
     retention_critical: float = 25.0  # Retention % below triggers critical
-    engagement_warning: float = 3.0   # Engagement rate % below triggers warning
+    engagement_warning: float = 3.0  # Engagement rate % below triggers warning
     views_underperform_ratio: float = 0.5  # Below 50% of channel avg
-    views_viral_ratio: float = 3.0   # Above 3x channel avg = viral
+    views_viral_ratio: float = 3.0  # Above 3x channel avg = viral
     sentiment_negative_threshold: float = 0.3  # 30% negative comments
 
     def to_dict(self) -> Dict[str, float]:
@@ -102,6 +107,7 @@ class AlertThresholds:
 @dataclass
 class PerformanceMetrics:
     """Video performance metrics at a point in time."""
+
     video_id: str
     timestamp: datetime
     hours_since_upload: float
@@ -142,6 +148,7 @@ class PerformanceMetrics:
 @dataclass
 class PerformanceAlert:
     """A performance alert for a video."""
+
     alert_id: str
     video_id: str
     video_title: str
@@ -169,6 +176,7 @@ class PerformanceAlert:
 @dataclass
 class RecommendedAction:
     """A recommended action to improve performance."""
+
     action_type: ActionType
     priority: int  # 1 = highest
     title: str
@@ -187,6 +195,7 @@ class RecommendedAction:
 @dataclass
 class MonitoredVideo:
     """A video being monitored for performance."""
+
     video_id: str
     video_title: str
     channel_id: str
@@ -232,10 +241,10 @@ ACTION_RECOMMENDATIONS: Dict[AlertType, List[RecommendedAction]] = {
                 "Ensure face is visible and expressive",
                 "Use bright, contrasting colors",
                 "Add curiosity-inducing text overlay",
-                "Upload new thumbnail via YouTube Studio"
+                "Upload new thumbnail via YouTube Studio",
             ],
             time_to_implement="15-30 minutes",
-            urgency="immediate"
+            urgency="immediate",
         ),
         RecommendedAction(
             action_type=ActionType.UPDATE_TITLE,
@@ -248,10 +257,10 @@ ACTION_RECOMMENDATIONS: Dict[AlertType, List[RecommendedAction]] = {
                 "Use emotional trigger words",
                 "Create curiosity gap (don't give away conclusion)",
                 "Keep under 60 characters",
-                "Front-load important keywords"
+                "Front-load important keywords",
             ],
             time_to_implement="5-10 minutes",
-            urgency="immediate"
+            urgency="immediate",
         ),
     ],
     AlertType.LOW_RETENTION: [
@@ -265,10 +274,10 @@ ACTION_RECOMMENDATIONS: Dict[AlertType, List[RecommendedAction]] = {
                 "Analyze retention graph in YouTube Studio",
                 "Identify major drop-off points",
                 "Add card polls or video suggestions at these points",
-                "Link to more engaging content"
+                "Link to more engaging content",
             ],
             time_to_implement="10-15 minutes",
-            urgency="soon"
+            urgency="soon",
         ),
         RecommendedAction(
             action_type=ActionType.CREATE_SHORT,
@@ -280,10 +289,10 @@ ACTION_RECOMMENDATIONS: Dict[AlertType, List[RecommendedAction]] = {
                 "Find highest retention segment in analytics",
                 "Extract 15-60 second clip",
                 "Add captions and optimize for vertical",
-                "Post as YouTube Short with link to full video"
+                "Post as YouTube Short with link to full video",
             ],
             time_to_implement="20-30 minutes",
-            urgency="soon"
+            urgency="soon",
         ),
         RecommendedAction(
             action_type=ActionType.PIN_COMMENT,
@@ -295,10 +304,10 @@ ACTION_RECOMMENDATIONS: Dict[AlertType, List[RecommendedAction]] = {
                 "Write or find engaging comment",
                 "Tease content coming later in video",
                 "Pin comment to top",
-                "Reply to boost engagement"
+                "Reply to boost engagement",
             ],
             time_to_implement="5 minutes",
-            urgency="immediate"
+            urgency="immediate",
         ),
     ],
     AlertType.LOW_ENGAGEMENT: [
@@ -312,10 +321,10 @@ ACTION_RECOMMENDATIONS: Dict[AlertType, List[RecommendedAction]] = {
                 "Reply to every comment with thoughtful responses",
                 "Ask follow-up questions to drive conversation",
                 "Heart/like positive comments",
-                "Address any concerns or questions"
+                "Address any concerns or questions",
             ],
             time_to_implement="15-30 minutes",
-            urgency="immediate"
+            urgency="immediate",
         ),
         RecommendedAction(
             action_type=ActionType.PROMOTE_SOCIAL,
@@ -328,10 +337,10 @@ ACTION_RECOMMENDATIONS: Dict[AlertType, List[RecommendedAction]] = {
                 "Share in relevant Reddit communities",
                 "Post to Discord servers",
                 "Send to email list",
-                "Create Instagram Story/Reel"
+                "Create Instagram Story/Reel",
             ],
             time_to_implement="20-30 minutes",
-            urgency="immediate"
+            urgency="immediate",
         ),
     ],
     AlertType.UNDERPERFORMING: [
@@ -345,10 +354,10 @@ ACTION_RECOMMENDATIONS: Dict[AlertType, List[RecommendedAction]] = {
                 "Generate new thumbnail with different approach",
                 "Rewrite title with different angle",
                 "Update description with better hooks",
-                "Add timestamps/chapters if missing"
+                "Add timestamps/chapters if missing",
             ],
             time_to_implement="30-45 minutes",
-            urgency="immediate"
+            urgency="immediate",
         ),
         RecommendedAction(
             action_type=ActionType.CREATE_SHORT,
@@ -360,10 +369,10 @@ ACTION_RECOMMENDATIONS: Dict[AlertType, List[RecommendedAction]] = {
                 "Extract most interesting segments",
                 "Optimize each for vertical format",
                 "Add compelling hooks at start",
-                "Post over several days with links to full video"
+                "Post over several days with links to full video",
             ],
             time_to_implement="1-2 hours",
-            urgency="soon"
+            urgency="soon",
         ),
     ],
     AlertType.VIRAL_POTENTIAL: [
@@ -378,10 +387,10 @@ ACTION_RECOMMENDATIONS: Dict[AlertType, List[RecommendedAction]] = {
                 "Engage with every comment immediately",
                 "Create and post follow-up content",
                 "Cross-promote from other videos via end screens",
-                "Consider paid promotion to accelerate"
+                "Consider paid promotion to accelerate",
             ],
             time_to_implement="1-2 hours",
-            urgency="immediate"
+            urgency="immediate",
         ),
         RecommendedAction(
             action_type=ActionType.PIN_COMMENT,
@@ -392,10 +401,10 @@ ACTION_RECOMMENDATIONS: Dict[AlertType, List[RecommendedAction]] = {
             implementation_steps=[
                 "Write comment linking to related content",
                 "Include call-to-action for subscription",
-                "Pin and heart the comment"
+                "Pin and heart the comment",
             ],
             time_to_implement="5 minutes",
-            urgency="immediate"
+            urgency="immediate",
         ),
     ],
 }
@@ -408,7 +417,7 @@ class NotificationService:
         self,
         discord_webhook_url: Optional[str] = None,
         slack_webhook_url: Optional[str] = None,
-        email_config: Optional[Dict[str, str]] = None
+        email_config: Optional[Dict[str, str]] = None,
     ):
         self.discord_webhook_url = discord_webhook_url or os.getenv("DISCORD_ALERT_WEBHOOK")
         self.slack_webhook_url = slack_webhook_url or os.getenv("SLACK_ALERT_WEBHOOK")
@@ -426,10 +435,10 @@ class NotificationService:
             return False
 
         severity_colors = {
-            AlertSeverity.INFO: 0x3498db,
-            AlertSeverity.WARNING: 0xf39c12,
-            AlertSeverity.CRITICAL: 0xe74c3c,
-            AlertSeverity.URGENT: 0x9b59b6,
+            AlertSeverity.INFO: 0x3498DB,
+            AlertSeverity.WARNING: 0xF39C12,
+            AlertSeverity.CRITICAL: 0xE74C3C,
+            AlertSeverity.URGENT: 0x9B59B6,
         }
 
         severity_emojis = {
@@ -440,30 +449,37 @@ class NotificationService:
         }
 
         payload = {
-            "embeds": [{
-                "title": f"{severity_emojis[alert.severity]} Performance Alert: {alert.alert_type.value.replace('_', ' ').upper()}",
-                "description": alert.message,
-                "color": severity_colors[alert.severity],
-                "fields": [
-                    {
-                        "name": "Video",
-                        "value": f"[{alert.video_title}](https://youtube.com/watch?v={alert.video_id})",
-                        "inline": True
-                    },
-                    {
-                        "name": f"{alert.metric_name}",
-                        "value": f"{alert.metric_value:.2f}% (threshold: {alert.threshold_value:.2f}%)",
-                        "inline": True
-                    },
-                    {
-                        "name": "Recommended Actions",
-                        "value": "\n".join([f"- {a.value.replace('_', ' ').title()}" for a in alert.recommended_actions[:3]]),
-                        "inline": False
-                    }
-                ],
-                "timestamp": alert.timestamp.isoformat(),
-                "footer": {"text": f"Channel: {alert.channel_id}"}
-            }]
+            "embeds": [
+                {
+                    "title": f"{severity_emojis[alert.severity]} Performance Alert: {alert.alert_type.value.replace('_', ' ').upper()}",
+                    "description": alert.message,
+                    "color": severity_colors[alert.severity],
+                    "fields": [
+                        {
+                            "name": "Video",
+                            "value": f"[{alert.video_title}](https://youtube.com/watch?v={alert.video_id})",
+                            "inline": True,
+                        },
+                        {
+                            "name": f"{alert.metric_name}",
+                            "value": f"{alert.metric_value:.2f}% (threshold: {alert.threshold_value:.2f}%)",
+                            "inline": True,
+                        },
+                        {
+                            "name": "Recommended Actions",
+                            "value": "\n".join(
+                                [
+                                    f"- {a.value.replace('_', ' ').title()}"
+                                    for a in alert.recommended_actions[:3]
+                                ]
+                            ),
+                            "inline": False,
+                        },
+                    ],
+                    "timestamp": alert.timestamp.isoformat(),
+                    "footer": {"text": f"Channel: {alert.channel_id}"},
+                }
+            ]
         }
 
         try:
@@ -491,27 +507,36 @@ class NotificationService:
                     "type": "header",
                     "text": {
                         "type": "plain_text",
-                        "text": f"{severity_emojis[alert.severity]} Performance Alert: {alert.alert_type.value.replace('_', ' ').upper()}"
-                    }
+                        "text": f"{severity_emojis[alert.severity]} Performance Alert: {alert.alert_type.value.replace('_', ' ').upper()}",
+                    },
                 },
-                {
-                    "type": "section",
-                    "text": {"type": "mrkdwn", "text": alert.message}
-                },
+                {"type": "section", "text": {"type": "mrkdwn", "text": alert.message}},
                 {
                     "type": "section",
                     "fields": [
-                        {"type": "mrkdwn", "text": f"*Video:*\n<https://youtube.com/watch?v={alert.video_id}|{alert.video_title}>"},
-                        {"type": "mrkdwn", "text": f"*{alert.metric_name}:* {alert.metric_value:.2f}%"}
-                    ]
+                        {
+                            "type": "mrkdwn",
+                            "text": f"*Video:*\n<https://youtube.com/watch?v={alert.video_id}|{alert.video_title}>",
+                        },
+                        {
+                            "type": "mrkdwn",
+                            "text": f"*{alert.metric_name}:* {alert.metric_value:.2f}%",
+                        },
+                    ],
                 },
                 {
                     "type": "section",
                     "text": {
                         "type": "mrkdwn",
-                        "text": "*Recommended Actions:*\n" + "\n".join([f"- {a.value.replace('_', ' ').title()}" for a in alert.recommended_actions[:3]])
-                    }
-                }
+                        "text": "*Recommended Actions:*\n"
+                        + "\n".join(
+                            [
+                                f"- {a.value.replace('_', ' ').title()}"
+                                for a in alert.recommended_actions[:3]
+                            ]
+                        ),
+                    },
+                },
             ]
         }
 
@@ -524,16 +549,20 @@ class NotificationService:
 
     async def send_email(self, alert: PerformanceAlert) -> bool:
         """Send alert via email."""
-        if not all([
-            self.email_config.get("sender_email"),
-            self.email_config.get("sender_password"),
-            self.email_config.get("recipient_email")
-        ]):
+        if not all(
+            [
+                self.email_config.get("sender_email"),
+                self.email_config.get("sender_password"),
+                self.email_config.get("recipient_email"),
+            ]
+        ):
             return False
 
         try:
             msg = MIMEMultipart("alternative")
-            msg["Subject"] = f"[{alert.severity.value.upper()}] YouTube Alert: {alert.alert_type.value.replace('_', ' ')}"
+            msg["Subject"] = (
+                f"[{alert.severity.value.upper()}] YouTube Alert: {alert.alert_type.value.replace('_', ' ')}"
+            )
             msg["From"] = self.email_config["sender_email"]
             msg["To"] = self.email_config["recipient_email"]
 
@@ -582,9 +611,13 @@ YouTube Performance Alert
             msg.attach(MIMEText(text_content, "plain"))
             msg.attach(MIMEText(html_content, "html"))
 
-            with smtplib.SMTP(self.email_config["smtp_server"], self.email_config["smtp_port"]) as server:
+            with smtplib.SMTP(
+                self.email_config["smtp_server"], self.email_config["smtp_port"]
+            ) as server:
                 server.starttls()
-                server.login(self.email_config["sender_email"], self.email_config["sender_password"])
+                server.login(
+                    self.email_config["sender_email"], self.email_config["sender_password"]
+                )
                 server.send_message(msg)
 
             return True
@@ -619,7 +652,7 @@ class PerformanceAlertSystem:
     def __init__(
         self,
         db_path: str = "data/performance_alerts.db",
-        thresholds: Optional[AlertThresholds] = None
+        thresholds: Optional[AlertThresholds] = None,
     ):
         self.db_path = Path(db_path)
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
@@ -641,7 +674,8 @@ class PerformanceAlertSystem:
     def _init_database(self):
         """Initialize SQLite database for persistent storage."""
         with sqlite3.connect(self.db_path) as conn:
-            conn.execute("""
+            conn.execute(
+                """
                 CREATE TABLE IF NOT EXISTS monitored_videos (
                     video_id TEXT PRIMARY KEY,
                     video_title TEXT,
@@ -653,8 +687,10 @@ class PerformanceAlertSystem:
                     is_active INTEGER,
                     created_at TEXT DEFAULT CURRENT_TIMESTAMP
                 )
-            """)
-            conn.execute("""
+            """
+            )
+            conn.execute(
+                """
                 CREATE TABLE IF NOT EXISTS performance_metrics (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     video_id TEXT NOT NULL,
@@ -670,8 +706,10 @@ class PerformanceAlertSystem:
                     impressions INTEGER,
                     FOREIGN KEY (video_id) REFERENCES monitored_videos(video_id)
                 )
-            """)
-            conn.execute("""
+            """
+            )
+            conn.execute(
+                """
                 CREATE TABLE IF NOT EXISTS alerts (
                     alert_id TEXT PRIMARY KEY,
                     video_id TEXT,
@@ -687,8 +725,10 @@ class PerformanceAlertSystem:
                     acknowledged INTEGER DEFAULT 0,
                     resolved INTEGER DEFAULT 0
                 )
-            """)
-            conn.execute("""
+            """
+            )
+            conn.execute(
+                """
                 CREATE TABLE IF NOT EXISTS channel_baselines (
                     channel_id TEXT PRIMARY KEY,
                     avg_views_24h REAL,
@@ -697,20 +737,23 @@ class PerformanceAlertSystem:
                     avg_engagement REAL,
                     updated_at TEXT
                 )
-            """)
+            """
+            )
 
             # Create indexes
-            conn.execute("CREATE INDEX IF NOT EXISTS idx_metrics_video ON performance_metrics(video_id)")
+            conn.execute(
+                "CREATE INDEX IF NOT EXISTS idx_metrics_video ON performance_metrics(video_id)"
+            )
             conn.execute("CREATE INDEX IF NOT EXISTS idx_alerts_video ON alerts(video_id)")
-            conn.execute("CREATE INDEX IF NOT EXISTS idx_alerts_resolved ON alerts(resolved, severity)")
+            conn.execute(
+                "CREATE INDEX IF NOT EXISTS idx_alerts_resolved ON alerts(resolved, severity)"
+            )
 
     def _load_monitored_videos(self):
         """Load active monitored videos from database."""
         with sqlite3.connect(self.db_path) as conn:
             conn.row_factory = sqlite3.Row
-            rows = conn.execute(
-                "SELECT * FROM monitored_videos WHERE is_active = 1"
-            ).fetchall()
+            rows = conn.execute("SELECT * FROM monitored_videos WHERE is_active = 1").fetchall()
 
             for row in rows:
                 video = MonitoredVideo(
@@ -720,8 +763,10 @@ class PerformanceAlertSystem:
                     upload_time=datetime.fromisoformat(row["upload_time"]),
                     monitoring_end_time=datetime.fromisoformat(row["monitoring_end_time"]),
                     check_interval_minutes=row["check_interval_minutes"],
-                    last_check=datetime.fromisoformat(row["last_check"]) if row["last_check"] else None,
-                    is_active=bool(row["is_active"])
+                    last_check=(
+                        datetime.fromisoformat(row["last_check"]) if row["last_check"] else None
+                    ),
+                    is_active=bool(row["is_active"]),
                 )
                 self.monitored_videos[video.video_id] = video
 
@@ -733,7 +778,7 @@ class PerformanceAlertSystem:
         video_title: str,
         channel_id: str,
         duration_hours: int = 48,
-        check_interval_minutes: int = 60
+        check_interval_minutes: int = 60,
     ) -> MonitoredVideo:
         """
         Start monitoring a newly uploaded video.
@@ -758,21 +803,27 @@ class PerformanceAlertSystem:
             upload_time=now,
             monitoring_end_time=now + timedelta(hours=duration_hours),
             check_interval_minutes=check_interval_minutes,
-            is_active=True
+            is_active=True,
         )
 
         # Save to database
         with sqlite3.connect(self.db_path) as conn:
-            conn.execute("""
+            conn.execute(
+                """
                 INSERT OR REPLACE INTO monitored_videos
                 (video_id, video_title, channel_id, upload_time, monitoring_end_time,
                  check_interval_minutes, is_active)
                 VALUES (?, ?, ?, ?, ?, ?, 1)
-            """, (
-                video.video_id, video.video_title, video.channel_id,
-                video.upload_time.isoformat(), video.monitoring_end_time.isoformat(),
-                video.check_interval_minutes
-            ))
+            """,
+                (
+                    video.video_id,
+                    video.video_title,
+                    video.channel_id,
+                    video.upload_time.isoformat(),
+                    video.monitoring_end_time.isoformat(),
+                    video.check_interval_minutes,
+                ),
+            )
 
         self.monitored_videos[video_id] = video
 
@@ -785,27 +836,37 @@ class PerformanceAlertSystem:
         """Send notification that monitoring has started."""
         if self.notification_service.discord_webhook_url and REQUESTS_AVAILABLE:
             payload = {
-                "embeds": [{
-                    "title": ":rocket: Monitoring Started",
-                    "description": f"Now monitoring **{video.video_title}**",
-                    "color": 0x2ecc71,
-                    "fields": [
-                        {"name": "Video ID", "value": video.video_id, "inline": True},
-                        {"name": "Duration", "value": f"{(video.monitoring_end_time - video.upload_time).total_seconds() / 3600:.0f} hours", "inline": True},
-                        {"name": "Check Interval", "value": f"{video.check_interval_minutes} minutes", "inline": True}
-                    ],
-                    "timestamp": datetime.now().isoformat()
-                }]
+                "embeds": [
+                    {
+                        "title": ":rocket: Monitoring Started",
+                        "description": f"Now monitoring **{video.video_title}**",
+                        "color": 0x2ECC71,
+                        "fields": [
+                            {"name": "Video ID", "value": video.video_id, "inline": True},
+                            {
+                                "name": "Duration",
+                                "value": f"{(video.monitoring_end_time - video.upload_time).total_seconds() / 3600:.0f} hours",
+                                "inline": True,
+                            },
+                            {
+                                "name": "Check Interval",
+                                "value": f"{video.check_interval_minutes} minutes",
+                                "inline": True,
+                            },
+                        ],
+                        "timestamp": datetime.now().isoformat(),
+                    }
+                ]
             }
             try:
-                requests.post(self.notification_service.discord_webhook_url, json=payload, timeout=10)
+                requests.post(
+                    self.notification_service.discord_webhook_url, json=payload, timeout=10
+                )
             except Exception:
                 pass
 
     async def check_video(
-        self,
-        video_id: str,
-        metrics: Optional[PerformanceMetrics] = None
+        self, video_id: str, metrics: Optional[PerformanceMetrics] = None
     ) -> List[PerformanceAlert]:
         """
         Check a video's performance and generate alerts if needed.
@@ -854,9 +915,7 @@ class PerformanceAlertSystem:
         return alerts
 
     async def _generate_alerts(
-        self,
-        video: MonitoredVideo,
-        metrics: PerformanceMetrics
+        self, video: MonitoredVideo, metrics: PerformanceMetrics
     ) -> List[PerformanceAlert]:
         """Generate alerts based on current metrics."""
         alerts = []
@@ -867,66 +926,112 @@ class PerformanceAlertSystem:
         # Check CTR
         if metrics.ctr > 0:
             if metrics.ctr < self.thresholds.ctr_critical:
-                alerts.append(self._create_alert(
-                    video, AlertType.LOW_CTR, AlertSeverity.CRITICAL,
-                    f"CTR is critically low at {metrics.ctr:.2f}%",
-                    "CTR", metrics.ctr, self.thresholds.ctr_critical,
-                    [ActionType.SWAP_THUMBNAIL, ActionType.UPDATE_TITLE]
-                ))
+                alerts.append(
+                    self._create_alert(
+                        video,
+                        AlertType.LOW_CTR,
+                        AlertSeverity.CRITICAL,
+                        f"CTR is critically low at {metrics.ctr:.2f}%",
+                        "CTR",
+                        metrics.ctr,
+                        self.thresholds.ctr_critical,
+                        [ActionType.SWAP_THUMBNAIL, ActionType.UPDATE_TITLE],
+                    )
+                )
             elif metrics.ctr < self.thresholds.ctr_warning:
-                alerts.append(self._create_alert(
-                    video, AlertType.LOW_CTR, AlertSeverity.WARNING,
-                    f"CTR is below target at {metrics.ctr:.2f}%",
-                    "CTR", metrics.ctr, self.thresholds.ctr_warning,
-                    [ActionType.SWAP_THUMBNAIL, ActionType.UPDATE_TITLE]
-                ))
+                alerts.append(
+                    self._create_alert(
+                        video,
+                        AlertType.LOW_CTR,
+                        AlertSeverity.WARNING,
+                        f"CTR is below target at {metrics.ctr:.2f}%",
+                        "CTR",
+                        metrics.ctr,
+                        self.thresholds.ctr_warning,
+                        [ActionType.SWAP_THUMBNAIL, ActionType.UPDATE_TITLE],
+                    )
+                )
 
         # Check retention
         if metrics.retention_percentage > 0:
             if metrics.retention_percentage < self.thresholds.retention_critical:
-                alerts.append(self._create_alert(
-                    video, AlertType.LOW_RETENTION, AlertSeverity.CRITICAL,
-                    f"Retention is critically low at {metrics.retention_percentage:.1f}%",
-                    "Retention", metrics.retention_percentage, self.thresholds.retention_critical,
-                    [ActionType.ADD_CARDS, ActionType.CREATE_SHORT, ActionType.PIN_COMMENT]
-                ))
+                alerts.append(
+                    self._create_alert(
+                        video,
+                        AlertType.LOW_RETENTION,
+                        AlertSeverity.CRITICAL,
+                        f"Retention is critically low at {metrics.retention_percentage:.1f}%",
+                        "Retention",
+                        metrics.retention_percentage,
+                        self.thresholds.retention_critical,
+                        [ActionType.ADD_CARDS, ActionType.CREATE_SHORT, ActionType.PIN_COMMENT],
+                    )
+                )
             elif metrics.retention_percentage < self.thresholds.retention_warning:
-                alerts.append(self._create_alert(
-                    video, AlertType.LOW_RETENTION, AlertSeverity.WARNING,
-                    f"Retention is below target at {metrics.retention_percentage:.1f}%",
-                    "Retention", metrics.retention_percentage, self.thresholds.retention_warning,
-                    [ActionType.ADD_CARDS, ActionType.CREATE_SHORT]
-                ))
+                alerts.append(
+                    self._create_alert(
+                        video,
+                        AlertType.LOW_RETENTION,
+                        AlertSeverity.WARNING,
+                        f"Retention is below target at {metrics.retention_percentage:.1f}%",
+                        "Retention",
+                        metrics.retention_percentage,
+                        self.thresholds.retention_warning,
+                        [ActionType.ADD_CARDS, ActionType.CREATE_SHORT],
+                    )
+                )
 
         # Check engagement
         engagement = metrics.engagement_rate
         if engagement > 0 and engagement < self.thresholds.engagement_warning:
-            alerts.append(self._create_alert(
-                video, AlertType.LOW_ENGAGEMENT, AlertSeverity.WARNING,
-                f"Engagement rate is low at {engagement:.2f}%",
-                "Engagement", engagement, self.thresholds.engagement_warning,
-                [ActionType.ENGAGE_COMMENTS, ActionType.PROMOTE_SOCIAL]
-            ))
+            alerts.append(
+                self._create_alert(
+                    video,
+                    AlertType.LOW_ENGAGEMENT,
+                    AlertSeverity.WARNING,
+                    f"Engagement rate is low at {engagement:.2f}%",
+                    "Engagement",
+                    engagement,
+                    self.thresholds.engagement_warning,
+                    [ActionType.ENGAGE_COMMENTS, ActionType.PROMOTE_SOCIAL],
+                )
+            )
 
         # Check against channel baseline
         if baseline and baseline.get("avg_views_24h", 0) > 0:
             avg_views = baseline["avg_views_24h"]
 
             if metrics.views < avg_views * self.thresholds.views_underperform_ratio:
-                alerts.append(self._create_alert(
-                    video, AlertType.UNDERPERFORMING, AlertSeverity.WARNING,
-                    f"Views ({metrics.views:,}) are {metrics.views/avg_views*100:.0f}% of channel average ({avg_views:,.0f})",
-                    "Views", (metrics.views/avg_views)*100, self.thresholds.views_underperform_ratio * 100,
-                    [ActionType.SWAP_THUMBNAIL, ActionType.CREATE_SHORT, ActionType.PROMOTE_SOCIAL]
-                ))
+                alerts.append(
+                    self._create_alert(
+                        video,
+                        AlertType.UNDERPERFORMING,
+                        AlertSeverity.WARNING,
+                        f"Views ({metrics.views:,}) are {metrics.views/avg_views*100:.0f}% of channel average ({avg_views:,.0f})",
+                        "Views",
+                        (metrics.views / avg_views) * 100,
+                        self.thresholds.views_underperform_ratio * 100,
+                        [
+                            ActionType.SWAP_THUMBNAIL,
+                            ActionType.CREATE_SHORT,
+                            ActionType.PROMOTE_SOCIAL,
+                        ],
+                    )
+                )
 
             elif metrics.views > avg_views * self.thresholds.views_viral_ratio:
-                alerts.append(self._create_alert(
-                    video, AlertType.VIRAL_POTENTIAL, AlertSeverity.INFO,
-                    f"Video is going viral! Views ({metrics.views:,}) are {metrics.views/avg_views:.1f}x channel average",
-                    "Views", (metrics.views/avg_views)*100, self.thresholds.views_viral_ratio * 100,
-                    [ActionType.PROMOTE_SOCIAL, ActionType.PIN_COMMENT]
-                ))
+                alerts.append(
+                    self._create_alert(
+                        video,
+                        AlertType.VIRAL_POTENTIAL,
+                        AlertSeverity.INFO,
+                        f"Video is going viral! Views ({metrics.views:,}) are {metrics.views/avg_views:.1f}x channel average",
+                        "Views",
+                        (metrics.views / avg_views) * 100,
+                        self.thresholds.views_viral_ratio * 100,
+                        [ActionType.PROMOTE_SOCIAL, ActionType.PIN_COMMENT],
+                    )
+                )
 
         # Check for rapid drop (comparing to previous metrics)
         if len(video.metrics_history) >= 2:
@@ -934,12 +1039,18 @@ class PerformanceAlertSystem:
             if prev_metrics.ctr > 0 and metrics.ctr > 0:
                 ctr_drop = prev_metrics.ctr - metrics.ctr
                 if ctr_drop > 1.0:  # More than 1% CTR drop
-                    alerts.append(self._create_alert(
-                        video, AlertType.RAPID_DROP, AlertSeverity.WARNING,
-                        f"CTR dropped {ctr_drop:.2f}% since last check",
-                        "CTR Drop", ctr_drop, 1.0,
-                        [ActionType.SWAP_THUMBNAIL, ActionType.UPDATE_TITLE]
-                    ))
+                    alerts.append(
+                        self._create_alert(
+                            video,
+                            AlertType.RAPID_DROP,
+                            AlertSeverity.WARNING,
+                            f"CTR dropped {ctr_drop:.2f}% since last check",
+                            "CTR Drop",
+                            ctr_drop,
+                            1.0,
+                            [ActionType.SWAP_THUMBNAIL, ActionType.UPDATE_TITLE],
+                        )
+                    )
 
         return alerts
 
@@ -952,7 +1063,7 @@ class PerformanceAlertSystem:
         metric_name: str,
         metric_value: float,
         threshold_value: float,
-        recommended_actions: List[ActionType]
+        recommended_actions: List[ActionType],
     ) -> PerformanceAlert:
         """Create a performance alert."""
         import uuid
@@ -968,45 +1079,63 @@ class PerformanceAlertSystem:
             metric_name=metric_name,
             metric_value=metric_value,
             threshold_value=threshold_value,
-            recommended_actions=recommended_actions
+            recommended_actions=recommended_actions,
         )
 
     def _save_metrics(self, metrics: PerformanceMetrics):
         """Save metrics to database."""
         with sqlite3.connect(self.db_path) as conn:
-            conn.execute("""
+            conn.execute(
+                """
                 INSERT INTO performance_metrics
                 (video_id, timestamp, hours_since_upload, views, ctr,
                  avg_view_duration, retention_percentage, likes, comments,
                  shares, impressions)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """, (
-                metrics.video_id, metrics.timestamp.isoformat(),
-                metrics.hours_since_upload, metrics.views, metrics.ctr,
-                metrics.avg_view_duration, metrics.retention_percentage,
-                metrics.likes, metrics.comments, metrics.shares, metrics.impressions
-            ))
+            """,
+                (
+                    metrics.video_id,
+                    metrics.timestamp.isoformat(),
+                    metrics.hours_since_upload,
+                    metrics.views,
+                    metrics.ctr,
+                    metrics.avg_view_duration,
+                    metrics.retention_percentage,
+                    metrics.likes,
+                    metrics.comments,
+                    metrics.shares,
+                    metrics.impressions,
+                ),
+            )
 
     def _save_alert(self, alert: PerformanceAlert):
         """Save alert to database."""
         with sqlite3.connect(self.db_path) as conn:
-            conn.execute("""
+            conn.execute(
+                """
                 INSERT INTO alerts
                 (alert_id, video_id, video_title, channel_id, alert_type,
                  severity, message, metric_name, metric_value, threshold_value,
                  timestamp, acknowledged, resolved)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 0)
-            """, (
-                alert.alert_id, alert.video_id, alert.video_title,
-                alert.channel_id, alert.alert_type.value, alert.severity.value,
-                alert.message, alert.metric_name, alert.metric_value,
-                alert.threshold_value, alert.timestamp.isoformat()
-            ))
+            """,
+                (
+                    alert.alert_id,
+                    alert.video_id,
+                    alert.video_title,
+                    alert.channel_id,
+                    alert.alert_type.value,
+                    alert.severity.value,
+                    alert.message,
+                    alert.metric_name,
+                    alert.metric_value,
+                    alert.threshold_value,
+                    alert.timestamp.isoformat(),
+                ),
+            )
 
     async def _fetch_video_metrics(
-        self,
-        video_id: str,
-        hours_since_upload: float
+        self, video_id: str, hours_since_upload: float
     ) -> Optional[PerformanceMetrics]:
         """Fetch video metrics from YouTube API."""
         try:
@@ -1027,7 +1156,7 @@ class PerformanceAlertSystem:
                 comments=analytics.comments,
                 shares=analytics.shares,
                 impressions=analytics.impressions,
-                subscribers_gained=analytics.subscribers_gained
+                subscribers_gained=analytics.subscribers_gained,
             )
         except ImportError:
             logger.warning("YouTube Analytics API not available")
@@ -1045,8 +1174,7 @@ class PerformanceAlertSystem:
         with sqlite3.connect(self.db_path) as conn:
             conn.row_factory = sqlite3.Row
             row = conn.execute(
-                "SELECT * FROM channel_baselines WHERE channel_id = ?",
-                (channel_id,)
+                "SELECT * FROM channel_baselines WHERE channel_id = ?", (channel_id,)
             ).fetchone()
 
             if row:
@@ -1073,15 +1201,25 @@ class PerformanceAlertSystem:
         avg_views_24h: float,
         avg_ctr: float,
         avg_retention: float,
-        avg_engagement: float
+        avg_engagement: float,
     ):
         """Update channel baseline metrics."""
         with sqlite3.connect(self.db_path) as conn:
-            conn.execute("""
+            conn.execute(
+                """
                 INSERT OR REPLACE INTO channel_baselines
                 (channel_id, avg_views_24h, avg_ctr, avg_retention, avg_engagement, updated_at)
                 VALUES (?, ?, ?, ?, ?, ?)
-            """, (channel_id, avg_views_24h, avg_ctr, avg_retention, avg_engagement, datetime.now().isoformat()))
+            """,
+                (
+                    channel_id,
+                    avg_views_24h,
+                    avg_ctr,
+                    avg_retention,
+                    avg_engagement,
+                    datetime.now().isoformat(),
+                ),
+            )
 
         self._channel_baselines[channel_id] = {
             "avg_views_24h": avg_views_24h,
@@ -1116,8 +1254,7 @@ class PerformanceAlertSystem:
 
             with sqlite3.connect(self.db_path) as conn:
                 conn.execute(
-                    "UPDATE monitored_videos SET is_active = 0 WHERE video_id = ?",
-                    (video_id,)
+                    "UPDATE monitored_videos SET is_active = 0 WHERE video_id = ?", (video_id,)
                 )
 
             logger.info(f"Stopped monitoring video {video_id}")
@@ -1153,31 +1290,40 @@ class PerformanceAlertSystem:
 
             # Count by severity
             severity_counts = {}
-            for row in conn.execute("""
+            for row in conn.execute(
+                """
                 SELECT severity, COUNT(*) as count
                 FROM alerts
                 WHERE timestamp > ?
                 GROUP BY severity
-            """, (cutoff.isoformat(),)).fetchall():
+            """,
+                (cutoff.isoformat(),),
+            ).fetchall():
                 severity_counts[row["severity"]] = row["count"]
 
             # Count by type
             type_counts = {}
-            for row in conn.execute("""
+            for row in conn.execute(
+                """
                 SELECT alert_type, COUNT(*) as count
                 FROM alerts
                 WHERE timestamp > ?
                 GROUP BY alert_type
-            """, (cutoff.isoformat(),)).fetchall():
+            """,
+                (cutoff.isoformat(),),
+            ).fetchall():
                 type_counts[row["alert_type"]] = row["count"]
 
             # Recent alerts
-            recent = conn.execute("""
+            recent = conn.execute(
+                """
                 SELECT * FROM alerts
                 WHERE timestamp > ?
                 ORDER BY timestamp DESC
                 LIMIT 10
-            """, (cutoff.isoformat(),)).fetchall()
+            """,
+                (cutoff.isoformat(),),
+            ).fetchall()
 
         return {
             "period_hours": hours,
@@ -1191,18 +1337,12 @@ class PerformanceAlertSystem:
     def acknowledge_alert(self, alert_id: str):
         """Mark an alert as acknowledged."""
         with sqlite3.connect(self.db_path) as conn:
-            conn.execute(
-                "UPDATE alerts SET acknowledged = 1 WHERE alert_id = ?",
-                (alert_id,)
-            )
+            conn.execute("UPDATE alerts SET acknowledged = 1 WHERE alert_id = ?", (alert_id,))
 
     def resolve_alert(self, alert_id: str):
         """Mark an alert as resolved."""
         with sqlite3.connect(self.db_path) as conn:
-            conn.execute(
-                "UPDATE alerts SET resolved = 1 WHERE alert_id = ?",
-                (alert_id,)
-            )
+            conn.execute("UPDATE alerts SET resolved = 1 WHERE alert_id = ?", (alert_id,))
 
 
 # Convenience functions
@@ -1270,7 +1410,9 @@ if __name__ == "__main__":
                 print("Unknown command or missing arguments")
         else:
             print("Usage:")
-            print("  python -m src.monitoring.performance_alerts start <video_id> <title> [channel_id]")
+            print(
+                "  python -m src.monitoring.performance_alerts start <video_id> <title> [channel_id]"
+            )
             print("  python -m src.monitoring.performance_alerts check")
             print("  python -m src.monitoring.performance_alerts summary")
             print("  python -m src.monitoring.performance_alerts actions <video_id>")

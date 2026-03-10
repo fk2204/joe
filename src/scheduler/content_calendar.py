@@ -37,20 +37,21 @@ Usage:
     calendar.export_calendar(monthly, format="ical")
 """
 
-import os
+import asyncio
 import json
 import sqlite3
-import asyncio
-from dataclasses import dataclass, field, asdict
-from datetime import datetime, timedelta, date
-from typing import Dict, List, Optional, Any, Tuple, Set
-from pathlib import Path
+from collections import defaultdict
+from dataclasses import asdict, dataclass, field
+from datetime import date, datetime, timedelta
 from enum import Enum
-from collections import Counter, defaultdict
+from pathlib import Path
+from typing import Any, Dict, List, Optional, Set, Tuple
+
 from loguru import logger
 
 try:
     import yaml
+
     YAML_AVAILABLE = True
 except ImportError:
     YAML_AVAILABLE = False
@@ -58,6 +59,7 @@ except ImportError:
 
 class ContentStatus(Enum):
     """Status of a content piece."""
+
     IDEA = "idea"
     PLANNED = "planned"
     SCRIPTED = "scripted"
@@ -70,6 +72,7 @@ class ContentStatus(Enum):
 
 class ContentType(Enum):
     """Type of content."""
+
     VIDEO = "video"
     SHORT = "short"
     LIVESTREAM = "livestream"
@@ -78,6 +81,7 @@ class ContentType(Enum):
 
 class DayOfWeek(Enum):
     """Days of the week."""
+
     MONDAY = 0
     TUESDAY = 1
     WEDNESDAY = 2
@@ -90,6 +94,7 @@ class DayOfWeek(Enum):
 @dataclass
 class ContentEntry:
     """A single content entry in the calendar."""
+
     entry_id: str
     channel_id: str
     title: str
@@ -118,19 +123,24 @@ class ContentEntry:
         return result
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> 'ContentEntry':
+    def from_dict(cls, data: Dict[str, Any]) -> "ContentEntry":
         """Create ContentEntry from dict."""
         data["content_type"] = ContentType(data.get("content_type", "video"))
         data["status"] = ContentStatus(data.get("status", "planned"))
         data["scheduled_date"] = date.fromisoformat(data["scheduled_date"])
-        data["created_at"] = datetime.fromisoformat(data.get("created_at", datetime.now().isoformat()))
-        data["updated_at"] = datetime.fromisoformat(data.get("updated_at", datetime.now().isoformat()))
+        data["created_at"] = datetime.fromisoformat(
+            data.get("created_at", datetime.now().isoformat())
+        )
+        data["updated_at"] = datetime.fromisoformat(
+            data.get("updated_at", datetime.now().isoformat())
+        )
         return cls(**data)
 
 
 @dataclass
 class CalendarWeek:
     """A week view of the content calendar."""
+
     week_number: int
     year: int
     start_date: date
@@ -165,6 +175,7 @@ class CalendarWeek:
 @dataclass
 class CalendarMonth:
     """A month view of the content calendar."""
+
     month: int
     year: int
     channel_id: str
@@ -193,6 +204,7 @@ class CalendarMonth:
 @dataclass
 class TopicCluster:
     """A cluster of related topics."""
+
     cluster_id: str
     name: str
     topics: List[str]
@@ -207,6 +219,7 @@ class TopicCluster:
 @dataclass
 class ContentGap:
     """An identified gap in content coverage."""
+
     topic: str
     niche: str
     gap_type: str  # "never_covered", "outdated", "low_coverage"
@@ -244,7 +257,7 @@ NICHE_TOPIC_CLUSTERS: Dict[str, List[TopicCluster]] = {
             topics=["stocks", "etfs", "bonds", "crypto", "real estate investing", "index funds"],
             core_topic="investing",
             related_keywords=["portfolio", "returns", "dividends", "compound"],
-            recommended_spacing_days=10
+            recommended_spacing_days=10,
         ),
         TopicCluster(
             cluster_id="budgeting",
@@ -252,15 +265,21 @@ NICHE_TOPIC_CLUSTERS: Dict[str, List[TopicCluster]] = {
             topics=["budgeting", "saving money", "frugal", "cutting expenses", "emergency fund"],
             core_topic="budgeting",
             related_keywords=["save", "budget", "expense", "frugal"],
-            recommended_spacing_days=14
+            recommended_spacing_days=14,
         ),
         TopicCluster(
             cluster_id="passive_income",
             name="Passive Income",
-            topics=["passive income", "side hustle", "multiple income streams", "dividends", "rental income"],
+            topics=[
+                "passive income",
+                "side hustle",
+                "multiple income streams",
+                "dividends",
+                "rental income",
+            ],
             core_topic="passive income",
             related_keywords=["passive", "income", "streams", "residual"],
-            recommended_spacing_days=14
+            recommended_spacing_days=14,
         ),
         TopicCluster(
             cluster_id="debt",
@@ -268,7 +287,7 @@ NICHE_TOPIC_CLUSTERS: Dict[str, List[TopicCluster]] = {
             topics=["debt payoff", "credit cards", "student loans", "mortgage", "debt free"],
             core_topic="debt",
             related_keywords=["debt", "loan", "credit", "payoff"],
-            recommended_spacing_days=21
+            recommended_spacing_days=21,
         ),
     ],
     "psychology": [
@@ -278,7 +297,7 @@ NICHE_TOPIC_CLUSTERS: Dict[str, List[TopicCluster]] = {
             topics=["manipulation", "persuasion", "influence", "dark psychology", "mind tricks"],
             core_topic="manipulation",
             related_keywords=["manipulate", "persuade", "influence", "control"],
-            recommended_spacing_days=10
+            recommended_spacing_days=10,
         ),
         TopicCluster(
             cluster_id="habits",
@@ -286,7 +305,7 @@ NICHE_TOPIC_CLUSTERS: Dict[str, List[TopicCluster]] = {
             topics=["habits", "productivity", "discipline", "routine", "focus"],
             core_topic="habits",
             related_keywords=["habit", "productive", "discipline", "routine"],
-            recommended_spacing_days=14
+            recommended_spacing_days=14,
         ),
         TopicCluster(
             cluster_id="emotions",
@@ -294,7 +313,7 @@ NICHE_TOPIC_CLUSTERS: Dict[str, List[TopicCluster]] = {
             topics=["emotions", "anxiety", "confidence", "self-esteem", "mental health"],
             core_topic="emotions",
             related_keywords=["emotion", "feeling", "mental", "confidence"],
-            recommended_spacing_days=14
+            recommended_spacing_days=14,
         ),
     ],
     "storytelling": [
@@ -304,7 +323,7 @@ NICHE_TOPIC_CLUSTERS: Dict[str, List[TopicCluster]] = {
             topics=["true crime", "unsolved mysteries", "serial killers", "cold cases"],
             core_topic="true crime",
             related_keywords=["crime", "murder", "mystery", "case"],
-            recommended_spacing_days=7
+            recommended_spacing_days=7,
         ),
         TopicCluster(
             cluster_id="history",
@@ -312,7 +331,7 @@ NICHE_TOPIC_CLUSTERS: Dict[str, List[TopicCluster]] = {
             topics=["history", "historical events", "ancient civilizations", "wars"],
             core_topic="history",
             related_keywords=["history", "ancient", "historical", "civilization"],
-            recommended_spacing_days=10
+            recommended_spacing_days=10,
         ),
         TopicCluster(
             cluster_id="conspiracy",
@@ -320,7 +339,7 @@ NICHE_TOPIC_CLUSTERS: Dict[str, List[TopicCluster]] = {
             topics=["conspiracy", "unexplained", "paranormal", "aliens", "secrets"],
             core_topic="conspiracy",
             related_keywords=["conspiracy", "secret", "hidden", "unexplained"],
-            recommended_spacing_days=14
+            recommended_spacing_days=14,
         ),
     ],
 }
@@ -335,9 +354,7 @@ class ContentCalendar:
     """
 
     def __init__(
-        self,
-        db_path: str = "data/content_calendar.db",
-        config_path: str = "config/channels.yaml"
+        self, db_path: str = "data/content_calendar.db", config_path: str = "config/channels.yaml"
     ):
         self.db_path = Path(db_path)
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
@@ -354,7 +371,8 @@ class ContentCalendar:
     def _init_database(self):
         """Initialize database for calendar storage."""
         with sqlite3.connect(self.db_path) as conn:
-            conn.execute("""
+            conn.execute(
+                """
                 CREATE TABLE IF NOT EXISTS content_entries (
                     entry_id TEXT PRIMARY KEY,
                     channel_id TEXT NOT NULL,
@@ -374,8 +392,10 @@ class ContentCalendar:
                     created_at TEXT,
                     updated_at TEXT
                 )
-            """)
-            conn.execute("""
+            """
+            )
+            conn.execute(
+                """
                 CREATE TABLE IF NOT EXISTS topic_history (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     channel_id TEXT NOT NULL,
@@ -385,19 +405,26 @@ class ContentCalendar:
                     video_id TEXT,
                     performance_score REAL
                 )
-            """)
-            conn.execute("""
+            """
+            )
+            conn.execute(
+                """
                 CREATE INDEX IF NOT EXISTS idx_entries_channel
                 ON content_entries(channel_id, scheduled_date)
-            """)
-            conn.execute("""
+            """
+            )
+            conn.execute(
+                """
                 CREATE INDEX IF NOT EXISTS idx_entries_status
                 ON content_entries(status)
-            """)
-            conn.execute("""
+            """
+            )
+            conn.execute(
+                """
                 CREATE INDEX IF NOT EXISTS idx_topic_history_channel
                 ON topic_history(channel_id, topic)
-            """)
+            """
+            )
 
     def _load_channel_config(self):
         """Load channel configuration."""
@@ -420,7 +447,7 @@ class ContentCalendar:
         year: int,
         topics: Optional[List[str]] = None,
         videos_per_week: int = 3,
-        shorts_per_week: int = 6
+        shorts_per_week: int = 6,
     ) -> CalendarMonth:
         """
         Generate a monthly content calendar.
@@ -488,7 +515,7 @@ class ContentCalendar:
                             topic=topics[topic_index],
                             niche=niche,
                             content_type=ContentType.VIDEO,
-                            scheduled_date=day
+                            scheduled_date=day,
                         )
                         entries.append(entry)
                         week_entries.append(entry)
@@ -502,7 +529,7 @@ class ContentCalendar:
                         topic=topics[topic_index % len(topics)] if topics else "Short content",
                         niche=niche,
                         content_type=ContentType.SHORT,
-                        scheduled_date=day
+                        scheduled_date=day,
                     )
                     entries.append(short_entry)
                     week_entries.append(short_entry)
@@ -515,7 +542,7 @@ class ContentCalendar:
                 start_date=week_start,
                 end_date=week_end,
                 entries=week_entries,
-                channel_id=channel_id
+                channel_id=channel_id,
             )
             weeks.append(week)
 
@@ -524,11 +551,7 @@ class ContentCalendar:
 
         # Create month calendar
         calendar = CalendarMonth(
-            month=month,
-            year=year,
-            channel_id=channel_id,
-            weeks=weeks,
-            entries=entries
+            month=month, year=year, channel_id=channel_id, weeks=weeks, entries=entries
         )
 
         # Save entries to database
@@ -538,12 +561,7 @@ class ContentCalendar:
         logger.success(f"Generated calendar with {len(entries)} entries")
         return calendar
 
-    async def _get_topics_for_channel(
-        self,
-        channel_id: str,
-        niche: str,
-        count: int
-    ) -> List[str]:
+    async def _get_topics_for_channel(self, channel_id: str, niche: str, count: int) -> List[str]:
         """Get or generate topics for a channel."""
         # Check config for predefined topics
         channel_config = self.channels_config.get(channel_id, {})
@@ -576,7 +594,7 @@ class ContentCalendar:
         topic: str,
         niche: str,
         content_type: ContentType,
-        scheduled_date: date
+        scheduled_date: date,
     ) -> ContentEntry:
         """Create a content entry."""
         import uuid
@@ -595,15 +613,10 @@ class ContentCalendar:
             niche=niche,
             content_type=content_type,
             scheduled_date=scheduled_date,
-            keywords=keywords
+            keywords=keywords,
         )
 
-    def _generate_title(
-        self,
-        topic: str,
-        niche: str,
-        content_type: ContentType
-    ) -> str:
+    def _generate_title(self, topic: str, niche: str, content_type: ContentType) -> str:
         """Generate a placeholder title for a topic."""
         if content_type == ContentType.SHORT:
             return f"{topic.title()} Quick Tip"
@@ -623,27 +636,37 @@ class ContentCalendar:
     def _save_entry(self, entry: ContentEntry):
         """Save entry to database."""
         with sqlite3.connect(self.db_path) as conn:
-            conn.execute("""
+            conn.execute(
+                """
                 INSERT OR REPLACE INTO content_entries
                 (entry_id, channel_id, title, topic, niche, content_type,
                  scheduled_date, scheduled_time, status, priority, keywords,
                  related_topics, notes, video_id, performance_score,
                  created_at, updated_at)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """, (
-                entry.entry_id, entry.channel_id, entry.title, entry.topic,
-                entry.niche, entry.content_type.value, entry.scheduled_date.isoformat(),
-                entry.scheduled_time, entry.status.value, entry.priority,
-                json.dumps(entry.keywords), json.dumps(entry.related_topics),
-                entry.notes, entry.video_id, entry.performance_score,
-                entry.created_at.isoformat(), entry.updated_at.isoformat()
-            ))
+            """,
+                (
+                    entry.entry_id,
+                    entry.channel_id,
+                    entry.title,
+                    entry.topic,
+                    entry.niche,
+                    entry.content_type.value,
+                    entry.scheduled_date.isoformat(),
+                    entry.scheduled_time,
+                    entry.status.value,
+                    entry.priority,
+                    json.dumps(entry.keywords),
+                    json.dumps(entry.related_topics),
+                    entry.notes,
+                    entry.video_id,
+                    entry.performance_score,
+                    entry.created_at.isoformat(),
+                    entry.updated_at.isoformat(),
+                ),
+            )
 
-    def get_weekly_view(
-        self,
-        channel_id: str,
-        week_start: date
-    ) -> CalendarWeek:
+    def get_weekly_view(self, channel_id: str, week_start: date) -> CalendarWeek:
         """
         Get weekly calendar view.
 
@@ -658,12 +681,15 @@ class ContentCalendar:
 
         with sqlite3.connect(self.db_path) as conn:
             conn.row_factory = sqlite3.Row
-            rows = conn.execute("""
+            rows = conn.execute(
+                """
                 SELECT * FROM content_entries
                 WHERE channel_id = ?
                 AND scheduled_date >= ? AND scheduled_date <= ?
                 ORDER BY scheduled_date, scheduled_time
-            """, (channel_id, week_start.isoformat(), week_end.isoformat())).fetchall()
+            """,
+                (channel_id, week_start.isoformat(), week_end.isoformat()),
+            ).fetchall()
 
             entries = [self._row_to_entry(row) for row in rows]
 
@@ -673,7 +699,7 @@ class ContentCalendar:
             start_date=week_start,
             end_date=week_end,
             entries=entries,
-            channel_id=channel_id
+            channel_id=channel_id,
         )
 
     def _row_to_entry(self, row: sqlite3.Row) -> ContentEntry:
@@ -695,14 +721,10 @@ class ContentCalendar:
             video_id=row["video_id"],
             performance_score=row["performance_score"],
             created_at=datetime.fromisoformat(row["created_at"]),
-            updated_at=datetime.fromisoformat(row["updated_at"])
+            updated_at=datetime.fromisoformat(row["updated_at"]),
         )
 
-    def cluster_topics(
-        self,
-        topics: List[str],
-        niche: str
-    ) -> Dict[str, List[str]]:
+    def cluster_topics(self, topics: List[str], niche: str) -> Dict[str, List[str]]:
         """
         Cluster topics to avoid repetition.
 
@@ -722,8 +744,9 @@ class ContentCalendar:
 
             for cluster in clusters:
                 # Check if topic matches cluster
-                if any(t.lower() in topic_lower or topic_lower in t.lower()
-                      for t in cluster.topics):
+                if any(
+                    t.lower() in topic_lower or topic_lower in t.lower() for t in cluster.topics
+                ):
                     result[cluster.name].append(topic)
                     assigned = True
                     break
@@ -740,11 +763,7 @@ class ContentCalendar:
         return dict(result)
 
     def check_topic_spacing(
-        self,
-        channel_id: str,
-        topic: str,
-        proposed_date: date,
-        niche: str
+        self, channel_id: str, topic: str, proposed_date: date, niche: str
     ) -> Tuple[bool, Optional[str]]:
         """
         Check if topic spacing is appropriate.
@@ -764,8 +783,9 @@ class ContentCalendar:
         min_spacing = 14  # Default
 
         for cluster in clusters:
-            if any(t.lower() in topic.lower() or topic.lower() in t.lower()
-                  for t in cluster.topics):
+            if any(
+                t.lower() in topic.lower() or topic.lower() in t.lower() for t in cluster.topics
+            ):
                 topic_cluster = cluster
                 min_spacing = cluster.recommended_spacing_days
                 break
@@ -776,26 +796,30 @@ class ContentCalendar:
         # Check recent content in same cluster
         with sqlite3.connect(self.db_path) as conn:
             cutoff = (proposed_date - timedelta(days=min_spacing)).isoformat()
-            rows = conn.execute("""
+            rows = conn.execute(
+                """
                 SELECT scheduled_date, topic FROM content_entries
                 WHERE channel_id = ?
                 AND scheduled_date >= ?
                 AND scheduled_date < ?
                 AND content_type = 'video'
-            """, (channel_id, cutoff, proposed_date.isoformat())).fetchall()
+            """,
+                (channel_id, cutoff, proposed_date.isoformat()),
+            ).fetchall()
 
             for row in rows:
                 existing_topic = row[1]
                 if any(t.lower() in existing_topic.lower() for t in topic_cluster.topics):
                     scheduled = row[0]
-                    return False, f"Similar topic '{existing_topic}' scheduled on {scheduled}. Recommend {min_spacing}+ days spacing."
+                    return (
+                        False,
+                        f"Similar topic '{existing_topic}' scheduled on {scheduled}. Recommend {min_spacing}+ days spacing.",
+                    )
 
         return True, None
 
     async def find_content_gaps(
-        self,
-        channel_id: str,
-        look_back_days: int = 90
+        self, channel_id: str, look_back_days: int = 90
     ) -> List[ContentGap]:
         """
         Find gaps in content coverage.
@@ -818,13 +842,16 @@ class ContentCalendar:
 
         # Get all covered topics
         with sqlite3.connect(self.db_path) as conn:
-            covered = conn.execute("""
+            covered = conn.execute(
+                """
                 SELECT DISTINCT topic, MAX(scheduled_date) as last_date
                 FROM content_entries
                 WHERE channel_id = ? AND scheduled_date >= ?
                 AND content_type = 'video' AND status != 'cancelled'
                 GROUP BY topic
-            """, (channel_id, cutoff)).fetchall()
+            """,
+                (channel_id, cutoff),
+            ).fetchall()
 
         covered_topics = {row[0].lower(): row[1] for row in covered}
 
@@ -846,25 +873,29 @@ class ContentCalendar:
 
                 if not matched:
                     # Never covered
-                    gaps.append(ContentGap(
-                        topic=topic,
-                        niche=niche,
-                        gap_type="never_covered",
-                        priority_score=80.0,
-                        reason=f"Topic '{topic}' has never been covered",
-                    ))
+                    gaps.append(
+                        ContentGap(
+                            topic=topic,
+                            niche=niche,
+                            gap_type="never_covered",
+                            priority_score=80.0,
+                            reason=f"Topic '{topic}' has never been covered",
+                        )
+                    )
                 elif last_date:
                     days_since = (date.today() - last_date).days
                     if days_since > cluster.recommended_spacing_days * 3:
                         # Outdated
-                        gaps.append(ContentGap(
-                            topic=topic,
-                            niche=niche,
-                            gap_type="outdated",
-                            priority_score=60.0,
-                            last_covered=last_date,
-                            reason=f"Last covered {days_since} days ago (recommend refresh)",
-                        ))
+                        gaps.append(
+                            ContentGap(
+                                topic=topic,
+                                niche=niche,
+                                gap_type="outdated",
+                                priority_score=60.0,
+                                last_covered=last_date,
+                                reason=f"Last covered {days_since} days ago (recommend refresh)",
+                            )
+                        )
 
         # Sort by priority
         gaps.sort(key=lambda g: g.priority_score, reverse=True)
@@ -873,9 +904,7 @@ class ContentCalendar:
         return gaps
 
     def get_optimal_posting_days(
-        self,
-        channel_id: str,
-        niche: Optional[str] = None
+        self, channel_id: str, niche: Optional[str] = None
     ) -> List[DayOfWeek]:
         """
         Get optimal posting days for a channel.
@@ -906,7 +935,7 @@ class ContentCalendar:
         entry_id: str,
         status: ContentStatus,
         video_id: Optional[str] = None,
-        performance_score: Optional[float] = None
+        performance_score: Optional[float] = None,
     ):
         """Update status of a content entry."""
         with sqlite3.connect(self.db_path) as conn:
@@ -923,19 +952,19 @@ class ContentCalendar:
 
             params.append(entry_id)
 
-            conn.execute(f"""
+            conn.execute(
+                f"""
                 UPDATE content_entries
                 SET {', '.join(updates)}
                 WHERE entry_id = ?
-            """, params)
+            """,
+                params,
+            )
 
         logger.info(f"Updated entry {entry_id} status to {status.value}")
 
     def export_calendar(
-        self,
-        calendar: CalendarMonth,
-        format: str = "json",
-        output_path: Optional[str] = None
+        self, calendar: CalendarMonth, format: str = "json", output_path: Optional[str] = None
     ) -> str:
         """
         Export calendar to various formats.
@@ -954,33 +983,36 @@ class ContentCalendar:
         Path(output_path).parent.mkdir(parents=True, exist_ok=True)
 
         if format == "json":
-            with open(output_path, 'w') as f:
+            with open(output_path, "w") as f:
                 json.dump(calendar.to_dict(), f, indent=2)
 
         elif format == "csv":
             import csv
-            with open(output_path, 'w', newline='', encoding='utf-8') as f:
+
+            with open(output_path, "w", newline="", encoding="utf-8") as f:
                 writer = csv.writer(f)
                 writer.writerow(["Date", "Time", "Title", "Topic", "Type", "Status", "Priority"])
                 for entry in calendar.entries:
-                    writer.writerow([
-                        entry.scheduled_date.isoformat(),
-                        entry.scheduled_time or "",
-                        entry.title,
-                        entry.topic,
-                        entry.content_type.value,
-                        entry.status.value,
-                        entry.priority
-                    ])
+                    writer.writerow(
+                        [
+                            entry.scheduled_date.isoformat(),
+                            entry.scheduled_time or "",
+                            entry.title,
+                            entry.topic,
+                            entry.content_type.value,
+                            entry.status.value,
+                            entry.priority,
+                        ]
+                    )
 
         elif format == "ical":
             ical_content = self._generate_ical(calendar)
-            with open(output_path, 'w') as f:
+            with open(output_path, "w") as f:
                 f.write(ical_content)
 
         elif format == "markdown":
             md_content = self._generate_markdown(calendar)
-            with open(output_path, 'w') as f:
+            with open(output_path, "w") as f:
                 f.write(md_content)
 
         else:
@@ -999,16 +1031,18 @@ class ContentCalendar:
         ]
 
         for entry in calendar.entries:
-            lines.extend([
-                "BEGIN:VEVENT",
-                f"UID:{entry.entry_id}@joe",
-                f"DTSTAMP:{datetime.now().strftime('%Y%m%dT%H%M%SZ')}",
-                f"DTSTART:{entry.scheduled_date.strftime('%Y%m%d')}",
-                f"SUMMARY:{entry.title}",
-                f"DESCRIPTION:Topic: {entry.topic}\\nType: {entry.content_type.value}\\nStatus: {entry.status.value}",
-                f"CATEGORIES:{entry.content_type.value.upper()}",
-                "END:VEVENT",
-            ])
+            lines.extend(
+                [
+                    "BEGIN:VEVENT",
+                    f"UID:{entry.entry_id}@joe",
+                    f"DTSTAMP:{datetime.now().strftime('%Y%m%dT%H%M%SZ')}",
+                    f"DTSTART:{entry.scheduled_date.strftime('%Y%m%d')}",
+                    f"SUMMARY:{entry.title}",
+                    f"DESCRIPTION:Topic: {entry.topic}\\nType: {entry.content_type.value}\\nStatus: {entry.status.value}",
+                    f"CATEGORIES:{entry.content_type.value.upper()}",
+                    "END:VEVENT",
+                ]
+            )
 
         lines.append("END:VCALENDAR")
         return "\r\n".join(lines)
@@ -1056,23 +1090,34 @@ class ContentCalendar:
 
         with sqlite3.connect(self.db_path) as conn:
             # Count by status
-            status_counts = dict(conn.execute("""
+            status_counts = dict(
+                conn.execute(
+                    """
                 SELECT status, COUNT(*)
                 FROM content_entries
                 WHERE channel_id = ? AND scheduled_date >= ?
                 GROUP BY status
-            """, (channel_id, cutoff)).fetchall())
+            """,
+                    (channel_id, cutoff),
+                ).fetchall()
+            )
 
             # Count by type
-            type_counts = dict(conn.execute("""
+            type_counts = dict(
+                conn.execute(
+                    """
                 SELECT content_type, COUNT(*)
                 FROM content_entries
                 WHERE channel_id = ? AND scheduled_date >= ?
                 GROUP BY content_type
-            """, (channel_id, cutoff)).fetchall())
+            """,
+                    (channel_id, cutoff),
+                ).fetchall()
+            )
 
             # Topics frequency
-            topic_freq = conn.execute("""
+            topic_freq = conn.execute(
+                """
                 SELECT topic, COUNT(*) as count
                 FROM content_entries
                 WHERE channel_id = ? AND scheduled_date >= ?
@@ -1080,7 +1125,9 @@ class ContentCalendar:
                 GROUP BY topic
                 ORDER BY count DESC
                 LIMIT 10
-            """, (channel_id, cutoff)).fetchall()
+            """,
+                (channel_id, cutoff),
+            ).fetchall()
 
         return {
             "channel_id": channel_id,
@@ -1130,7 +1177,9 @@ if __name__ == "__main__":
                 print(f"Topics covered: {len(cal.topics_covered)}")
                 print("\nWeekly breakdown:")
                 for week in cal.weeks:
-                    print(f"  Week {week.week_number}: {week.video_count} videos, {week.short_count} shorts")
+                    print(
+                        f"  Week {week.week_number}: {week.video_count} videos, {week.short_count} shorts"
+                    )
 
                 # Export
                 export_path = calendar.export_calendar(cal, "markdown")
@@ -1156,7 +1205,7 @@ if __name__ == "__main__":
                 print(f"By Status: {stats['by_status']}")
                 print(f"By Type: {stats['by_type']}")
                 print(f"\nTop Topics:")
-                for t in stats['top_topics']:
+                for t in stats["top_topics"]:
                     print(f"  - {t['topic']}: {t['count']} videos")
 
             elif command == "optimal" and len(sys.argv) >= 3:

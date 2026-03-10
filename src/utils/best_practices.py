@@ -24,10 +24,10 @@ Usage:
 """
 
 import re
-from typing import Dict, List, Any, Optional
 from dataclasses import dataclass, field
-from loguru import logger
+from typing import Any, Dict, List
 
+from loguru import logger
 
 # ============================================================
 # KEY METRICS FROM COMPETITOR ANALYSIS (January 2026)
@@ -172,7 +172,15 @@ POWER_WORDS = {
 
 SEO_PATTERNS = {
     "finance": {
-        "required_tags": ["money", "finance", "investing", "passive income", "wealth building", "stock market", "personal finance"],
+        "required_tags": [
+            "money",
+            "finance",
+            "investing",
+            "passive income",
+            "wealth building",
+            "stock market",
+            "personal finance",
+        ],
         "description_rules": [
             "Primary keyword in first 200 characters",
             "Include timestamps/chapters (3+ chapters minimum)",
@@ -180,7 +188,16 @@ SEO_PATTERNS = {
         ],
     },
     "psychology": {
-        "required_tags": ["psychology", "dark psychology", "manipulation", "narcissist", "body language", "cognitive bias", "self improvement", "mindset"],
+        "required_tags": [
+            "psychology",
+            "dark psychology",
+            "manipulation",
+            "narcissist",
+            "body language",
+            "cognitive bias",
+            "self improvement",
+            "mindset",
+        ],
         "description_rules": [
             "Curiosity-building first line",
             "Reference specific studies (Stanford, Milgram, Cialdini)",
@@ -188,7 +205,16 @@ SEO_PATTERNS = {
         ],
     },
     "storytelling": {
-        "required_tags": ["true crime", "documentary", "mystery", "unsolved", "scandal", "business", "rise and fall", "untold story"],
+        "required_tags": [
+            "true crime",
+            "documentary",
+            "mystery",
+            "unsolved",
+            "scandal",
+            "business",
+            "rise and fall",
+            "untold story",
+        ],
         "description_rules": [
             "Dramatic opening line",
             "Timeline/chronological markers",
@@ -204,20 +230,29 @@ SEO_PATTERNS = {
 
 RETENTION_BEST_PRACTICES = {
     "first_30_seconds": {
-        "0-5s": {"element": "Pattern interrupt/bold claim", "purpose": "Grab attention (critical for 70%+ retention)"},
+        "0-5s": {
+            "element": "Pattern interrupt/bold claim",
+            "purpose": "Grab attention (critical for 70%+ retention)",
+        },
         "5-15s": {"element": "Context + first open loop", "purpose": "Set stakes, plant curiosity"},
         "15-30s": {"element": "First micro-payoff", "purpose": "Deliver value, prevent drop-off"},
     },
     "engagement_techniques": {
         "open_loops": {"frequency": "Minimum 3 per video", "impact": "32% increase in watch time"},
         "micro_cliffhangers": {"frequency": "Every 45-60 seconds", "impact": "Maintains tension"},
-        "direct_address": {"frequency": "Use 'you' at least 3 times per minute", "impact": "Personal connection"},
+        "direct_address": {
+            "frequency": "Use 'you' at least 3 times per minute",
+            "impact": "Personal connection",
+        },
         "rhetorical_questions": {"frequency": "Every 30-45 seconds", "impact": "Active engagement"},
         "specific_numbers": {"rule": "Always use exact figures", "impact": "Credibility boost"},
     },
     "cta_placement": {
         "never": {"timing": "First 30 seconds", "reason": "Kills retention"},
-        "soft": {"timing": "30% mark", "example": "If you're finding this valuable, hit subscribe..."},
+        "soft": {
+            "timing": "30% mark",
+            "example": "If you're finding this valuable, hit subscribe...",
+        },
         "engagement": {"timing": "50% mark", "example": "Comment below with your experience..."},
         "final": {"timing": "95% mark", "example": "Like and subscribe for more..."},
     },
@@ -242,9 +277,11 @@ IMPACT_FORMULA = {
 # VALIDATION RESULT DATACLASSES
 # ============================================================
 
+
 @dataclass
 class ValidationResult:
     """Result of a validation check."""
+
     is_valid: bool
     score: float  # 0.0 to 1.0
     passed_checks: List[str] = field(default_factory=list)
@@ -259,6 +296,7 @@ class ValidationResult:
 @dataclass
 class ChecklistItem:
     """Single item in the pre-publish checklist."""
+
     name: str
     passed: bool
     details: str
@@ -268,6 +306,7 @@ class ChecklistItem:
 @dataclass
 class PrePublishChecklist:
     """Complete pre-publish checklist result."""
+
     items: List[ChecklistItem]
     overall_score: float
     ready_to_publish: bool
@@ -283,6 +322,7 @@ class PrePublishChecklist:
 # ============================================================
 # VALIDATION FUNCTIONS
 # ============================================================
+
 
 def validate_title(title: str, niche: str) -> ValidationResult:
     """
@@ -311,7 +351,7 @@ def validate_title(title: str, niche: str) -> ValidationResult:
         suggestions.append("Shorten title to under 60 characters for better display")
 
     # Check 2: Contains numbers (specific numbers perform better)
-    if re.search(r'\d+', title):
+    if re.search(r"\d+", title):
         passed_checks.append("Contains specific numbers")
     else:
         failed_checks.append("Missing specific numbers")
@@ -336,11 +376,13 @@ def validate_title(title: str, niche: str) -> ValidationResult:
         passed_checks.append(f"Matches {len(matched_patterns)} viral pattern(s)")
     else:
         failed_checks.append("Doesn't match known viral patterns")
-        suggestions.append(f"Consider using patterns like: 'How X Makes Money', '{len(patterns)} Signs of Y'")
+        suggestions.append(
+            f"Consider using patterns like: 'How X Makes Money', '{len(patterns)} Signs of Y'"
+        )
 
     # Check 5: Dollar amounts (for finance)
     if niche == "finance":
-        if re.search(r'\$[\d,]+', title):
+        if re.search(r"\$[\d,]+", title):
             passed_checks.append("Contains specific dollar amount (finance best practice)")
         else:
             failed_checks.append("Missing dollar amounts (finance titles should include $)")
@@ -373,7 +415,7 @@ def validate_title(title: str, niche: str) -> ValidationResult:
         score=score,
         passed_checks=passed_checks,
         failed_checks=failed_checks,
-        suggestions=suggestions
+        suggestions=suggestions,
     )
 
 
@@ -416,8 +458,17 @@ def validate_hook(hook: str, niche: str) -> ValidationResult:
 
     # Check 3: Contains curiosity gap
     curiosity_phrases = [
-        "you don't", "nobody", "secret", "truth", "hidden", "actually",
-        "what if", "imagine", "shocking", "terrifying", "discovered"
+        "you don't",
+        "nobody",
+        "secret",
+        "truth",
+        "hidden",
+        "actually",
+        "what if",
+        "imagine",
+        "shocking",
+        "terrifying",
+        "discovered",
     ]
     has_curiosity = any(phrase in hook.lower() for phrase in curiosity_phrases)
     if has_curiosity:
@@ -427,7 +478,7 @@ def validate_hook(hook: str, niche: str) -> ValidationResult:
         suggestions.append("Add curiosity: 'What you don't know...', 'The hidden truth...'")
 
     # Check 4: Specific numbers (where applicable)
-    if re.search(r'\d+', hook) or re.search(r'\$[\d,]+', hook):
+    if re.search(r"\d+", hook) or re.search(r"\$[\d,]+", hook):
         passed_checks.append("Contains specific numbers/amounts")
     else:
         failed_checks.append("Missing specific numbers")
@@ -450,7 +501,9 @@ def validate_hook(hook: str, niche: str) -> ValidationResult:
         passed_checks.append(f"Contains {niche}-specific language")
     else:
         failed_checks.append(f"Missing {niche}-specific hook elements")
-        suggestions.append(f"Consider niche hooks: {niche_hooks[0] if niche_hooks else universal_hooks[0]}")
+        suggestions.append(
+            f"Consider niche hooks: {niche_hooks[0] if niche_hooks else universal_hooks[0]}"
+        )
 
     # Check 6: Direct address (uses "you")
     if "you" in hook.lower():
@@ -461,7 +514,9 @@ def validate_hook(hook: str, niche: str) -> ValidationResult:
 
     # Check 7: Ends with open loop or tension
     tension_enders = ["...", "but", "and", "however", "yet"]
-    has_tension = any(hook.rstrip().endswith(ender) or ender in hook.lower()[-20:] for ender in tension_enders)
+    has_tension = any(
+        hook.rstrip().endswith(ender) or ender in hook.lower()[-20:] for ender in tension_enders
+    )
     if has_tension:
         passed_checks.append("Creates tension/open loop")
     else:
@@ -478,7 +533,7 @@ def validate_hook(hook: str, niche: str) -> ValidationResult:
         score=score,
         passed_checks=passed_checks,
         failed_checks=failed_checks,
-        suggestions=suggestions
+        suggestions=suggestions,
     )
 
 
@@ -579,7 +634,7 @@ def suggest_improvements(content: Dict[str, Any], niche: str) -> List[str]:
     if "description" in content:
         desc = content["description"]
         # Check for timestamps/chapters
-        if not re.search(r'\d{1,2}:\d{2}', desc):
+        if not re.search(r"\d{1,2}:\d{2}", desc):
             suggestions.append("Add chapter timestamps to description (e.g., '00:00 Introduction')")
         # Check length
         if len(desc) < 200:
@@ -596,10 +651,7 @@ def suggest_improvements(content: Dict[str, Any], niche: str) -> List[str]:
     return unique_suggestions
 
 
-def pre_publish_checklist(
-    script: Any,  # VideoScript or dict
-    niche: str
-) -> PrePublishChecklist:
+def pre_publish_checklist(script: Any, niche: str) -> PrePublishChecklist:  # VideoScript or dict
     """
     Run a complete pre-publish validation checklist.
 
@@ -634,14 +686,18 @@ def pre_publish_checklist(
     # 1. Title matches viral patterns
     title = data.get("title", "")
     title_result = validate_title(title, niche)
-    items.append(ChecklistItem(
-        name="Title matches viral patterns",
-        passed=title_result.is_valid,
-        details=f"Score: {title_result.score:.0%} - {', '.join(title_result.suggestions[:2]) if title_result.suggestions else 'Good'}",
-        priority="high"
-    ))
+    items.append(
+        ChecklistItem(
+            name="Title matches viral patterns",
+            passed=title_result.is_valid,
+            details=f"Score: {title_result.score:.0%} - {', '.join(title_result.suggestions[:2]) if title_result.suggestions else 'Good'}",
+            priority="high",
+        )
+    )
     if not title_result.is_valid:
-        critical_issues.append(f"Title needs improvement: {title_result.suggestions[0] if title_result.suggestions else 'Check patterns'}")
+        critical_issues.append(
+            f"Title needs improvement: {title_result.suggestions[0] if title_result.suggestions else 'Check patterns'}"
+        )
 
     # 2. Hook is in first 5 seconds
     hook = data.get("hook_text", "")
@@ -653,15 +709,19 @@ def pre_publish_checklist(
         elif isinstance(first_section, dict):
             hook = first_section.get("narration", "")
 
-    hook_result = validate_hook(hook, niche) if hook else ValidationResult(
-        is_valid=False, score=0.0, failed_checks=["No hook found"]
+    hook_result = (
+        validate_hook(hook, niche)
+        if hook
+        else ValidationResult(is_valid=False, score=0.0, failed_checks=["No hook found"])
     )
-    items.append(ChecklistItem(
-        name="Hook is engaging (first 5 seconds)",
-        passed=hook_result.is_valid,
-        details=f"Score: {hook_result.score:.0%} - {', '.join(hook_result.suggestions[:2]) if hook_result.suggestions else 'Good'}",
-        priority="high"
-    ))
+    items.append(
+        ChecklistItem(
+            name="Hook is engaging (first 5 seconds)",
+            passed=hook_result.is_valid,
+            details=f"Score: {hook_result.score:.0%} - {', '.join(hook_result.suggestions[:2]) if hook_result.suggestions else 'Good'}",
+            priority="high",
+        )
+    )
     if not hook_result.is_valid:
         critical_issues.append("Hook needs to be more engaging")
 
@@ -670,24 +730,28 @@ def pre_publish_checklist(
     duration_minutes = duration_seconds / 60 if duration_seconds else 0
     optimal_range = metrics.get("optimal_video_length", (8, 15))
     duration_ok = optimal_range[0] <= duration_minutes <= optimal_range[1]
-    items.append(ChecklistItem(
-        name="Video length is optimal",
-        passed=duration_ok,
-        details=f"{duration_minutes:.1f} min (optimal: {optimal_range[0]}-{optimal_range[1]} min)",
-        priority="medium"
-    ))
+    items.append(
+        ChecklistItem(
+            name="Video length is optimal",
+            passed=duration_ok,
+            details=f"{duration_minutes:.1f} min (optimal: {optimal_range[0]}-{optimal_range[1]} min)",
+            priority="medium",
+        )
+    )
 
     # 4. Description follows SEO patterns
     description = data.get("description", "")
-    has_timestamps = bool(re.search(r'\d{1,2}:\d{2}', description))
+    has_timestamps = bool(re.search(r"\d{1,2}:\d{2}", description))
     desc_length_ok = len(description) >= 200
     seo_ok = has_timestamps and desc_length_ok
-    items.append(ChecklistItem(
-        name="Description follows SEO patterns",
-        passed=seo_ok,
-        details=f"Timestamps: {'Yes' if has_timestamps else 'No'}, Length: {len(description)} chars",
-        priority="medium"
-    ))
+    items.append(
+        ChecklistItem(
+            name="Description follows SEO patterns",
+            passed=seo_ok,
+            details=f"Timestamps: {'Yes' if has_timestamps else 'No'}, Length: {len(description)} chars",
+            priority="medium",
+        )
+    )
     if not seo_ok:
         critical_issues.append("Description missing timestamps or too short")
 
@@ -697,48 +761,57 @@ def pre_publish_checklist(
     current_tags_lower = [t.lower() for t in tags]
     matching_tags = sum(1 for t in required_tags if t.lower() in current_tags_lower)
     tags_ok = len(tags) >= 10 and matching_tags >= 3
-    items.append(ChecklistItem(
-        name="Tags are appropriate",
-        passed=tags_ok,
-        details=f"{len(tags)} tags, {matching_tags}/{len(required_tags)} required tags present",
-        priority="medium"
-    ))
+    items.append(
+        ChecklistItem(
+            name="Tags are appropriate",
+            passed=tags_ok,
+            details=f"{len(tags)} tags, {matching_tags}/{len(required_tags)} required tags present",
+            priority="medium",
+        )
+    )
 
     # 6. Chapter markers present
     chapters = data.get("chapter_markers", [])
     chapters_ok = len(chapters) >= 3
-    items.append(ChecklistItem(
-        name="Chapter markers present (3+ required)",
-        passed=chapters_ok,
-        details=f"{len(chapters)} chapters",
-        priority="low"
-    ))
+    items.append(
+        ChecklistItem(
+            name="Chapter markers present (3+ required)",
+            passed=chapters_ok,
+            details=f"{len(chapters)} chapters",
+            priority="low",
+        )
+    )
 
     # 7. Sections cover retention points
     sections = data.get("sections", [])
     has_hook_section = any(
-        (hasattr(s, "section_type") and s.section_type == "hook") or
-        (isinstance(s, dict) and s.get("section_type") == "hook")
+        (hasattr(s, "section_type") and s.section_type == "hook")
+        or (isinstance(s, dict) and s.get("section_type") == "hook")
         for s in sections
     )
     has_cta_section = any(
-        (hasattr(s, "section_type") and s.section_type in ["cta", "outro"]) or
-        (isinstance(s, dict) and s.get("section_type") in ["cta", "outro"])
+        (hasattr(s, "section_type") and s.section_type in ["cta", "outro"])
+        or (isinstance(s, dict) and s.get("section_type") in ["cta", "outro"])
         for s in sections
     )
     retention_ok = has_hook_section and has_cta_section
-    items.append(ChecklistItem(
-        name="Script has proper retention structure",
-        passed=retention_ok,
-        details=f"Hook: {'Yes' if has_hook_section else 'No'}, CTA: {'Yes' if has_cta_section else 'No'}",
-        priority="high"
-    ))
+    items.append(
+        ChecklistItem(
+            name="Script has proper retention structure",
+            passed=retention_ok,
+            details=f"Hook: {'Yes' if has_hook_section else 'No'}, CTA: {'Yes' if has_cta_section else 'No'}",
+            priority="high",
+        )
+    )
 
     # Calculate overall score
-    total_weight = sum(3 if i.priority == "high" else 2 if i.priority == "medium" else 1 for i in items)
+    total_weight = sum(
+        3 if i.priority == "high" else 2 if i.priority == "medium" else 1 for i in items
+    )
     passed_weight = sum(
         (3 if i.priority == "high" else 2 if i.priority == "medium" else 1)
-        for i in items if i.passed
+        for i in items
+        if i.passed
     )
     overall_score = passed_weight / total_weight if total_weight > 0 else 0.0
 
@@ -749,7 +822,7 @@ def pre_publish_checklist(
         items=items,
         overall_score=overall_score,
         ready_to_publish=ready_to_publish,
-        critical_issues=critical_issues
+        critical_issues=critical_issues,
     )
 
 
@@ -847,8 +920,12 @@ if __name__ == "__main__":
     print("\n3. Get Best Practices Test:")
     practices = get_best_practices("psychology")
     print(f"   Niche: psychology")
-    print(f"   CPM Range: ${practices['metrics']['cpm_range'][0]}-${practices['metrics']['cpm_range'][1]}")
-    print(f"   Optimal Length: {practices['metrics']['optimal_video_length'][0]}-{practices['metrics']['optimal_video_length'][1]} min")
+    print(
+        f"   CPM Range: ${practices['metrics']['cpm_range'][0]}-${practices['metrics']['cpm_range'][1]}"
+    )
+    print(
+        f"   Optimal Length: {practices['metrics']['optimal_video_length'][0]}-{practices['metrics']['optimal_video_length'][1]} min"
+    )
     print(f"   Hook Formulas: {len(practices['hook_formulas'])} available")
 
     # Test suggest improvements
@@ -870,13 +947,29 @@ if __name__ == "__main__":
     test_script = {
         "title": "5 Signs of a Narcissist That Will Shock You",
         "description": "Learn the hidden signs of narcissism. 00:00 Introduction 01:30 Sign 1 03:00 Sign 2",
-        "tags": ["psychology", "narcissist", "dark psychology", "manipulation", "mental health",
-                "self improvement", "mindset", "personality", "body language", "cognitive bias"],
+        "tags": [
+            "psychology",
+            "narcissist",
+            "dark psychology",
+            "manipulation",
+            "mental health",
+            "self improvement",
+            "mindset",
+            "personality",
+            "body language",
+            "cognitive bias",
+        ],
         "hook_text": "Your brain is lying to you right now, and you don't even know it...",
         "total_duration": 600,  # 10 minutes
-        "sections": [{"section_type": "hook", "narration": "Your brain is lying..."},
-                     {"section_type": "outro", "narration": "Subscribe now!"}],
-        "chapter_markers": [{"timestamp_seconds": 0}, {"timestamp_seconds": 90}, {"timestamp_seconds": 180}],
+        "sections": [
+            {"section_type": "hook", "narration": "Your brain is lying..."},
+            {"section_type": "outro", "narration": "Subscribe now!"},
+        ],
+        "chapter_markers": [
+            {"timestamp_seconds": 0},
+            {"timestamp_seconds": 90},
+            {"timestamp_seconds": 180},
+        ],
     }
     checklist = pre_publish_checklist(test_script, "psychology")
     print(f"   Result: {checklist}")

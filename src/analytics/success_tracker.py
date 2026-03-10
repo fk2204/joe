@@ -3,18 +3,19 @@ Success Metrics Tracker for Joe
 Tracks KPIs, goals, and progress toward channel success.
 """
 
+import sqlite3
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Any
 from datetime import datetime, timedelta
 from pathlib import Path
-import json
-import sqlite3
+from typing import Any, Dict, List, Optional
+
 from loguru import logger
 
 
 @dataclass
 class ChannelMetrics:
     """Metrics for a single channel."""
+
     channel_id: str
     subscribers: int = 0
     total_views: int = 0
@@ -39,6 +40,7 @@ class ChannelMetrics:
 @dataclass
 class DailySnapshot:
     """Daily performance snapshot."""
+
     date: str
     channels: Dict[str, ChannelMetrics]
     total_api_cost: float = 0.0
@@ -50,6 +52,7 @@ class DailySnapshot:
 @dataclass
 class GoalProgress:
     """Track progress toward a goal."""
+
     goal_name: str
     target_value: float
     current_value: float
@@ -99,28 +102,28 @@ class SuccessTracker:
                 target_value=50.0,
                 current_value=0.0,
                 unit="%",
-                deadline=datetime.now() + timedelta(days=30)
+                deadline=datetime.now() + timedelta(days=30),
             ),
             "content_quality": GoalProgress(
                 goal_name="Improve engagement by 50%",
                 target_value=50.0,
                 current_value=0.0,
                 unit="%",
-                deadline=datetime.now() + timedelta(days=30)
+                deadline=datetime.now() + timedelta(days=30),
             ),
             "subscribers_1k": GoalProgress(
                 goal_name="Reach 1,000 subscribers (combined)",
                 target_value=1000,
                 current_value=0,
                 unit="subs",
-                deadline=datetime.now() + timedelta(days=30)
+                deadline=datetime.now() + timedelta(days=30),
             ),
             "monthly_views_50k": GoalProgress(
                 goal_name="Reach 50,000 monthly views",
                 target_value=50000,
                 current_value=0,
                 unit="views",
-                deadline=datetime.now() + timedelta(days=30)
+                deadline=datetime.now() + timedelta(days=30),
             ),
         }
 
@@ -131,7 +134,8 @@ class SuccessTracker:
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
 
-        cursor.execute("""
+        cursor.execute(
+            """
             CREATE TABLE IF NOT EXISTS daily_metrics (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 date TEXT NOT NULL,
@@ -148,9 +152,11 @@ class SuccessTracker:
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 UNIQUE(date, channel_id)
             )
-        """)
+        """
+        )
 
-        cursor.execute("""
+        cursor.execute(
+            """
             CREATE TABLE IF NOT EXISTS goals (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 goal_name TEXT NOT NULL,
@@ -162,9 +168,11 @@ class SuccessTracker:
                 achieved_at TEXT,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
-        """)
+        """
+        )
 
-        cursor.execute("""
+        cursor.execute(
+            """
             CREATE TABLE IF NOT EXISTS token_usage (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 date TEXT NOT NULL,
@@ -174,7 +182,8 @@ class SuccessTracker:
                 operation TEXT,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
-        """)
+        """
+        )
 
         # Create indexes
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_daily_date ON daily_metrics(date)")
@@ -182,8 +191,12 @@ class SuccessTracker:
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_token_date ON token_usage(date)")
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_token_provider ON token_usage(provider)")
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_token_operation ON token_usage(operation)")
-        cursor.execute("CREATE INDEX IF NOT EXISTS idx_token_date_provider ON token_usage(date, provider)")
-        cursor.execute("CREATE INDEX IF NOT EXISTS idx_daily_date_channel ON daily_metrics(date, channel_id)")
+        cursor.execute(
+            "CREATE INDEX IF NOT EXISTS idx_token_date_provider ON token_usage(date, provider)"
+        )
+        cursor.execute(
+            "CREATE INDEX IF NOT EXISTS idx_daily_date_channel ON daily_metrics(date, channel_id)"
+        )
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_goals_achieved ON goals(achieved, deadline)")
 
         conn.commit()
@@ -196,16 +209,26 @@ class SuccessTracker:
 
         today = datetime.now().strftime("%Y-%m-%d")
 
-        cursor.execute("""
+        cursor.execute(
+            """
             INSERT OR REPLACE INTO daily_metrics
             (date, channel_id, subscribers, total_views, watch_time_hours,
              avg_ctr, avg_retention, revenue_estimate, videos_published, shorts_published)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """, (
-            today, metrics.channel_id, metrics.subscribers, metrics.total_views,
-            metrics.watch_time_hours, metrics.avg_ctr, metrics.avg_retention,
-            metrics.revenue_estimate, metrics.videos_published, metrics.shorts_published
-        ))
+        """,
+            (
+                today,
+                metrics.channel_id,
+                metrics.subscribers,
+                metrics.total_views,
+                metrics.watch_time_hours,
+                metrics.avg_ctr,
+                metrics.avg_retention,
+                metrics.revenue_estimate,
+                metrics.videos_published,
+                metrics.shorts_published,
+            ),
+        )
 
         conn.commit()
         conn.close()
@@ -218,10 +241,13 @@ class SuccessTracker:
 
         today = datetime.now().strftime("%Y-%m-%d")
 
-        cursor.execute("""
+        cursor.execute(
+            """
             INSERT INTO token_usage (date, provider, tokens_used, cost, operation)
             VALUES (?, ?, ?, ?, ?)
-        """, (today, provider, tokens, cost, operation))
+        """,
+            (today, provider, tokens, cost, operation),
+        )
 
         conn.commit()
         conn.close()
@@ -233,7 +259,8 @@ class SuccessTracker:
 
         start_date = (datetime.now() - timedelta(days=days)).strftime("%Y-%m-%d")
 
-        cursor.execute("""
+        cursor.execute(
+            """
             SELECT
                 SUM(tokens_used) as total_tokens,
                 SUM(cost) as total_cost,
@@ -241,7 +268,9 @@ class SuccessTracker:
                 AVG(tokens_used) as avg_tokens_per_op
             FROM token_usage
             WHERE date >= ?
-        """, (start_date,))
+        """,
+            (start_date,),
+        )
 
         row = cursor.fetchone()
         conn.close()
@@ -251,7 +280,7 @@ class SuccessTracker:
             "total_cost": row[1] or 0.0,
             "operations": row[2] or 0,
             "avg_tokens_per_op": row[3] or 0,
-            "period_days": days
+            "period_days": days,
         }
 
     def get_channel_trend(self, channel_id: str, days: int = 30) -> List[Dict]:
@@ -261,12 +290,15 @@ class SuccessTracker:
 
         start_date = (datetime.now() - timedelta(days=days)).strftime("%Y-%m-%d")
 
-        cursor.execute("""
+        cursor.execute(
+            """
             SELECT date, subscribers, total_views, avg_ctr, avg_retention, revenue_estimate
             FROM daily_metrics
             WHERE channel_id = ? AND date >= ?
             ORDER BY date ASC
-        """, (channel_id, start_date))
+        """,
+            (channel_id, start_date),
+        )
 
         rows = cursor.fetchall()
         conn.close()
@@ -278,7 +310,7 @@ class SuccessTracker:
                 "views": row[2],
                 "ctr": row[3],
                 "retention": row[4],
-                "revenue": row[5]
+                "revenue": row[5],
             }
             for row in rows
         ]
@@ -299,7 +331,8 @@ class SuccessTracker:
         today = datetime.now().strftime("%Y-%m-%d")
 
         # Today's metrics
-        cursor.execute("""
+        cursor.execute(
+            """
             SELECT
                 SUM(total_views) as views,
                 SUM(subscribers) as subs,
@@ -308,27 +341,35 @@ class SuccessTracker:
                 SUM(shorts_published) as shorts
             FROM daily_metrics
             WHERE date = ?
-        """, (today,))
+        """,
+            (today,),
+        )
 
         today_row = cursor.fetchone()
 
         # This week's metrics
         week_start = (datetime.now() - timedelta(days=7)).strftime("%Y-%m-%d")
-        cursor.execute("""
+        cursor.execute(
+            """
             SELECT
                 SUM(total_views) as views,
                 SUM(subscribers) as subs,
                 SUM(revenue_estimate) as revenue
             FROM daily_metrics
             WHERE date >= ?
-        """, (week_start,))
+        """,
+            (week_start,),
+        )
 
         week_row = cursor.fetchone()
 
         # Token costs today
-        cursor.execute("""
+        cursor.execute(
+            """
             SELECT SUM(cost) FROM token_usage WHERE date = ?
-        """, (today,))
+        """,
+            (today,),
+        )
 
         cost_row = cursor.fetchone()
 
@@ -341,12 +382,12 @@ class SuccessTracker:
                 "revenue": today_row[2] or 0.0,
                 "videos": today_row[3] or 0,
                 "shorts": today_row[4] or 0,
-                "api_cost": cost_row[0] or 0.0
+                "api_cost": cost_row[0] or 0.0,
             },
             "week": {
                 "views": week_row[0] or 0,
                 "subscribers": week_row[1] or 0,
-                "revenue": week_row[2] or 0.0
+                "revenue": week_row[2] or 0.0,
             },
             "goals": {
                 key: {
@@ -355,10 +396,10 @@ class SuccessTracker:
                     "current": goal.current_value,
                     "target": goal.target_value,
                     "unit": goal.unit,
-                    "on_track": goal.on_track
+                    "on_track": goal.on_track,
                 }
                 for key, goal in self.goals.items()
-            }
+            },
         }
 
     def print_dashboard(self):
@@ -386,9 +427,9 @@ class SuccessTracker:
 
         print("\n🎯 GOAL PROGRESS")
         print("-" * 40)
-        for key, goal in data['goals'].items():
-            status = "✅" if goal['progress'] >= 100 else ("🔄" if goal['on_track'] else "⚠️")
-            bar_filled = int(goal['progress'] / 5)
+        for key, goal in data["goals"].items():
+            status = "✅" if goal["progress"] >= 100 else ("🔄" if goal["on_track"] else "⚠️")
+            bar_filled = int(goal["progress"] / 5)
             bar = "█" * bar_filled + "░" * (20 - bar_filled)
             print(f"  {status} {goal['name'][:30]}")
             print(f"     [{bar}] {goal['progress']:.1f}%")
@@ -420,8 +461,12 @@ Period: Last {period_days} days
 
 ### Goal Progress
 """
-        for key, goal in data['goals'].items():
-            status = "ACHIEVED" if goal['progress'] >= 100 else ("ON TRACK" if goal['on_track'] else "BEHIND")
+        for key, goal in data["goals"].items():
+            status = (
+                "ACHIEVED"
+                if goal["progress"] >= 100
+                else ("ON TRACK" if goal["on_track"] else "BEHIND")
+            )
             report += f"- {goal['name']}: {goal['progress']:.1f}% [{status}]\n"
 
         return report
@@ -452,7 +497,7 @@ if __name__ == "__main__":
         avg_retention=45.0,
         revenue_estimate=25.0,
         videos_published=2,
-        shorts_published=4
+        shorts_published=4,
     )
     tracker.record_daily_metrics(test_metrics)
 

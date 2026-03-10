@@ -9,19 +9,15 @@ Components:
 """
 
 from .keyword_intelligence import (
-    KeywordResearcher,
-    TrendPredictor,
     CompetitorAnalyzer,
-    SearchIntentClassifier,
-    LongTailGenerator,
-    SeasonalityDetector,
     KeywordIntelligence,
+    KeywordResearcher,
+    LongTailGenerator,
+    SearchIntentClassifier,
+    SeasonalityDetector,
+    TrendPredictor,
 )
-
-from .metadata_optimizer import (
-    MetadataOptimizer,
-    OptimizedMetadata,
-)
+from .metadata_optimizer import MetadataOptimizer, OptimizedMetadata
 
 __all__ = [
     # Keyword Intelligence

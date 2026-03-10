@@ -14,21 +14,22 @@ Usage:
     clips = stock.get_clips_for_topic("passive income", count=10)
 """
 
+import hashlib
 import os
 import random
-import hashlib
-import requests
-import shutil
-from pathlib import Path
-from typing import List, Dict, Optional, Union
 from dataclasses import dataclass, field
-from loguru import logger
+from pathlib import Path
+from typing import Dict, List, Optional
+
+import requests
 from dotenv import load_dotenv
-from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
+from loguru import logger
+from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_exponential
 
 # Import stock cache for query-based caching
 try:
     from .stock_cache import StockCache
+
     STOCK_CACHE_AVAILABLE = True
 except ImportError:
     STOCK_CACHE_AVAILABLE = False
@@ -49,6 +50,7 @@ for _env_path in _env_paths:
 @dataclass
 class StockClip:
     """Unified stock clip from any source."""
+
     id: str
     source: str  # "pexels" or "pixabay"
     url: str
@@ -73,7 +75,7 @@ class PexelsClient:
     @retry(
         stop=stop_after_attempt(3),
         wait=wait_exponential(multiplier=1, min=2, max=10),
-        retry=retry_if_exception_type((requests.RequestException, ConnectionError, TimeoutError))
+        retry=retry_if_exception_type((requests.RequestException, ConnectionError, TimeoutError)),
     )
     def _search_videos_request(self, query: str, count: int) -> requests.Response:
         """Make the API request for video search with retry logic."""
@@ -84,9 +86,9 @@ class PexelsClient:
                 "query": query,
                 "per_page": min(count * 2, 80),
                 "orientation": "landscape",
-                "size": "medium"
+                "size": "medium",
             },
-            timeout=30
+            timeout=30,
         )
         return response
 
@@ -121,25 +123,33 @@ class PexelsClient:
 
                 preview_pics = video.get("video_pictures", [])
 
-                clips.append(StockClip(
-                    id=f"pexels_{video['id']}",
-                    source="pexels",
-                    url=video["url"],
-                    download_url=best_file["link"],
-                    preview_url=preview_pics[0]["picture"] if preview_pics else "",
-                    duration=duration,
-                    width=best_file.get("width", 1920),
-                    height=best_file.get("height", 1080),
-                    tags=query.split(),
-                    photographer=video.get("user", {}).get("name", "")
-                ))
+                clips.append(
+                    StockClip(
+                        id=f"pexels_{video['id']}",
+                        source="pexels",
+                        url=video["url"],
+                        download_url=best_file["link"],
+                        preview_url=preview_pics[0]["picture"] if preview_pics else "",
+                        duration=duration,
+                        width=best_file.get("width", 1920),
+                        height=best_file.get("height", 1080),
+                        tags=query.split(),
+                        photographer=video.get("user", {}).get("name", ""),
+                    )
+                )
 
                 if len(clips) >= count:
                     break
 
             return clips
 
-        except (requests.RequestException, ConnectionError, TimeoutError, KeyError, ValueError) as e:
+        except (
+            requests.RequestException,
+            ConnectionError,
+            TimeoutError,
+            KeyError,
+            ValueError,
+        ) as e:
             logger.error(f"Pexels search failed: {e}")
             return []
 
@@ -149,12 +159,8 @@ class PexelsClient:
             response = requests.get(
                 f"{self.BASE_URL}/v1/search",
                 headers=self.headers,
-                params={
-                    "query": query,
-                    "per_page": count,
-                    "orientation": "landscape"
-                },
-                timeout=30
+                params={"query": query, "per_page": count, "orientation": "landscape"},
+                timeout=30,
             )
 
             if response.status_code != 200:
@@ -162,17 +168,25 @@ class PexelsClient:
 
             images = []
             for photo in response.json().get("photos", []):
-                images.append({
-                    "id": f"pexels_img_{photo['id']}",
-                    "source": "pexels",
-                    "url": photo["src"]["large2x"],
-                    "width": photo["width"],
-                    "height": photo["height"]
-                })
+                images.append(
+                    {
+                        "id": f"pexels_img_{photo['id']}",
+                        "source": "pexels",
+                        "url": photo["src"]["large2x"],
+                        "width": photo["width"],
+                        "height": photo["height"],
+                    }
+                )
 
             return images
 
-        except (requests.RequestException, ConnectionError, TimeoutError, KeyError, ValueError) as e:
+        except (
+            requests.RequestException,
+            ConnectionError,
+            TimeoutError,
+            KeyError,
+            ValueError,
+        ) as e:
             logger.error(f"Pexels image search failed: {e}")
             return []
 
@@ -188,7 +202,7 @@ class PixabayClient:
     @retry(
         stop=stop_after_attempt(3),
         wait=wait_exponential(multiplier=1, min=2, max=10),
-        retry=retry_if_exception_type((requests.RequestException, ConnectionError, TimeoutError))
+        retry=retry_if_exception_type((requests.RequestException, ConnectionError, TimeoutError)),
     )
     def _search_videos_request(self, query: str, count: int) -> requests.Response:
         """Make the API request for video search with retry logic."""
@@ -199,9 +213,9 @@ class PixabayClient:
                 "q": query,
                 "per_page": min(count * 2, 200),
                 "video_type": "film",
-                "min_width": 1280
+                "min_width": 1280,
             },
-            timeout=30
+            timeout=30,
         )
         return response
 
@@ -229,25 +243,33 @@ class PixabayClient:
                 if not best.get("url"):
                     continue
 
-                clips.append(StockClip(
-                    id=f"pixabay_{video['id']}",
-                    source="pixabay",
-                    url=video.get("pageURL", ""),
-                    download_url=best["url"],
-                    preview_url=video.get("userImageURL", ""),
-                    duration=duration,
-                    width=best.get("width", 1920),
-                    height=best.get("height", 1080),
-                    tags=video.get("tags", "").split(", "),
-                    photographer=video.get("user", "")
-                ))
+                clips.append(
+                    StockClip(
+                        id=f"pixabay_{video['id']}",
+                        source="pixabay",
+                        url=video.get("pageURL", ""),
+                        download_url=best["url"],
+                        preview_url=video.get("userImageURL", ""),
+                        duration=duration,
+                        width=best.get("width", 1920),
+                        height=best.get("height", 1080),
+                        tags=video.get("tags", "").split(", "),
+                        photographer=video.get("user", ""),
+                    )
+                )
 
                 if len(clips) >= count:
                     break
 
             return clips
 
-        except (requests.RequestException, ConnectionError, TimeoutError, KeyError, ValueError) as e:
+        except (
+            requests.RequestException,
+            ConnectionError,
+            TimeoutError,
+            KeyError,
+            ValueError,
+        ) as e:
             logger.error(f"Pixabay search failed: {e}")
             return []
 
@@ -262,9 +284,9 @@ class PixabayClient:
                     "per_page": count,
                     "image_type": "photo",
                     "orientation": "horizontal",
-                    "min_width": 1920
+                    "min_width": 1920,
                 },
-                timeout=30
+                timeout=30,
             )
 
             if response.status_code != 200:
@@ -272,17 +294,25 @@ class PixabayClient:
 
             images = []
             for img in response.json().get("hits", []):
-                images.append({
-                    "id": f"pixabay_img_{img['id']}",
-                    "source": "pixabay",
-                    "url": img.get("largeImageURL", img.get("webformatURL")),
-                    "width": img.get("imageWidth", 1920),
-                    "height": img.get("imageHeight", 1080)
-                })
+                images.append(
+                    {
+                        "id": f"pixabay_img_{img['id']}",
+                        "source": "pixabay",
+                        "url": img.get("largeImageURL", img.get("webformatURL")),
+                        "width": img.get("imageWidth", 1920),
+                        "height": img.get("imageHeight", 1080),
+                    }
+                )
 
             return images
 
-        except (requests.RequestException, ConnectionError, TimeoutError, KeyError, ValueError) as e:
+        except (
+            requests.RequestException,
+            ConnectionError,
+            TimeoutError,
+            KeyError,
+            ValueError,
+        ) as e:
             logger.error(f"Pixabay image search failed: {e}")
             return []
 
@@ -296,67 +326,206 @@ class MultiStockProvider:
     # Topic-specific keyword mappings for smarter stock footage matching
     NICHE_KEYWORDS = {
         "psychology": {
-            "narcissism": ["manipulative person", "toxic relationship", "gaslighting", "emotional abuse", "fake smile", "controlling behavior", "sad person", "argument couple"],
-            "anxiety": ["stressed person", "worried face", "panic", "breathing exercise", "calm meditation"],
-            "motivation": ["success celebration", "goal achievement", "determined person", "workout motivation"],
+            "narcissism": [
+                "manipulative person",
+                "toxic relationship",
+                "gaslighting",
+                "emotional abuse",
+                "fake smile",
+                "controlling behavior",
+                "sad person",
+                "argument couple",
+            ],
+            "anxiety": [
+                "stressed person",
+                "worried face",
+                "panic",
+                "breathing exercise",
+                "calm meditation",
+            ],
+            "motivation": [
+                "success celebration",
+                "goal achievement",
+                "determined person",
+                "workout motivation",
+            ],
             "depression": ["sad person", "loneliness", "dark room", "isolation", "empty room"],
-            "relationships": ["couple talking", "family conflict", "communication", "listening", "emotional support"],
-            "trauma": ["broken glass", "dark memories", "healing process", "therapy session", "recovery"],
-            "self_esteem": ["mirror reflection", "confident person", "self doubt", "body image", "positive affirmation"],
-            "default": ["brain", "thinking person", "psychology session", "mental health"]
+            "relationships": [
+                "couple talking",
+                "family conflict",
+                "communication",
+                "listening",
+                "emotional support",
+            ],
+            "trauma": [
+                "broken glass",
+                "dark memories",
+                "healing process",
+                "therapy session",
+                "recovery",
+            ],
+            "self_esteem": [
+                "mirror reflection",
+                "confident person",
+                "self doubt",
+                "body image",
+                "positive affirmation",
+            ],
+            "default": ["brain", "thinking person", "psychology session", "mental health"],
         },
         "storytelling": {
-            "disappearance": ["missing person poster", "police investigation", "abandoned place", "old photographs", "detective", "search party"],
-            "crime": ["crime scene tape", "police lights", "courtroom", "evidence", "investigation"],
-            "mystery": ["dark forest", "fog", "abandoned building", "eerie location", "night scene"],
-            "horror": ["haunted house", "dark corridor", "creepy atmosphere", "night forest", "shadow figure"],
-            "true_crime": ["police car", "handcuffs", "jail cell", "trial courtroom", "news broadcast"],
-            "historical": ["old film footage", "vintage photos", "historical documents", "archive footage", "sepia tone"],
-            "default": ["documentary footage", "historical photos", "newspaper", "timeline"]
+            "disappearance": [
+                "missing person poster",
+                "police investigation",
+                "abandoned place",
+                "old photographs",
+                "detective",
+                "search party",
+            ],
+            "crime": [
+                "crime scene tape",
+                "police lights",
+                "courtroom",
+                "evidence",
+                "investigation",
+            ],
+            "mystery": [
+                "dark forest",
+                "fog",
+                "abandoned building",
+                "eerie location",
+                "night scene",
+            ],
+            "horror": [
+                "haunted house",
+                "dark corridor",
+                "creepy atmosphere",
+                "night forest",
+                "shadow figure",
+            ],
+            "true_crime": [
+                "police car",
+                "handcuffs",
+                "jail cell",
+                "trial courtroom",
+                "news broadcast",
+            ],
+            "historical": [
+                "old film footage",
+                "vintage photos",
+                "historical documents",
+                "archive footage",
+                "sepia tone",
+            ],
+            "default": ["documentary footage", "historical photos", "newspaper", "timeline"],
         },
         "finance": {
             "investing": ["stock market", "trading screen", "money growth", "investment chart"],
             "budgeting": ["calculator money", "savings jar", "piggy bank", "budget planning"],
-            "passive_income": ["laptop money", "rental property", "dividend stocks", "online business"],
-            "crypto": ["bitcoin", "cryptocurrency", "blockchain", "digital currency", "crypto trading"],
+            "passive_income": [
+                "laptop money",
+                "rental property",
+                "dividend stocks",
+                "online business",
+            ],
+            "crypto": [
+                "bitcoin",
+                "cryptocurrency",
+                "blockchain",
+                "digital currency",
+                "crypto trading",
+            ],
             "debt": ["credit card", "bills pile", "financial stress", "debt payoff", "money worry"],
             "wealth": ["luxury lifestyle", "expensive car", "mansion", "yacht", "wealthy person"],
-            "retirement": ["elderly couple", "retirement planning", "pension", "golden years", "senior lifestyle"],
-            "default": ["money", "business meeting", "office work", "financial planning"]
+            "retirement": [
+                "elderly couple",
+                "retirement planning",
+                "pension",
+                "golden years",
+                "senior lifestyle",
+            ],
+            "default": ["money", "business meeting", "office work", "financial planning"],
         },
         "technology": {
-            "ai": ["artificial intelligence", "robot", "machine learning", "neural network", "futuristic"],
-            "coding": ["programming", "developer", "code screen", "software development", "computer coding"],
+            "ai": [
+                "artificial intelligence",
+                "robot",
+                "machine learning",
+                "neural network",
+                "futuristic",
+            ],
+            "coding": [
+                "programming",
+                "developer",
+                "code screen",
+                "software development",
+                "computer coding",
+            ],
             "cybersecurity": ["hacker", "data security", "encryption", "cyber attack", "firewall"],
             "gadgets": ["smartphone", "laptop", "tech devices", "electronics", "innovation"],
-            "default": ["technology", "computer", "digital", "circuit board", "data center"]
+            "default": ["technology", "computer", "digital", "circuit board", "data center"],
         },
         "motivation": {
             "fitness": ["gym workout", "running", "exercise", "training", "athlete"],
             "success": ["celebration", "trophy", "achievement", "winning", "podium"],
-            "entrepreneurship": ["startup", "business owner", "hustle", "working late", "entrepreneur"],
+            "entrepreneurship": [
+                "startup",
+                "business owner",
+                "hustle",
+                "working late",
+                "entrepreneur",
+            ],
             "mindset": ["meditation", "focus", "determination", "mindfulness", "positive thinking"],
-            "default": ["success celebration", "goal achievement", "determined person", "sunrise motivation"]
+            "default": [
+                "success celebration",
+                "goal achievement",
+                "determined person",
+                "sunrise motivation",
+            ],
         },
         "health": {
             "fitness": ["workout", "gym", "exercise", "running", "yoga"],
             "nutrition": ["healthy food", "vegetables", "cooking", "meal prep", "diet"],
             "mental_health": ["meditation", "therapy", "relaxation", "stress relief", "self care"],
             "medical": ["doctor", "hospital", "medical equipment", "healthcare", "treatment"],
-            "default": ["healthy lifestyle", "wellness", "medical", "fitness"]
-        }
+            "default": ["healthy lifestyle", "wellness", "medical", "fitness"],
+        },
     }
 
     # Keywords/phrases that map to sub-topics for detection
     SUBTOPIC_TRIGGERS = {
         "psychology": {
-            "narcissism": ["narciss", "manipulat", "toxic", "gaslight", "emotional abuse", "covert", "supply", "flying monkey"],
+            "narcissism": [
+                "narciss",
+                "manipulat",
+                "toxic",
+                "gaslight",
+                "emotional abuse",
+                "covert",
+                "supply",
+                "flying monkey",
+            ],
             "anxiety": ["anxiet", "anxious", "worry", "panic", "nervous", "stress", "overwhelm"],
-            "motivation": ["motivat", "inspire", "achiev", "success", "goal", "discipline", "habit"],
+            "motivation": [
+                "motivat",
+                "inspire",
+                "achiev",
+                "success",
+                "goal",
+                "discipline",
+                "habit",
+            ],
             "depression": ["depress", "sad", "lonely", "hopeless", "empty", "meaningless"],
-            "relationships": ["relationship", "partner", "marriage", "dating", "attachment", "love bomb"],
+            "relationships": [
+                "relationship",
+                "partner",
+                "marriage",
+                "dating",
+                "attachment",
+                "love bomb",
+            ],
             "trauma": ["trauma", "ptsd", "abuse", "survivor", "healing", "recover"],
-            "self_esteem": ["self-esteem", "self esteem", "confidence", "self-worth", "insecur"]
+            "self_esteem": ["self-esteem", "self esteem", "confidence", "self-worth", "insecur"],
         },
         "storytelling": {
             "disappearance": ["disappear", "missing", "vanish", "gone", "lost person", "search"],
@@ -364,35 +533,57 @@ class MultiStockProvider:
             "mystery": ["mystery", "unsolved", "strange", "unexplained", "bizarre", "weird"],
             "horror": ["horror", "scary", "terrif", "haunt", "creepy", "paranormal"],
             "true_crime": ["true crime", "serial", "case", "investigation", "suspect", "trial"],
-            "historical": ["history", "historical", "ancient", "century", "war", "past"]
+            "historical": ["history", "historical", "ancient", "century", "war", "past"],
         },
         "finance": {
-            "investing": ["invest", "stock", "market", "portfolio", "dividend", "etf", "index fund"],
+            "investing": [
+                "invest",
+                "stock",
+                "market",
+                "portfolio",
+                "dividend",
+                "etf",
+                "index fund",
+            ],
             "budgeting": ["budget", "saving", "frugal", "expense", "spending", "money management"],
             "passive_income": ["passive", "income stream", "side hustle", "affiliate", "royalt"],
             "crypto": ["crypto", "bitcoin", "ethereum", "blockchain", "nft", "defi"],
             "debt": ["debt", "credit card", "loan", "payoff", "interest", "owe"],
             "wealth": ["wealth", "rich", "millionaire", "billionaire", "luxury", "affluent"],
-            "retirement": ["retire", "401k", "pension", "ira", "social security", "golden years"]
+            "retirement": ["retire", "401k", "pension", "ira", "social security", "golden years"],
         },
         "technology": {
-            "ai": ["ai", "artificial intelligence", "machine learning", "chatgpt", "neural", "deep learning"],
+            "ai": [
+                "ai",
+                "artificial intelligence",
+                "machine learning",
+                "chatgpt",
+                "neural",
+                "deep learning",
+            ],
             "coding": ["cod", "program", "develop", "software", "javascript", "python", "web dev"],
             "cybersecurity": ["security", "hack", "cyber", "breach", "malware", "phishing"],
-            "gadgets": ["phone", "laptop", "device", "gadget", "smart", "wearable"]
+            "gadgets": ["phone", "laptop", "device", "gadget", "smart", "wearable"],
         },
         "motivation": {
             "fitness": ["fitness", "workout", "gym", "exercise", "body", "muscle", "weight"],
             "success": ["success", "win", "achieve", "goal", "champion", "victory"],
-            "entrepreneurship": ["entrepreneur", "business", "startup", "founder", "hustle", "grind"],
-            "mindset": ["mindset", "mental", "focus", "meditat", "mindful", "discipline"]
+            "entrepreneurship": [
+                "entrepreneur",
+                "business",
+                "startup",
+                "founder",
+                "hustle",
+                "grind",
+            ],
+            "mindset": ["mindset", "mental", "focus", "meditat", "mindful", "discipline"],
         },
         "health": {
             "fitness": ["fitness", "workout", "exercise", "gym", "training"],
             "nutrition": ["nutrition", "diet", "food", "eat", "meal", "vitamin"],
             "mental_health": ["mental health", "therapy", "anxiety", "depression", "stress"],
-            "medical": ["doctor", "hospital", "treatment", "medicine", "diagnosis"]
-        }
+            "medical": ["doctor", "hospital", "treatment", "medicine", "diagnosis"],
+        },
     }
 
     def __init__(self):
@@ -416,19 +607,33 @@ class MultiStockProvider:
         # Initialize Pexels
         pexels_key = os.getenv("PEXELS_API_KEY")
         if pexels_key:
-            if pexels_key.startswith("#") or pexels_key.lower() in ("your_key_here", "your_pexels_key_here", ""):
-                logger.warning("PEXELS_API_KEY appears to be a placeholder - please set a real API key")
+            if pexels_key.startswith("#") or pexels_key.lower() in (
+                "your_key_here",
+                "your_pexels_key_here",
+                "",
+            ):
+                logger.warning(
+                    "PEXELS_API_KEY appears to be a placeholder - please set a real API key"
+                )
             else:
                 self.clients.append(("pexels", PexelsClient(pexels_key)))
                 logger.info("Pexels API initialized")
         else:
-            logger.warning("PEXELS_API_KEY not found in environment. Get free key at: https://www.pexels.com/api/")
+            logger.warning(
+                "PEXELS_API_KEY not found in environment. Get free key at: https://www.pexels.com/api/"
+            )
 
         # Initialize Pixabay
         pixabay_key = os.getenv("PIXABAY_API_KEY")
         if pixabay_key:
-            if pixabay_key.startswith("#") or pixabay_key.lower() in ("your_key_here", "your_pixabay_key_here", ""):
-                logger.warning("PIXABAY_API_KEY appears to be a placeholder - please set a real API key")
+            if pixabay_key.startswith("#") or pixabay_key.lower() in (
+                "your_key_here",
+                "your_pixabay_key_here",
+                "",
+            ):
+                logger.warning(
+                    "PIXABAY_API_KEY appears to be a placeholder - please set a real API key"
+                )
             else:
                 self.clients.append(("pixabay", PixabayClient(pixabay_key)))
                 logger.info("Pixabay API initialized")
@@ -444,7 +649,9 @@ class MultiStockProvider:
                 "  Get free Pixabay key: https://pixabay.com/api/docs/"
             )
         else:
-            logger.info(f"MultiStockProvider initialized with {len(self.clients)} source(s): {[c[0] for c in self.clients]}")
+            logger.info(
+                f"MultiStockProvider initialized with {len(self.clients)} source(s): {[c[0] for c in self.clients]}"
+            )
 
     def verify_api_connectivity(self) -> Dict[str, bool]:
         """
@@ -463,14 +670,18 @@ class MultiStockProvider:
             try:
                 logger.info(f"Testing {name} API connectivity...")
                 # Try a simple search to verify the API works
-                if hasattr(client, 'search_videos'):
+                if hasattr(client, "search_videos"):
                     test_clips = client.search_videos("nature", count=1)
                     if test_clips:
                         results[name] = True
-                        logger.success(f"{name} API: Connected and working (found {len(test_clips)} test clip)")
+                        logger.success(
+                            f"{name} API: Connected and working (found {len(test_clips)} test clip)"
+                        )
                     else:
                         results[name] = False
-                        logger.warning(f"{name} API: Connected but returned no results (may be rate limited or invalid key)")
+                        logger.warning(
+                            f"{name} API: Connected but returned no results (may be rate limited or invalid key)"
+                        )
                 else:
                     results[name] = False
                     logger.warning(f"{name} API: Client missing search_videos method")
@@ -481,7 +692,9 @@ class MultiStockProvider:
                 elif e.response and e.response.status_code == 429:
                     logger.warning(f"{name} API: Rate limited - try again later")
                 else:
-                    logger.error(f"{name} API: HTTP error {e.response.status_code if e.response else 'unknown'}")
+                    logger.error(
+                        f"{name} API: HTTP error {e.response.status_code if e.response else 'unknown'}"
+                    )
             except requests.exceptions.ConnectionError:
                 results[name] = False
                 logger.error(f"{name} API: Connection failed - check internet connection")
@@ -535,7 +748,9 @@ class MultiStockProvider:
         # Return the highest scoring sub-topic
         if scores:
             best_subtopic = max(scores, key=scores.get)
-            logger.debug(f"Detected subtopic '{best_subtopic}' for topic '{topic}' (score: {scores[best_subtopic]})")
+            logger.debug(
+                f"Detected subtopic '{best_subtopic}' for topic '{topic}' (score: {scores[best_subtopic]})"
+            )
             return best_subtopic
 
         return None
@@ -564,7 +779,9 @@ class MultiStockProvider:
             # Use sub-topic specific keywords
             subtopic_keywords = niche_data[detected_subtopic]
             keywords.extend(subtopic_keywords)
-            logger.info(f"Using '{detected_subtopic}' keywords for niche '{niche}': {subtopic_keywords[:3]}...")
+            logger.info(
+                f"Using '{detected_subtopic}' keywords for niche '{niche}': {subtopic_keywords[:3]}..."
+            )
         else:
             # Fall back to default keywords for the niche
             default_keywords = niche_data.get("default", [])
@@ -613,11 +830,7 @@ class MultiStockProvider:
         return all_images[:count]
 
     def get_clips_for_topic(
-        self,
-        topic: str,
-        niche: str = "default",
-        count: int = 15,
-        min_total_duration: int = 300
+        self, topic: str, niche: str = "default", count: int = 15, min_total_duration: int = 300
     ) -> List[StockClip]:
         """
         Get diverse clips for a topic with fallbacks.
@@ -686,13 +899,15 @@ class MultiStockProvider:
                             all_clips.append(clip)
                             total_duration += clip.duration
 
-        logger.info(f"Collected {len(all_clips)} clips ({total_duration}s total) for topic: {topic}")
+        logger.info(
+            f"Collected {len(all_clips)} clips ({total_duration}s total) for topic: {topic}"
+        )
         return all_clips
 
     @retry(
         stop=stop_after_attempt(3),
         wait=wait_exponential(multiplier=1, min=2, max=10),
-        retry=retry_if_exception_type((requests.RequestException, ConnectionError, TimeoutError))
+        retry=retry_if_exception_type((requests.RequestException, ConnectionError, TimeoutError)),
     )
     def _download_clip_request(self, download_url: str) -> requests.Response:
         """Make the download request with retry logic."""
@@ -713,10 +928,7 @@ class MultiStockProvider:
         self._current_query = query
 
     def download_clip(
-        self,
-        clip: StockClip,
-        output_dir: str = None,
-        query: str = None
+        self, clip: StockClip, output_dir: str = None, query: str = None
     ) -> Optional[str]:
         """
         Download a stock clip to local file.
@@ -756,19 +968,24 @@ class MultiStockProvider:
                 # Also save to new cache system for future lookups
                 if self.stock_cache:
                     self.stock_cache.save_to_cache(
-                        cache_query, clip.id, str(cache_file),
-                        source=clip.source, duration=clip.duration
+                        cache_query,
+                        clip.id,
+                        str(cache_file),
+                        source=clip.source,
+                        duration=clip.duration,
                     )
                 return str(cache_file)
             else:
-                logger.warning(f"Cached file {clip.id} is too small ({file_size} bytes) - re-downloading")
+                logger.warning(
+                    f"Cached file {clip.id} is too small ({file_size} bytes) - re-downloading"
+                )
                 cache_file.unlink()  # Delete corrupt cache
 
         try:
             logger.info(f"Downloading {clip.id} ({clip.duration}s) from {clip.source}...")
             response = self._download_clip_request(clip.download_url)
 
-            with open(cache_file, 'wb') as f:
+            with open(cache_file, "wb") as f:
                 for chunk in response.iter_content(chunk_size=8192):
                     f.write(chunk)
 
@@ -788,11 +1005,11 @@ class MultiStockProvider:
                 )
                 # Try to read and log error response
                 try:
-                    with open(cache_file, 'r', errors='ignore') as f:
+                    with open(cache_file, "r", errors="ignore") as f:
                         content = f.read(500)
-                        if content.strip().startswith(('<', '{', 'error', 'Error')):
+                        if content.strip().startswith(("<", "{", "error", "Error")):
                             logger.error(f"API error response: {content[:200]}")
-                except:
+                except Exception:
                     pass
                 cache_file.unlink()  # Delete invalid file
                 return None
@@ -802,8 +1019,11 @@ class MultiStockProvider:
             # Save to query-based cache for future use
             if self.stock_cache:
                 self.stock_cache.save_to_cache(
-                    cache_query, clip.id, str(cache_file),
-                    source=clip.source, duration=clip.duration
+                    cache_query,
+                    clip.id,
+                    str(cache_file),
+                    source=clip.source,
+                    duration=clip.duration,
                 )
 
             return str(cache_file)
@@ -814,7 +1034,7 @@ class MultiStockProvider:
             if cache_file.exists():
                 try:
                     cache_file.unlink()
-                except:
+                except Exception:
                     pass
             return None
 
@@ -832,10 +1052,17 @@ class MultiStockProvider:
         try:
             response = requests.get(image["url"], timeout=30)
             if response.status_code == 200:
-                with open(cache_file, 'wb') as f:
+                with open(cache_file, "wb") as f:
                     f.write(response.content)
                 return str(cache_file)
-        except (requests.RequestException, ConnectionError, TimeoutError, OSError, IOError, KeyError) as e:
+        except (
+            requests.RequestException,
+            ConnectionError,
+            TimeoutError,
+            OSError,
+            IOError,
+            KeyError,
+        ) as e:
             logger.error(f"Image download failed: {e}")
 
         return None
@@ -859,7 +1086,7 @@ class MultiStockProvider:
             "unique_queries": stats.unique_queries,
             "clips_by_source": stats.clips_by_source,
             "oldest_file_days": stats.oldest_file_days,
-            "newest_file_days": stats.newest_file_days
+            "newest_file_days": stats.newest_file_days,
         }
 
     def cleanup_cache(self, max_age_days: int = 30) -> tuple:
@@ -916,11 +1143,12 @@ def diagnose_stock_api() -> Dict[str, any]:
         "pixabay_key_valid": False,
         "apis_working": {},
         "test_download": False,
-        "recommendations": []
+        "recommendations": [],
     }
 
     # Check environment loading
     from dotenv import load_dotenv
+
     env_paths = [
         Path(__file__).parent.parent.parent / "config" / ".env",
         Path.cwd() / "config" / ".env",
@@ -951,7 +1179,9 @@ def diagnose_stock_api() -> Dict[str, any]:
             print(f"[OK] PEXELS_API_KEY found ({len(pexels_key)} chars)")
     else:
         print("[WARNING] PEXELS_API_KEY not set")
-        results["recommendations"].append("Add PEXELS_API_KEY to config/.env (get free key at https://www.pexels.com/api/)")
+        results["recommendations"].append(
+            "Add PEXELS_API_KEY to config/.env (get free key at https://www.pexels.com/api/)"
+        )
 
     # Pixabay check
     if pixabay_key:
@@ -984,10 +1214,14 @@ def diagnose_stock_api() -> Dict[str, any]:
                     results["pixabay_key_valid"] = True
             else:
                 print(f"[ERROR] {api_name.upper()} API is NOT working")
-                results["recommendations"].append(f"Check your {api_name.upper()}_API_KEY - it may be invalid or expired")
+                results["recommendations"].append(
+                    f"Check your {api_name.upper()}_API_KEY - it may be invalid or expired"
+                )
     else:
         print("[ERROR] No API clients configured!")
-        results["recommendations"].append("At least one API key (PEXELS or PIXABAY) must be configured")
+        results["recommendations"].append(
+            "At least one API key (PEXELS or PIXABAY) must be configured"
+        )
 
     print()
 
@@ -1005,12 +1239,16 @@ def diagnose_stock_api() -> Dict[str, any]:
                     results["test_download"] = True
 
                     if file_size < 10000:
-                        print("[WARNING] Downloaded file is suspiciously small - may be an error response")
+                        print(
+                            "[WARNING] Downloaded file is suspiciously small - may be an error response"
+                        )
                         results["test_download"] = False
                         results["recommendations"].append("API key may be invalid or rate limited")
                 else:
                     print("[ERROR] Download failed")
-                    results["recommendations"].append("Check internet connection and API key validity")
+                    results["recommendations"].append(
+                        "Check internet connection and API key validity"
+                    )
             else:
                 print("[WARNING] No clips found in test search")
                 results["recommendations"].append("API may be rate limited or key invalid")
@@ -1050,9 +1288,9 @@ if __name__ == "__main__":
         diagnose_stock_api()
         sys.exit(0)
 
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print("MULTI-SOURCE STOCK FOOTAGE TEST")
-    print("="*60 + "\n")
+    print("=" * 60 + "\n")
     print("TIP: Run with --diagnose flag for full API diagnostic\n")
 
     stock = MultiStockProvider()
@@ -1078,13 +1316,11 @@ if __name__ == "__main__":
         print()
 
     if stock.clients:
-        print("\n" + "-"*60)
+        print("\n" + "-" * 60)
         print("Testing with API (fetching clips):\n")
 
         clips = stock.get_clips_for_topic(
-            topic="How Narcissists Manipulate Their Victims",
-            niche="psychology",
-            count=10
+            topic="How Narcissists Manipulate Their Victims", niche="psychology", count=10
         )
 
         print(f"\nFound {len(clips)} clips:\n")

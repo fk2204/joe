@@ -34,14 +34,15 @@ Usage:
 import asyncio
 import json
 import os
-import subprocess
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
+
 from loguru import logger
 
 try:
     import whisper
+
     WHISPER_AVAILABLE = True
 except ImportError:
     WHISPER_AVAILABLE = False
@@ -52,6 +53,7 @@ except ImportError:
 
 try:
     import torch
+
     TORCH_AVAILABLE = True
 except ImportError:
     TORCH_AVAILABLE = False
@@ -60,9 +62,10 @@ except ImportError:
 @dataclass
 class WordTimestamp:
     """Word-level timestamp data."""
+
     text: str
     start: float  # seconds
-    end: float    # seconds
+    end: float  # seconds
     confidence: float = 1.0
 
     def to_dict(self) -> Dict:
@@ -70,13 +73,14 @@ class WordTimestamp:
             "text": self.text,
             "start": self.start,
             "end": self.end,
-            "confidence": self.confidence
+            "confidence": self.confidence,
         }
 
 
 @dataclass
 class CaptionSegment:
     """Caption segment with timing."""
+
     index: int
     start: float
     end: float
@@ -89,7 +93,7 @@ class CaptionSegment:
             "start": self.start,
             "end": self.end,
             "text": self.text,
-            "words": [w.to_dict() for w in self.words]
+            "words": [w.to_dict() for w in self.words],
         }
 
 
@@ -107,39 +111,39 @@ class WhisperCaptionGenerator:
             "size": "~75 MB",
             "vram": "~1 GB",
             "speed": "~10x realtime",
-            "accuracy": "Good for clear audio"
+            "accuracy": "Good for clear audio",
         },
         "base": {
             "size": "~142 MB",
             "vram": "~1 GB",
             "speed": "~7x realtime",
-            "accuracy": "Better quality, still fast"
+            "accuracy": "Better quality, still fast",
         },
         "small": {
             "size": "~466 MB",
             "vram": "~2 GB",
             "speed": "~4x realtime",
-            "accuracy": "Production quality"
+            "accuracy": "Production quality",
         },
         "medium": {
             "size": "~1.5 GB",
             "vram": "~5 GB",
             "speed": "~2x realtime",
-            "accuracy": "Very high quality"
+            "accuracy": "Very high quality",
         },
         "large": {
             "size": "~2.9 GB",
             "vram": "~10 GB",
             "speed": "~1x realtime",
-            "accuracy": "Best quality"
-        }
+            "accuracy": "Best quality",
+        },
     }
 
     def __init__(
         self,
         model_size: str = "base",
         device: Optional[str] = None,
-        cache_dir: str = "data/whisper_cache"
+        cache_dir: str = "data/whisper_cache",
     ):
         """
         Initialize Whisper caption generator.
@@ -150,9 +154,7 @@ class WhisperCaptionGenerator:
             cache_dir: Directory to cache Whisper models
         """
         if not WHISPER_AVAILABLE:
-            raise ImportError(
-                "Whisper not installed. Install with: pip install openai-whisper"
-            )
+            raise ImportError("Whisper not installed. Install with: pip install openai-whisper")
 
         self.model_size = model_size
         self.cache_dir = Path(cache_dir)
@@ -172,9 +174,7 @@ class WhisperCaptionGenerator:
         # Load model
         logger.info(f"Loading Whisper model: {model_size} ({self.MODEL_INFO[model_size]['size']})")
         self.model = whisper.load_model(
-            model_size,
-            device=device,
-            download_root=str(self.cache_dir)
+            model_size, device=device, download_root=str(self.cache_dir)
         )
         logger.success(f"Whisper {model_size} loaded on {device}")
 
@@ -184,7 +184,7 @@ class WhisperCaptionGenerator:
         output_file: str,
         format: str = "srt",
         language: Optional[str] = None,
-        task: str = "transcribe"
+        task: str = "transcribe",
     ) -> str:
         """
         Generate captions from audio file.
@@ -214,8 +214,8 @@ class WhisperCaptionGenerator:
                 language=language,
                 task=task,
                 word_timestamps=True,  # Get word-level timing
-                verbose=False
-            )
+                verbose=False,
+            ),
         )
 
         # Extract segments
@@ -225,20 +225,24 @@ class WhisperCaptionGenerator:
             words = []
             if "words" in segment:
                 for word_data in segment["words"]:
-                    words.append(WordTimestamp(
-                        text=word_data.get("word", "").strip(),
-                        start=word_data.get("start", 0.0),
-                        end=word_data.get("end", 0.0),
-                        confidence=word_data.get("probability", 1.0)
-                    ))
+                    words.append(
+                        WordTimestamp(
+                            text=word_data.get("word", "").strip(),
+                            start=word_data.get("start", 0.0),
+                            end=word_data.get("end", 0.0),
+                            confidence=word_data.get("probability", 1.0),
+                        )
+                    )
 
-            segments.append(CaptionSegment(
-                index=i + 1,
-                start=segment["start"],
-                end=segment["end"],
-                text=segment["text"].strip(),
-                words=words
-            ))
+            segments.append(
+                CaptionSegment(
+                    index=i + 1,
+                    start=segment["start"],
+                    end=segment["end"],
+                    text=segment["text"].strip(),
+                    words=words,
+                )
+            )
 
         # Save in requested format
         output_path = Path(output_file)
@@ -262,9 +266,7 @@ class WhisperCaptionGenerator:
         return str(output_path)
 
     async def generate_word_timestamps(
-        self,
-        audio_file: str,
-        language: Optional[str] = None
+        self, audio_file: str, language: Optional[str] = None
     ) -> List[Dict]:
         """
         Generate word-level timestamps for animated captions.
@@ -285,11 +287,8 @@ class WhisperCaptionGenerator:
         result = await loop.run_in_executor(
             None,
             lambda: self.model.transcribe(
-                audio_file,
-                language=language,
-                word_timestamps=True,
-                verbose=False
-            )
+                audio_file, language=language, word_timestamps=True, verbose=False
+            ),
         )
 
         # Collect all words
@@ -297,13 +296,15 @@ class WhisperCaptionGenerator:
         for segment in result["segments"]:
             if "words" in segment:
                 for word_data in segment["words"]:
-                    all_words.append({
-                        "text": word_data.get("word", "").strip(),
-                        "start": word_data.get("start", 0.0),
-                        "end": word_data.get("end", 0.0),
-                        "confidence": word_data.get("probability", 1.0),
-                        "duration": word_data.get("end", 0.0) - word_data.get("start", 0.0)
-                    })
+                    all_words.append(
+                        {
+                            "text": word_data.get("word", "").strip(),
+                            "start": word_data.get("start", 0.0),
+                            "end": word_data.get("end", 0.0),
+                            "confidence": word_data.get("probability", 1.0),
+                            "duration": word_data.get("end", 0.0) - word_data.get("start", 0.0),
+                        }
+                    )
 
         logger.success(f"Extracted {len(all_words)} word timestamps")
         return all_words
@@ -344,7 +345,7 @@ class WhisperCaptionGenerator:
             "segments": [seg.to_dict() for seg in segments],
             "word_count": sum(len(seg.words) for seg in segments),
             "segment_count": len(segments),
-            "total_duration": segments[-1].end if segments else 0
+            "total_duration": segments[-1].end if segments else 0,
         }
 
         with open(output_path, "w", encoding="utf-8") as f:
@@ -380,10 +381,7 @@ class WhisperCaptionGenerator:
 
         # Load audio and pad/trim it to 30 seconds for language detection
         loop = asyncio.get_event_loop()
-        audio = await loop.run_in_executor(
-            None,
-            lambda: whisper.load_audio(audio_file)
-        )
+        audio = await loop.run_in_executor(None, lambda: whisper.load_audio(audio_file))
         audio = whisper.pad_or_trim(audio)
 
         # Make log-Mel spectrogram
@@ -407,20 +405,14 @@ class WhisperCaptionGenerator:
 
 # Convenience functions
 async def generate_captions_from_audio(
-    audio_file: str,
-    output_file: str,
-    model_size: str = "base",
-    format: str = "srt"
+    audio_file: str, output_file: str, model_size: str = "base", format: str = "srt"
 ) -> str:
     """Quick function to generate captions."""
     generator = WhisperCaptionGenerator(model_size=model_size)
     return await generator.generate_captions(audio_file, output_file, format=format)
 
 
-async def get_word_timestamps(
-    audio_file: str,
-    model_size: str = "base"
-) -> List[Dict]:
+async def get_word_timestamps(audio_file: str, model_size: str = "base") -> List[Dict]:
     """Quick function to get word-level timestamps."""
     generator = WhisperCaptionGenerator(model_size=model_size)
     return await generator.generate_word_timestamps(audio_file)
@@ -432,7 +424,8 @@ async def main():
     import sys
 
     if len(sys.argv) < 3:
-        print("""
+        print(
+            """
 Whisper Caption Generator - FREE Local Captioning
 
 Usage:
@@ -459,9 +452,12 @@ Examples:
     python -m src.captions.whisper_generator audio.mp3 words.json --words-only
 
 Model Info:
-""")
+"""
+        )
         for model, info in WhisperCaptionGenerator.MODEL_INFO.items():
-            print(f"  {model:8} - Size: {info['size']:10} Speed: {info['speed']:15} - {info['accuracy']}")
+            print(
+                f"  {model:8} - Size: {info['size']:10} Speed: {info['speed']:15} - {info['accuracy']}"
+            )
         return
 
     audio_file = sys.argv[1]
@@ -506,9 +502,7 @@ Model Info:
         print(f"Word timestamps saved to: {output_file}")
     else:
         # Generate full captions
-        result = await generator.generate_captions(
-            audio_file, output_file, format, language, task
-        )
+        result = await generator.generate_captions(audio_file, output_file, format, language, task)
         print(f"Captions saved to: {result}")
 
 
