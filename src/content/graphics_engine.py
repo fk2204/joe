@@ -263,7 +263,11 @@ def _build_filter_complex(
 
         end_abs = None
         if timing_end is not None:
-            end_abs = _resolve_timing(timing_end, video_duration)
+            # Special case: timing_end_s: 0 means "until video end"
+            if timing_end == 0:
+                end_abs = video_duration
+            else:
+                end_abs = _resolve_timing(timing_end, video_duration)
 
         # Resolve template variables
         text = overlay.get("text", "")
@@ -297,14 +301,23 @@ def _build_filter_complex(
         # No overlays, return identity filter
         return "[0:v]format=yuv420p[v_out]"
 
-    # Build chain: [0:v]filter1[tmp1]; [tmp1]filter2[tmp2]; ...; [tmpN]format=yuv420p[v_out]
-    filter_chain = "[0:v]" + filter_parts[0]
+    # Build chain: [0:v]filter1[tmp0]; [tmp0]filter2[tmp1]; ...; [tmpN]format=yuv420p[v_out]
+    if len(filter_parts) == 1:
+        # Single filter: [0:v]filter[v_out_temp]; [v_out_temp]format=yuv420p[v_out]
+        filter_chain = f"[0:v]{filter_parts[0]}[v_out_temp]; [v_out_temp]format=yuv420p[v_out]"
+    else:
+        # Multiple filters: chain them with intermediate labels
+        filter_chain = f"[0:v]{filter_parts[0]}[tmp0]"
 
-    for i, part in enumerate(filter_parts[1:], start=1):
-        filter_chain += f"[tmp{i-1}]; [{f'tmp{i-1}' if i > 1 else 'tmp0'}]{part}"
+        for i, part in enumerate(filter_parts[1:], start=1):
+            if i == len(filter_parts) - 1:
+                # Last filter outputs to v_out_temp
+                filter_chain += f"; [tmp{i-1}]{part}[v_out_temp]"
+            else:
+                # Intermediate filter outputs to tmp label
+                filter_chain += f"; [tmp{i-1}]{part}[tmp{i}]"
 
-    # Add final format filter
-    filter_chain += "[tmp_final]; [tmp_final]format=yuv420p[v_out]"
+        filter_chain += "; [v_out_temp]format=yuv420p[v_out]"
 
     return filter_chain
 
