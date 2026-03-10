@@ -1,0 +1,76 @@
+# =============================================================================
+# mind_unlocked_overlays.yaml
+# Channel: mind_unlocked | Niche: Psychology / Self-Improvement
+#
+# Schema reference: see neural_forge_overlays.yaml header for full field docs.
+# Accent color: #9b59b6 (psychology purple) — injected via {{ accent_color }}
+# =============================================================================
+
+schema_version: "1.0"
+channel_id: "mind_unlocked"
+accent_color: "{{ accent_color | default('#9b59b6') }}"
+
+safe_zone:
+  canvas_width: 1080
+  canvas_height: 1920
+  top_px: 120
+  bottom_px: 240
+  left_px: 40
+  right_px: 40
+
+overlays:
+
+  - id: hook
+    type: text
+    timing_start_s: 0.0
+    timing_end_s: 3.0
+    position: top_center
+    font_size: 54
+    # Named psychological pattern text (e.g. "OVERTHINKING") — screams in accent
+    color: "{{ accent_color | default('#9b59b6') }}"
+    animation: fade_in
+    text: "{{ hook_text }}"
+    background_pill: true
+    background_color: "rgba(0, 0, 0, 0.72)"
+    shadow: true
+
+  - id: benefit
+    type: text
+    timing_start_s: 8.0
+    timing_end_s: 14.0
+    position: center
+    font_size: 44
+    # Counterintuitive insight — white on dark for clean readability
+    color: "#ffffff"
+    animation: fade_in
+    text: "{{ key_benefit }}"
+    background_pill: true
+    background_color: "rgba(0, 0, 0, 0.68)"
+    shadow: true
+
+  - id: cta
+    type: cta
+    # -4.0 = 4 seconds before end; engine resolves to (duration_s - 4)
+    timing_start_s: -4.0
+    timing_end_s: 0
+    position: bottom_center
+    font_size: 40
+    color: "#ffffff"
+    animation: fade_in
+    text: "Follow for psychology secrets"
+    background_pill: true
+    background_color: "{{ accent_color | default('#9b59b6') }}"
+    shadow: false
+
+  - id: watermark
+    type: text
+    timing_start_s: 0.0
+    timing_end_s: 0
+    position: top_right
+    font_size: 28
+    color: "rgba(255, 255, 255, 0.55)"
+    animation: none
+    text: "@mind_unlocked"
+    background_pill: false
+    background_color: null
+    shadow: true

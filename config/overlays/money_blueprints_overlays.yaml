@@ -1,0 +1,77 @@
+# =============================================================================
+# money_blueprints_overlays.yaml
+# Channel: money_blueprints | Niche: Finance / Passive Income
+#
+# Schema reference: see neural_forge_overlays.yaml header for full field docs.
+# Accent color: #00d4aa (finance teal/gold) — injected via {{ accent_color }}
+# =============================================================================
+
+schema_version: "1.0"
+channel_id: "money_blueprints"
+accent_color: "{{ accent_color | default('#00d4aa') }}"
+
+safe_zone:
+  canvas_width: 1080
+  canvas_height: 1920
+  top_px: 120
+  bottom_px: 240
+  left_px: 40
+  right_px: 40
+
+overlays:
+
+  - id: hook
+    type: text
+    timing_start_s: 0.0
+    timing_end_s: 3.0
+    position: top_center
+    font_size: 54
+    # High-contrast white on dark pill for maximum readability on finance content
+    color: "#ffffff"
+    animation: fade_in
+    text: "{{ hook_text }}"
+    background_pill: true
+    background_color: "{{ accent_color | default('#00d4aa') }}"
+    shadow: true
+
+  - id: benefit
+    type: text
+    timing_start_s: 8.0
+    timing_end_s: 14.0
+    position: center
+    font_size: 44
+    # High-contrast accent to surface income figures and stats
+    color: "{{ accent_color | default('#00d4aa') }}"
+    animation: fade_in
+    text: "{{ key_benefit }}"
+    background_pill: true
+    background_color: "rgba(0, 0, 0, 0.75)"
+    shadow: true
+
+  - id: cta
+    type: cta
+    # -4.0 = 4 seconds before end; engine resolves to (duration_s - 4)
+    timing_start_s: -4.0
+    timing_end_s: 0
+    position: bottom_center
+    font_size: 40
+    color: "#000000"
+    # Pulse animation drives save-this-for-later behavior
+    animation: pulse
+    text: "Save this for later"
+    background_pill: true
+    background_color: "{{ accent_color | default('#00d4aa') }}"
+    shadow: false
+
+  - id: watermark
+    type: text
+    timing_start_s: 0.0
+    timing_end_s: 0
+    position: top_right
+    font_size: 28
+    color: "rgba(255, 255, 255, 0.55)"
+    animation: none
+    text: "@money_blueprints"
+    background_pill: false
+    background_color: null
+    shadow: true

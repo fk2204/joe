@@ -1,0 +1,106 @@
+# =============================================================================
+# neural_forge_overlays.yaml
+# Channel: neural_forge | Niche: AI / Tech
+#
+# YAML SCHEMA (applies to all channel overlay files):
+#
+# schema_version: str            # Schema version for forward compatibility
+# channel_id: str                # Matches channels_config.json name field
+# accent_color: str              # Hex fallback; runtime replaces with {{ accent_color }}
+#
+# safe_zone:
+#   canvas_width: int            # Pixels (1080 for Shorts)
+#   canvas_height: int           # Pixels (1920 for Shorts)
+#   top_px: int                  # Safe area inset from top
+#   bottom_px: int               # Safe area inset from bottom (UI chrome, captions)
+#   left_px: int                 # Safe area inset from left
+#   right_px: int                # Safe area inset from right
+#
+# overlays:
+#   - id: str                    # Unique identifier: hook | benefit | cta | watermark
+#                                # | step_label | result_reveal
+#     type: text | image | cta   # Overlay type
+#     timing_start_s: float      # Seconds from start; negative = seconds before end
+#     timing_end_s: float        # Seconds from start; 0 = video end
+#     position: str              # top_left | top_center | top_right
+#                                # | center_top | center | center_bottom
+#                                # | bottom_left | bottom_center | bottom_right
+#     font_size: int             # Pixels; min 36px for mobile readability
+#     color: str                 # Hex or {{ template_var }}
+#     animation: none | fade_in | pulse
+#     text: str                  # Display text; may contain {{ template_vars }}
+#     background_pill: bool      # Rounded rect behind text
+#     background_color: str      # Hex or {{ template_var }}
+#     shadow: bool               # Drop shadow on text
+#     # Image-only fields:
+#     image_path: str            # Relative path to image asset
+#     opacity: float             # 0.0 - 1.0
+#     width: int                 # Pixels
+# =============================================================================
+
+schema_version: "1.0"
+channel_id: "neural_forge"
+accent_color: "{{ accent_color | default('#00d4ff') }}"
+
+safe_zone:
+  canvas_width: 1080
+  canvas_height: 1920
+  top_px: 120
+  bottom_px: 240
+  left_px: 40
+  right_px: 40
+
+overlays:
+
+  - id: hook
+    type: text
+    timing_start_s: 0.0
+    timing_end_s: 3.0
+    position: top_center
+    font_size: 54
+    color: "{{ accent_color | default('#00d4ff') }}"
+    animation: fade_in
+    text: "{{ hook_text }}"
+    background_pill: true
+    background_color: "rgba(0, 0, 0, 0.70)"
+    shadow: true
+
+  - id: benefit
+    type: text
+    timing_start_s: 8.0
+    timing_end_s: 14.0
+    position: center
+    font_size: 44
+    color: "#ffffff"
+    animation: fade_in
+    text: "{{ key_benefit }}"
+    background_pill: true
+    background_color: "rgba(0, 0, 0, 0.65)"
+    shadow: true
+
+  - id: cta
+    type: cta
+    # -4.0 = 4 seconds before end; engine resolves to (duration_s - 4)
+    timing_start_s: -4.0
+    timing_end_s: 0
+    position: bottom_center
+    font_size: 40
+    color: "#ffffff"
+    animation: fade_in
+    text: "Follow for daily AI tools"
+    background_pill: true
+    background_color: "{{ accent_color | default('#00d4ff') }}"
+    shadow: false
+
+  - id: watermark
+    type: text
+    timing_start_s: 0.0
+    timing_end_s: 0
+    position: top_right
+    font_size: 28
+    color: "rgba(255, 255, 255, 0.55)"
+    animation: none
+    text: "@neural_forge"
+    background_pill: false
+    background_color: null
+    shadow: true

@@ -1,0 +1,94 @@
+# =============================================================================
+# prof8ssor_ai_overlays.yaml
+# Channel: prof8ssor_ai | Niche: AI Tutorials
+#
+# Schema reference: see neural_forge_overlays.yaml header for full field docs.
+# Accent color: #3498db (tech blue) — injected via {{ accent_color }}
+#
+# Tutorial structure uses step labels and result reveals in addition to the
+# standard hook/benefit/cta pattern. The engine renders all overlays whose
+# timing window intersects the current playhead.
+# =============================================================================
+
+schema_version: "1.0"
+channel_id: "prof8ssor_ai"
+accent_color: "{{ accent_color | default('#3498db') }}"
+
+safe_zone:
+  canvas_width: 1080
+  canvas_height: 1920
+  top_px: 120
+  bottom_px: 240
+  left_px: 40
+  right_px: 40
+
+overlays:
+
+  - id: hook
+    type: text
+    timing_start_s: 0.0
+    timing_end_s: 3.0
+    position: top_center
+    font_size: 54
+    # Result-promise hook (e.g. "SAVE 3 HOURS/WEEK") — hard accent color
+    color: "{{ accent_color | default('#3498db') }}"
+    animation: fade_in
+    text: "{{ hook_text }}"
+    background_pill: true
+    background_color: "rgba(0, 0, 0, 0.70)"
+    shadow: true
+
+  - id: step_label
+    type: text
+    timing_start_s: 8.0
+    timing_end_s: 18.0
+    position: center
+    font_size: 44
+    # Step label anchors viewer orientation inside tutorial flow
+    color: "#ffffff"
+    animation: fade_in
+    text: "STEP 1: {{ key_benefit }}"
+    background_pill: true
+    background_color: "{{ accent_color | default('#3498db') }}"
+    shadow: false
+
+  - id: result_reveal
+    type: text
+    timing_start_s: 20.0
+    # Ends 5 seconds before video end to avoid overlap with CTA
+    timing_end_s: -5.0
+    position: center_bottom
+    font_size: 44
+    color: "{{ accent_color | default('#3498db') }}"
+    animation: fade_in
+    text: "RESULT: {{ key_benefit }}"
+    background_pill: true
+    background_color: "rgba(0, 0, 0, 0.70)"
+    shadow: true
+
+  - id: cta
+    type: cta
+    # -5.0 = 5 seconds before end; engine resolves to (duration_s - 5)
+    timing_start_s: -5.0
+    timing_end_s: 0
+    position: bottom_center
+    font_size: 40
+    color: "#ffffff"
+    animation: fade_in
+    text: "Save this + Follow for daily AI tools"
+    background_pill: true
+    background_color: "{{ accent_color | default('#3498db') }}"
+    shadow: false
+
+  - id: watermark
+    type: text
+    timing_start_s: 0.0
+    timing_end_s: 0
+    position: top_right
+    font_size: 28
+    color: "rgba(255, 255, 255, 0.55)"
+    animation: none
+    text: "@prof8ssor_ai"
+    background_pill: false
+    background_color: null
+    shadow: true

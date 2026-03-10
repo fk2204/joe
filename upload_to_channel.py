@@ -64,9 +64,9 @@ def main():
     # Get YouTube service
     print(f"\n[AUTHENTICATING] YouTube...")
     try:
-        from src.youtube.auth_oob import YouTubeAuthOOB
+        from src.youtube.auth import YouTubeAuth
 
-        auth = YouTubeAuthOOB()
+        auth = YouTubeAuth()
         youtube = auth.get_authenticated_service()
         print(f"[OK] Authenticated!")
 
@@ -83,9 +83,9 @@ def main():
     try:
         request_body = {
             'snippet': {
-                'title': '5 Ways to Make Passive Income with AI in 2026',
+                'title': '5 Ways to Make Passive Income with AI in 2026 #Shorts',
                 'description': f"{selected['description']}\n\nGenerated with Joe - AI Content Automation",
-                'tags': ['AI', 'money', 'tutorial', selected['niche']],
+                'tags': ['#Shorts', 'AI', 'money', 'tutorial', selected['niche']],
                 'categoryId': '22'  # Education
             },
             'status': {

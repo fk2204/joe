@@ -590,6 +590,10 @@ class YouTubeUploader:
         publish_at: Optional[datetime] = None,
         made_for_kids: bool = False,
         default_language: str = "en",
+        channel_id: Optional[str] = None,
+        apply_shorts_overlays: bool = False,
+        hook_text: Optional[str] = None,
+        key_benefit: Optional[str] = None,
     ) -> UploadResult:
         """
         Upload a video to YouTube.
@@ -606,10 +610,36 @@ class YouTubeUploader:
             publish_at: Schedule publish time (requires privacy="private")
             made_for_kids: Whether video is made for kids
             default_language: Default language code
+            channel_id: Channel ID for applying overlays (e.g., "money_blueprints")
+            apply_shorts_overlays: Whether to apply Shorts overlays before uploading
+            hook_text: Hook text for overlay template
+            key_benefit: Key benefit text for overlay template
 
         Returns:
             UploadResult with video ID and URL on success
         """
+        # Apply Shorts overlays if requested
+        if apply_shorts_overlays and channel_id:
+            try:
+                from src.content.graphics_engine import apply_overlays
+
+                overlaid_file = video_file.replace(".mp4", "_overlaid.mp4")
+                apply_overlays(
+                    input_video=video_file,
+                    output_video=overlaid_file,
+                    channel_id=channel_id,
+                    script={
+                        "hook_text": hook_text or "",
+                        "key_benefit": key_benefit or "",
+                        "duration_s": 45,  # Default short-form duration
+                    }
+                )
+                video_file = overlaid_file
+                logger.info(f"Shorts overlays applied, uploading: {overlaid_file}")
+
+            except Exception as e:
+                logger.warning(f"Failed to apply Shorts overlays: {e}, continuing without overlays")
+
         # Get category ID from category name
         category_id = self.CATEGORIES.get(category.lower(), "27")  # Default: Education
 
