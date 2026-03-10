@@ -68,15 +68,15 @@ class SlavkoBotAPI:
     def create_video(self, channel: str, topic: str = None) -> Dict[str, Any]:
         """Trigger video creation."""
         try:
-            from src.automation.runner import run_video_creation
+            from src.automation.runner import task_full_pipeline
 
-            result = run_video_creation(channel, topic)
+            result = task_full_pipeline(channel, topic)
 
             return {
                 "status": "ok" if result.get("success") else "error",
                 "channel": channel,
                 "topic": topic,
-                "video_url": result.get("video_url"),
+                "video_file": result.get("output_file"),
                 "message": result.get("message"),
             }
         except Exception as e:
