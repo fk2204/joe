@@ -67,6 +67,43 @@ Your financial future starts now.
     print(f"[OK] Duration: {script['duration']} seconds")
     print(f"[OK] Hook: {script['hook'][:50]}...")
 
+    # Step 2b: Optimize for SEO
+    print("\n[STEP 2b] Optimizing metadata for YouTube SEO...")
+    try:
+        from src.content.seo_optimizer import SEOOptimizer
+
+        seo = SEOOptimizer()
+        niche = "money_blueprints"  # Demo channel
+        benefits = [
+            "Earn $500-$10,000/month",
+            "Start with zero investment",
+            "Passive income strategies"
+        ]
+
+        metadata = seo.get_full_metadata(
+            topic=script['title'],
+            hook=script['hook'],
+            benefits=benefits,
+            niche=niche,
+            duration_s=script['duration']
+        )
+
+        print(f"[OK] SEO Title ({metadata.character_counts['title']} chars): {metadata.title}")
+        print(f"[OK] Description: {metadata.character_counts['description']} chars")
+        print(f"[OK] Tags: {len(metadata.tags)} tags - {', '.join(metadata.tags[:3])}...")
+
+        # Update script with optimized metadata
+        script['seo_title'] = metadata.title
+        script['seo_description'] = metadata.description
+        script['seo_tags'] = metadata.tags
+
+    except Exception as e:
+        print(f"[WARN] SEO optimization failed: {e}")
+        # Fallback to basic metadata
+        script['seo_title'] = script['title']
+        script['seo_description'] = script['description']
+        script['seo_tags'] = ["#Shorts", "passive income", "AI", "money"]
+
     # Step 3: Generate TTS Audio
     print("\n[STEP 3] Generating audio (TTS - Edge)...")
     try:
@@ -159,11 +196,16 @@ Your financial future starts now.
 
         uploader = YouTubeUploader()
 
+        # Use SEO-optimized metadata if available
+        upload_title = script.get('seo_title', script['title'])
+        upload_description = script.get('seo_description', script['description'])
+        upload_tags = script.get('seo_tags', ["passive income", "AI", "money"])
+
         result = uploader.upload_video(
             video_file=video_file,
-            title=f"{script['title']} #Shorts",
-            description=f"{script['description']}\n\nGenerated with Joe - AI Content Automation",
-            tags=["#Shorts", "passive income", "AI", "money", "finance", "side hustle"],
+            title=upload_title,
+            description=upload_description,
+            tags=upload_tags,
             category="education",
             privacy="unlisted"
         )
