@@ -15,10 +15,12 @@ Usage:
     youtube = auth.get_authenticated_service()
 """
 
+from __future__ import annotations
+
 import os
 import pickle
 from pathlib import Path
-from typing import Optional
+from typing import Any, Optional
 
 from loguru import logger
 
@@ -63,7 +65,7 @@ class YouTubeAuth:
         # Ensure config directory exists
         Path(self.credentials_file).parent.mkdir(parents=True, exist_ok=True)
 
-    def get_credentials(self):
+    def get_credentials(self) -> Any: # Google OAuth2 Credentials
         """
         Get valid OAuth credentials, refreshing or creating as needed.
 
@@ -100,9 +102,9 @@ class YouTubeAuth:
 
         return credentials
 
-    def _create_new_credentials(self):
+    def _create_new_credentials(self) -> Any:
         """Create new OAuth credentials via browser flow."""
-        if not os.path.exists(self.client_secrets_file):
+        if not self.client_secrets_file or not os.path.exists(self.client_secrets_file):
             raise FileNotFoundError(
                 f"Client secrets file not found: {self.client_secrets_file}\n\n"
                 "To set up YouTube API:\n"
@@ -128,13 +130,13 @@ class YouTubeAuth:
 
         return credentials
 
-    def _save_credentials(self, credentials):
+    def _save_credentials(self, credentials: Any) -> None:
         """Save credentials to file."""
         with open(self.credentials_file, "wb") as f:
             pickle.dump(credentials, f)
         logger.info(f"Credentials saved to {self.credentials_file}")
 
-    def get_authenticated_service(self):
+    def get_authenticated_service(self) -> Any:
         """
         Get an authenticated YouTube API service.
 
@@ -148,7 +150,7 @@ class YouTubeAuth:
         logger.info("YouTube API service created")
         return service
 
-    def revoke_credentials(self):
+    def revoke_credentials(self) -> None:
         """Revoke and delete stored credentials."""
         if os.path.exists(self.credentials_file):
             os.remove(self.credentials_file)

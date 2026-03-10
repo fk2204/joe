@@ -15,11 +15,13 @@ Usage:
     manager.upload_to_channel("money_blueprints", video_file, title, description)
 """
 
+from __future__ import annotations
+
 import os
 import pickle
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 from google.auth.transport.requests import Request
 from google_auth_oauthlib.flow import InstalledAppFlow
@@ -65,10 +67,10 @@ class MultiChannelManager:
         },
     }
 
-    def __init__(self):
-        self.config_dir = Path("config")
-        self.credentials_dir = self.config_dir / "credentials"
-        self.client_secrets = self.config_dir / "client_secret.json"
+    def __init__(self) -> None:
+        self.config_dir: Path = Path("config")
+        self.credentials_dir: Path = self.config_dir / "credentials"
+        self.client_secrets: Path = self.config_dir / "client_secret.json"
 
         # Create credentials directory
         self.credentials_dir.mkdir(parents=True, exist_ok=True)
@@ -81,18 +83,20 @@ class MultiChannelManager:
 
         logger.info(f"MultiChannelManager initialized")
 
-    def _load_existing_credentials(self):
+    def _load_existing_credentials(self) -> None:
         """Load any existing channel credentials."""
         for channel_id in self.CHANNELS.keys():
-            cred_file = self.credentials_dir / f"{channel_id}.pickle"
+            cred_file: Path = self.credentials_dir / f"{channel_id}.pickle"
             if cred_file.exists():
+                channel_config: dict[str, Any] = self.CHANNELS[channel_id]
+                channel_name: str = channel_config.get("name", channel_id)
                 self.channels[channel_id] = ChannelInfo(
                     channel_id=channel_id,
-                    name=self.CHANNELS[channel_id]["name"],
+                    name=channel_name,
                     credentials_file=str(cred_file),
                     authenticated=True,
                 )
-                logger.info(f"Found credentials for: {self.CHANNELS[channel_id]['name']}")
+                logger.info(f"Found credentials for: {channel_name}")
 
     def authenticate_channel(self, channel_id: str) -> bool:
         """
@@ -153,7 +157,7 @@ class MultiChannelManager:
 
         return False
 
-    def get_youtube_service(self, channel_id: str):
+    def get_youtube_service(self, channel_id: str) -> Optional[Any]:
         """Get authenticated YouTube service for a channel."""
         if channel_id not in self.channels:
             logger.error(f"Channel not authenticated: {channel_id}")
@@ -183,9 +187,9 @@ class MultiChannelManager:
         video_file: str,
         title: str,
         description: str,
-        tags: List[str] = None,
+        tags: Optional[List[str]] = None,
         privacy: str = "unlisted",
-        thumbnail_file: str = None,
+        thumbnail_file: Optional[str] = None,
     ) -> Optional[str]:
         """
         Upload video to a specific channel.
@@ -237,7 +241,7 @@ class MultiChannelManager:
             logger.error(f"Upload failed: {e}")
             return None
 
-    def list_channels(self):
+    def list_channels(self) -> None:
         """List all channels and their status."""
         print()
         print("=" * 60)
@@ -259,7 +263,7 @@ class MultiChannelManager:
             print(f"    Status: {status}")
             print()
 
-    def authenticate_all(self):
+    def authenticate_all(self) -> None:
         """Authenticate all channels one by one."""
         for channel_id in self.CHANNELS.keys():
             if channel_id not in self.channels:

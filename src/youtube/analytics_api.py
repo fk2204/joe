@@ -20,9 +20,11 @@ Usage:
     print(f"Algorithm Score: {video_stats.get_algorithm_score()}")
 """
 
+from __future__ import annotations
+
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 from loguru import logger
 
@@ -204,8 +206,8 @@ class RetentionDropoff:
 
     def get_timestamp_str(self) -> str:
         """Get formatted timestamp string (MM:SS)."""
-        minutes = self.timestamp_seconds // 60
-        seconds = self.timestamp_seconds % 60
+        minutes: int = self.timestamp_seconds // 60
+        seconds: int = self.timestamp_seconds % 60
         return f"{minutes:02d}:{seconds:02d}"
 
 
@@ -321,7 +323,7 @@ class YouTubeAnalyticsAPI:
         self._data_service = None
 
     @property
-    def analytics(self):
+    def analytics(self) -> Any:
         """Get authenticated YouTube Analytics API service (lazy load)."""
         if self._analytics_service is None:
             credentials = self.auth.get_credentials()
@@ -332,7 +334,7 @@ class YouTubeAnalyticsAPI:
         return self._analytics_service
 
     @property
-    def youtube(self):
+    def youtube(self) -> Any:
         """Get authenticated YouTube Data API service (lazy load)."""
         if self._data_service is None:
             credentials = self.auth.get_credentials()
@@ -348,7 +350,9 @@ class YouTubeAnalyticsAPI:
             response = self.youtube.channels().list(part="id", mine=True).execute()
 
             if response.get("items"):
-                return response["items"][0]["id"]
+                channel_id = response["items"][0].get("id")
+                if isinstance(channel_id, str):
+                    return channel_id
         except HttpError as e:
             logger.error(f"Failed to get channel ID: {e}")
         return None
@@ -522,7 +526,7 @@ class YouTubeAnalyticsAPI:
         """
         logger.info(f"Analyzing retention dropoffs for video {video_id}")
 
-        dropoffs = []
+        dropoffs: list[RetentionDropoff] = []
 
         # Get video analytics with retention curve
         analytics = self.get_video_analytics(video_id)
@@ -589,9 +593,9 @@ class YouTubeAnalyticsAPI:
         import re
 
         # PT#H#M#S format
-        hours = 0
-        minutes = 0
-        seconds = 0
+        hours: int = 0
+        minutes: int = 0
+        seconds: int = 0
 
         hour_match = re.search(r"(\d+)H", duration_str)
         min_match = re.search(r"(\d+)M", duration_str)
@@ -747,11 +751,11 @@ class YouTubeAnalyticsAPI:
                 channel_avg_ctr = 0
 
             # Calculate percentiles
-            def calculate_percentile(value: float, values: List[float]) -> float:
+            def calculate_percentile(value: float, values: list[float]) -> float:
                 if not values:
                     return 50.0
-                sorted_values = sorted(values)
-                count_below = sum(1 for v in sorted_values if v < value)
+                sorted_values: list[float] = sorted(values)
+                count_below: int = sum(1 for v in sorted_values if v < value)
                 return (count_below / len(sorted_values)) * 100
 
             views_list = [v["views"] for v in videos_data]

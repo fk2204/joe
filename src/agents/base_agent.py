@@ -3,6 +3,8 @@ Base Agent Infrastructure for Joe
 Provides abstract base class and utilities for all agents.
 """
 
+from __future__ import annotations
+
 import functools
 
 # Import existing utilities
@@ -92,7 +94,7 @@ class AgentMessage:
     timestamp: datetime = field(default_factory=datetime.now)
     correlation_id: Optional[str] = None
 
-    def to_dict(self) -> Dict:
+    def to_dict(self) -> Dict[str, Any]:
         return asdict(self)
 
 
@@ -121,11 +123,11 @@ class SafetyError(AgentError):
 
 
 
-def handle_agent_errors(func):
+def handle_agent_errors(func: Any) -> Any:
     """Decorator for graceful error handling."""
 
     @functools.wraps(func)
-    def wrapper(*args, **kwargs):
+    def wrapper(*args: Any, **kwargs: Any) -> Any:
         try:
             return func(*args, **kwargs)
         except TokenBudgetExceeded as e:
@@ -146,7 +148,9 @@ def handle_agent_errors(func):
 class BaseAgent(ABC):
     """Base class for all YouTube automation agents."""
 
-    def __init__(self, name: str = None, provider: str = "groq", api_key: str = None):
+    def __init__(
+        self, name: Optional[str] = None, provider: str = "groq", api_key: Optional[str] = None
+    ) -> None:
         """
         Initialize BaseAgent.
 
@@ -180,13 +184,14 @@ class BaseAgent(ABC):
             self.api_key = api_key
 
         # State directory for agents that need persistent storage
-        self.state_dir = Path("data")
+        self.state_dir: Path = Path("data")
         if not self.state_dir.exists():
             self.state_dir.mkdir(parents=True, exist_ok=True)
 
-        self._start_time = None
+        self._start_time: Optional[float] = None
 
         # Try to import utilities
+        self.tracker: Optional[Any] = None
         try:
             from src.utils.token_manager import get_token_manager
 
@@ -197,15 +202,15 @@ class BaseAgent(ABC):
         logger.info(f"{self.name} initialized with provider={self.provider}")
 
     @abstractmethod
-    def run(self, **kwargs) -> AgentResult:
+    def run(self, **kwargs: Any) -> AgentResult:
         """Main entry point - must be implemented by subclasses."""
 
     def handle_message(self, message: AgentMessage) -> AgentMessage:
         """Handle incoming message from another agent."""
         self._start_time = time.time()
         try:
-            result = self.run(**message.payload)
-            duration = time.time() - self._start_time
+            result: AgentResult = self.run(**message.payload)
+            duration: float = time.time() - self._start_time
             return AgentMessage(
                 sender=self.name,
                 recipient=message.sender,
@@ -232,7 +237,7 @@ class BaseAgent(ABC):
         tokens_used: int = 0,
         cost: float = 0.0,
         duration_seconds: float = 0.0,
-        **metadata,
+        **metadata: Any,
     ) -> AgentResult:
         """
         Convenience method to create a standardized AgentResult.
@@ -263,7 +268,7 @@ class BaseAgent(ABC):
             metadata=metadata,
         )
 
-    def log_operation(self, operation: str, tokens: int = 0, cost: float = 0.0):
+    def log_operation(self, operation: str, tokens: int = 0, cost: float = 0.0) -> None:
         """Log operation for tracking."""
         if self.tracker:
             self.tracker.record_usage(
@@ -276,21 +281,22 @@ class BaseAgent(ABC):
             f"{self.name} completed {operation}"
         )
 
-    def _timed_operation(self, operation_name: str):
+    def _timed_operation(self, operation_name: str) -> Any:
         """Context manager for timing operations."""
 
         class Timer:
-            def __init__(self, agent, name):
-                self.agent = agent
-                self.name = name
-                self.start = None
+            def __init__(self, agent: BaseAgent, name: str) -> None:
+                self.agent: BaseAgent = agent
+                self.name: str = name
+                self.start: Optional[float] = None
 
-            def __enter__(self):
+            def __enter__(self) -> Timer:
                 self.start = time.time()
                 return self
 
-            def __exit__(self, *args):
-                duration = time.time() - self.start
+            def __exit__(self, *args: Any) -> None:
+                assert self.start is not None
+                duration: float = time.time() - self.start
                 logger.debug(f"{self.agent.name}.{self.name} took {duration:.2f}s")
 
         return Timer(self, operation_name)
@@ -309,7 +315,7 @@ class BaseAgent(ABC):
         try:
             import json
 
-            filepath = self.state_dir / filename
+            filepath: Path = self.state_dir / filename
             with open(filepath, "w") as f:
                 json.dump(state, f, indent=2, default=str)
             logger.debug(f"{self.name}: Saved state to {filepath}")
@@ -331,11 +337,11 @@ class BaseAgent(ABC):
         try:
             import json
 
-            filepath = self.state_dir / filename
+            filepath: Path = self.state_dir / filename
             if not filepath.exists():
                 return None
             with open(filepath, "r") as f:
-                state = json.load(f)
+                state: Dict[str, Any] = json.load(f)
             logger.debug(f"{self.name}: Loaded state from {filepath}")
             return state
         except Exception as e:

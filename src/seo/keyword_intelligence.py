@@ -27,6 +27,8 @@ Usage:
     longtails = ki.generate_longtails("investing", count=50)
 """
 
+from __future__ import annotations
+
 import hashlib
 import json
 import sqlite3
@@ -48,7 +50,7 @@ except ImportError:
     logger.warning("pytrends not installed. Install with: pip install pytrends")
 
 try:
-    import requests
+    import requests  # type: ignore[import-untyped]
 
     REQUESTS_AVAILABLE = True
 except ImportError:
@@ -85,7 +87,7 @@ class KeywordMetrics:
     estimated_monthly_searches: int = 0
     cpc_estimate: float = 0.0  # Cost per click indicator
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return asdict(self)
 
 
@@ -100,9 +102,9 @@ class TrendPrediction:
     confidence: float  # 0-1
     trend_type: str  # "breakout", "rising", "stable", "declining", "seasonal_peak"
     peak_timing: Optional[str] = None  # Estimated peak date if applicable
-    supporting_signals: List[str] = field(default_factory=list)
+    supporting_signals: list[str] = field(default_factory=list)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return asdict(self)
 
 
@@ -113,13 +115,13 @@ class CompetitorInsight:
     competitor_name: str
     estimated_views: int = 0
     title_pattern: str = ""
-    keywords_used: List[str] = field(default_factory=list)
+    keywords_used: list[str] = field(default_factory=list)
     posting_frequency: str = ""
     avg_video_length: str = ""
-    engagement_indicators: Dict[str, float] = field(default_factory=dict)
-    content_gaps: List[str] = field(default_factory=list)
+    engagement_indicators: dict[str, float] = field(default_factory=dict)
+    content_gaps: list[str] = field(default_factory=list)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return asdict(self)
 
 
@@ -135,7 +137,7 @@ class LongTailKeyword:
     intent_match: float  # 0-1 how well it matches search intent
     variation_type: str  # "question", "modifier", "location", "comparison", "how_to"
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return asdict(self)
 
 
@@ -146,13 +148,13 @@ class SeasonalPattern:
     keyword: str
     is_seasonal: bool
     seasonality_strength: float  # 0-1
-    peak_months: List[int]  # 1-12
-    trough_months: List[int]
+    peak_months: list[int]  # 1-12
+    trough_months: list[int]
     current_phase: str  # "peak", "rising", "trough", "declining"
     days_to_next_peak: int
-    historical_pattern: List[float]  # 12 months of normalized interest
+    historical_pattern: list[float]  # 12 months of normalized interest
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return asdict(self)
 
 
@@ -204,14 +206,14 @@ class KeywordResearcher:
         ],
     }
 
-    def __init__(self, cache_dir: str = "data/seo_cache"):
+    def __init__(self, cache_dir: str = "data/seo_cache") -> None:
         """Initialize keyword researcher with caching."""
         self.cache_dir = Path(cache_dir)
         self.cache_dir.mkdir(parents=True, exist_ok=True)
         self.db_path = self.cache_dir / "keyword_research.db"
         self._init_database()
 
-    def _init_database(self):
+    def _init_database(self) -> None:
         """Initialize SQLite cache database."""
         with sqlite3.connect(self.db_path) as conn:
             conn.execute(
@@ -239,7 +241,7 @@ class KeywordResearcher:
 
     def research(
         self, keyword: str, niche: str = "default", include_related: bool = True
-    ) -> Tuple[KeywordMetrics, List[str]]:
+    ) -> tuple[KeywordMetrics, list[str]]:
         """
         Research a keyword and return metrics with related keywords.
 
@@ -280,8 +282,8 @@ class KeywordResearcher:
         return metrics, related
 
     def bulk_research(
-        self, keywords: List[str], niche: str = "default"
-    ) -> List[Tuple[KeywordMetrics, List[str]]]:
+        self, keywords: list[str], niche: str = "default"
+    ) -> list[tuple[KeywordMetrics, list[str]]]:
         """Research multiple keywords efficiently."""
         results = []
         for keyword in keywords:
@@ -336,7 +338,7 @@ class KeywordResearcher:
 
         return opportunities[:max_results]
 
-    def _get_youtube_autocomplete(self, keyword: str) -> List[str]:
+    def _get_youtube_autocomplete(self, keyword: str) -> list[str]:
         """Get YouTube search suggestions."""
         if not REQUESTS_AVAILABLE:
             return []
@@ -385,7 +387,7 @@ class KeywordResearcher:
 
         return suggestions[:50]
 
-    def _get_trends_data(self, keyword: str) -> Dict[str, Any]:
+    def _get_trends_data(self, keyword: str) -> dict[str, Any]:
         """Get Google Trends data."""
         if not PYTRENDS_AVAILABLE:
             return {}
@@ -547,8 +549,8 @@ class KeywordResearcher:
         return metrics
 
     def _extract_related_keywords(
-        self, keyword: str, autocomplete: List[str], trends_data: Dict[str, Any]
-    ) -> List[str]:
+        self, keyword: str, autocomplete: list[str], trends_data: dict[str, Any]
+    ) -> list[str]:
         """Extract and deduplicate related keywords."""
         related = set()
 
@@ -567,7 +569,7 @@ class KeywordResearcher:
 
         return list(related)
 
-    def _get_cached(self, keyword: str, niche: str) -> Optional[Tuple[KeywordMetrics, List[str]]]:
+    def _get_cached(self, keyword: str, niche: str) -> Optional[tuple[KeywordMetrics, list[str]]]:
         """Get cached research results if valid."""
         key_hash = hashlib.md5(f"{keyword}:{niche}".encode()).hexdigest()
 
@@ -591,9 +593,9 @@ class KeywordResearcher:
         keyword: str,
         niche: str,
         metrics: KeywordMetrics,
-        autocomplete: List[str],
+        autocomplete: list[str],
         ttl_days: int = 7,
-    ):
+    ) -> None:
         """Cache research results."""
         key_hash = hashlib.md5(f"{keyword}:{niche}".encode()).hexdigest()
         expires_at = datetime.now() + timedelta(days=ttl_days)
@@ -633,9 +635,9 @@ class TrendPredictor:
     BREAKOUT_THRESHOLD = 50  # % increase considered breakout
     RISING_THRESHOLD = 20  # % increase considered rising
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize trend predictor."""
-        self.pytrends = None
+        self.pytrends: Optional[Any] = None
         if PYTRENDS_AVAILABLE:
             self.pytrends = TrendReq(hl="en-US", tz=360, timeout=(10, 25))
 
@@ -743,14 +745,14 @@ class TrendPredictor:
 
         return breakouts
 
-    def compare_trends(self, keywords: List[str]) -> Dict[str, TrendPrediction]:
+    def compare_trends(self, keywords: list[str]) -> dict[str, TrendPrediction]:
         """Compare trend trajectories for multiple keywords."""
         results = {}
         for keyword in keywords[:5]:  # Limit to avoid rate limiting
             results[keyword] = self.predict(keyword)
         return results
 
-    def _calculate_velocity(self, data: List[float]) -> float:
+    def _calculate_velocity(self, data: list[float]) -> float:
         """Calculate trend velocity (rate of change)."""
         if len(data) < 2:
             return 0.0
@@ -769,7 +771,7 @@ class TrendPredictor:
 
         return weighted_sum / weight_total if weight_total > 0 else 0.0
 
-    def _calculate_acceleration(self, data: List[float]) -> float:
+    def _calculate_acceleration(self, data: list[float]) -> float:
         """Calculate trend acceleration (change in velocity)."""
         if len(data) < 14:
             return 0.0
@@ -791,7 +793,7 @@ class TrendPredictor:
         # But dampen acceleration effect over time
         damping = 0.5  # Reduce acceleration impact
 
-        predicted = (
+        predicted: float = (
             current
             + velocity * days
             + 0.5 * acceleration * damping * (days**0.8)  # Sublinear acceleration
@@ -800,7 +802,7 @@ class TrendPredictor:
         return predicted
 
     def _classify_trend(
-        self, current: float, velocity: float, acceleration: float, data: List[float]
+        self, current: float, velocity: float, acceleration: float, data: list[float]
     ) -> str:
         """Classify the trend type."""
         # Calculate percentage change over recent period
@@ -871,8 +873,8 @@ class TrendPredictor:
         return min(0.95, confidence)
 
     def _get_supporting_signals(
-        self, keyword: str, velocity: float, acceleration: float, data: List[float]
-    ) -> List[str]:
+        self, keyword: str, velocity: float, acceleration: float, data: list[float]
+    ) -> list[str]:
         """Get supporting signals for the prediction."""
         signals = []
 
@@ -973,7 +975,7 @@ class CompetitorAnalyzer:
         },
     }
 
-    def __init__(self, data_dir: str = "data/competitor_data"):
+    def __init__(self, data_dir: str = "data/competitor_data") -> None:
         """Initialize competitor analyzer."""
         self.data_dir = Path(data_dir)
         self.data_dir.mkdir(parents=True, exist_ok=True)
@@ -991,11 +993,11 @@ class CompetitorAnalyzer:
         """
         logger.info(f"[CompetitorAnalyzer] Analyzing competition for: {keyword}")
 
-        niche_data = self.NICHE_PATTERNS.get(niche, self.NICHE_PATTERNS.get("finance", {}))
+        niche_data: dict[str, Any] = self.NICHE_PATTERNS.get(niche, self.NICHE_PATTERNS.get("finance", {}))  # type: ignore[assignment]
 
         insight = CompetitorInsight(
             competitor_name=f"Top {niche} creators",
-            title_pattern=niche_data.get("title_patterns", [""])[0],
+            title_pattern=niche_data.get("title_patterns", [""])[0],  # type: ignore[index]
             keywords_used=self._extract_niche_keywords(keyword, niche),
             posting_frequency=self._estimate_posting_frequency(niche),
             avg_video_length=f"{niche_data.get('avg_length_minutes', (10, 15))[0]}-{niche_data.get('avg_length_minutes', (10, 15))[1]} minutes",
@@ -1006,21 +1008,21 @@ class CompetitorAnalyzer:
         logger.success(f"[CompetitorAnalyzer] Analysis complete for: {keyword}")
         return insight
 
-    def get_title_templates(self, niche: str = "default") -> List[str]:
+    def get_title_templates(self, niche: str = "default") -> list[str]:
         """Get proven title templates for a niche."""
         niche_data = self.NICHE_PATTERNS.get(niche, self.NICHE_PATTERNS.get("finance", {}))
-        return niche_data.get("title_patterns", [])
+        return niche_data.get("title_patterns", [])  # type: ignore[return-value]
 
-    def identify_gaps(self, keyword: str, niche: str = "default", count: int = 10) -> List[str]:
+    def identify_gaps(self, keyword: str, niche: str = "default", count: int = 10) -> list[str]:
         """Identify content gaps for a keyword."""
         return self._identify_content_gaps(keyword, niche)[:count]
 
-    def get_top_creators(self, niche: str = "default") -> List[str]:
+    def get_top_creators(self, niche: str = "default") -> list[str]:
         """Get top creators in a niche."""
         niche_data = self.NICHE_PATTERNS.get(niche, {})
-        return niche_data.get("top_creators", [])
+        return niche_data.get("top_creators", [])  # type: ignore[return-value]
 
-    def _extract_niche_keywords(self, keyword: str, niche: str) -> List[str]:
+    def _extract_niche_keywords(self, keyword: str, niche: str) -> list[str]:
         """Extract relevant keywords for the niche."""
         keywords = [keyword]
 
@@ -1046,7 +1048,7 @@ class CompetitorAnalyzer:
         }
         return frequencies.get(niche, "2-3 videos per week")
 
-    def _identify_content_gaps(self, keyword: str, niche: str) -> List[str]:
+    def _identify_content_gaps(self, keyword: str, niche: str) -> list[str]:
         """Identify content gaps and opportunities."""
         gaps = []
 
@@ -1084,7 +1086,7 @@ class CompetitorAnalyzer:
 
         return gaps
 
-    def _estimate_engagement_metrics(self, niche: str) -> Dict[str, float]:
+    def _estimate_engagement_metrics(self, niche: str) -> dict[str, float]:
         """Estimate typical engagement metrics for niche."""
         metrics = {
             "finance": {
@@ -1237,7 +1239,7 @@ class SearchIntentClassifier:
         ],
     }
 
-    def classify(self, query: str) -> Tuple[str, float, Dict[str, Any]]:
+    def classify(self, query: str) -> tuple[str, float, dict[str, Any]]:
         """
         Classify search intent for a query.
 
@@ -1250,16 +1252,16 @@ class SearchIntentClassifier:
         logger.info(f"[SearchIntentClassifier] Classifying: {query}")
 
         query_lower = query.lower()
-        scores = defaultdict(float)
+        scores: dict[str, float] = defaultdict(float)
 
         # Score each intent type
         for intent, config in self.INTENT_SIGNALS.items():
-            weight = config["weight"]
+            weight: float = config["weight"]  # type: ignore[assignment]
 
-            for keyword in config["keywords"]:
+            for keyword in config["keywords"]:  # type: ignore[attr-defined]
                 if keyword in query_lower:
                     # Base score
-                    base_score = 10 * weight
+                    base_score: float = 10 * weight
 
                     # Bonus for keyword at start
                     if query_lower.startswith(keyword):
@@ -1276,7 +1278,7 @@ class SearchIntentClassifier:
             primary_intent = "informational"
             confidence = 0.5
         else:
-            primary_intent = max(scores, key=scores.get)
+            primary_intent = max(scores, key=scores.get)  # type: ignore[arg-type]
             total_score = sum(scores.values())
             confidence = min(0.95, scores[primary_intent] / max(total_score, 1) + 0.3)
 
@@ -1293,7 +1295,7 @@ class SearchIntentClassifier:
         logger.success(f"[SearchIntentClassifier] Intent: {primary_intent} ({confidence:.0%})")
         return primary_intent, confidence, metadata
 
-    def get_content_strategy(self, intent: str) -> Dict[str, Any]:
+    def get_content_strategy(self, intent: str) -> dict[str, Any]:
         """Get content strategy for an intent type."""
         config = self.INTENT_SIGNALS.get(intent, self.INTENT_SIGNALS["informational"])
 
@@ -1306,7 +1308,7 @@ class SearchIntentClassifier:
             "title_strategy": self._get_title_strategy(intent),
         }
 
-    def _get_title_strategy(self, intent: str) -> List[str]:
+    def _get_title_strategy(self, intent: str) -> list[str]:
         """Get title strategy for intent type."""
         strategies = {
             "informational": [
@@ -1416,7 +1418,7 @@ class LongTailGenerator:
 
     def generate(
         self, seed_keyword: str, count: int = 50, include_questions: bool = True
-    ) -> List[LongTailKeyword]:
+    ) -> list[LongTailKeyword]:
         """
         Generate long-tail keyword variations.
 
@@ -1467,7 +1469,7 @@ class LongTailGenerator:
         logger.success(f"[LongTailGenerator] Generated {len(variations[:count])} variations")
         return variations[:count]
 
-    def generate_questions(self, seed_keyword: str, count: int = 20) -> List[LongTailKeyword]:
+    def generate_questions(self, seed_keyword: str, count: int = 20) -> list[LongTailKeyword]:
         """Generate question-based long-tail keywords."""
         questions = []
 
@@ -1499,7 +1501,7 @@ class LongTailGenerator:
 
         return questions
 
-    def _create_variation(self, keyword: str, parent: str, var_type: str) -> LongTailKeyword:
+    def _create_variation(self, keyword: str, parent: str, var_type: str) -> "LongTailKeyword":
         """Create a LongTailKeyword object."""
         word_count = len(keyword.split())
 
@@ -1545,7 +1547,7 @@ class LongTailGenerator:
             variation_type=var_type,
         )
 
-    def _generate_compound_variations(self, seed: str, count: int) -> List[LongTailKeyword]:
+    def _generate_compound_variations(self, seed: str, count: int) -> list[LongTailKeyword]:
         """Generate compound variations combining multiple modifiers."""
         compounds = []
 
@@ -1592,9 +1594,9 @@ class SeasonalityDetector:
         "father's day": {"peak_months": [5, 6], "category": "holiday"},
     }
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize seasonality detector."""
-        self.pytrends = None
+        self.pytrends: Optional[Any] = None
         if PYTRENDS_AVAILABLE:
             self.pytrends = TrendReq(hl="en-US", tz=360, timeout=(10, 25))
 
@@ -1675,7 +1677,7 @@ class SeasonalityDetector:
             logger.warning(f"Seasonality detection failed: {e}")
             return self._create_default_pattern(keyword)
 
-    def get_optimal_timing(self, keyword: str) -> Dict[str, Any]:
+    def get_optimal_timing(self, keyword: str) -> dict[str, Any]:
         """Get optimal content timing based on seasonality."""
         pattern = self.detect(keyword)
 
@@ -1707,7 +1709,7 @@ class SeasonalityDetector:
             "days_to_optimal": pattern.days_to_next_peak if pattern.is_seasonal else 0,
         }
 
-    def _aggregate_monthly(self, weekly_data: List[float]) -> List[float]:
+    def _aggregate_monthly(self, weekly_data: list[float]) -> list[float]:
         """Aggregate weekly data into monthly averages."""
         if len(weekly_data) < 52:
             return [50.0] * 12  # Not enough data
@@ -1727,7 +1729,7 @@ class SeasonalityDetector:
 
         return monthly
 
-    def _calculate_seasonality_strength(self, monthly_data: List[float]) -> Tuple[bool, float]:
+    def _calculate_seasonality_strength(self, monthly_data: list[float]) -> tuple[bool, float]:
         """Calculate seasonality strength (0-1)."""
         if not monthly_data or len(monthly_data) < 12:
             return False, 0.0
@@ -1753,7 +1755,7 @@ class SeasonalityDetector:
         except Exception:
             return False, 0.0
 
-    def _find_peaks_troughs(self, monthly_data: List[float]) -> Tuple[List[int], List[int]]:
+    def _find_peaks_troughs(self, monthly_data: list[float]) -> tuple[list[int], list[int]]:
         """Find peak and trough months."""
         if not monthly_data:
             return [], []
@@ -1773,7 +1775,7 @@ class SeasonalityDetector:
 
         return peaks, troughs
 
-    def _determine_phase(self, current_month: int, peaks: List[int], troughs: List[int]) -> str:
+    def _determine_phase(self, current_month: int, peaks: list[int], troughs: list[int]) -> str:
         """Determine current phase in seasonal cycle."""
         if current_month in peaks:
             return "peak"
@@ -1789,7 +1791,7 @@ class SeasonalityDetector:
 
         return "stable"
 
-    def _calculate_days_to_peak(self, current_month: int, peaks: List[int]) -> int:
+    def _calculate_days_to_peak(self, current_month: int, peaks: list[int]) -> int:
         """Calculate days until next peak."""
         if not peaks:
             return 0
@@ -1808,7 +1810,7 @@ class SeasonalityDetector:
 
         return months_to_peak * 30  # Approximate days
 
-    def _create_known_pattern(self, keyword: str, config: Dict) -> SeasonalPattern:
+    def _create_known_pattern(self, keyword: str, config: dict[str, Any]) -> SeasonalPattern:
         """Create pattern for known seasonal topic."""
         peaks = config["peak_months"]
         current_month = datetime.now().month
@@ -1829,7 +1831,7 @@ class SeasonalityDetector:
             historical_pattern=self._generate_pattern_from_peaks(peaks),
         )
 
-    def _create_default_pattern(self, keyword: str) -> SeasonalPattern:
+    def _create_default_pattern(self, keyword: str) -> "SeasonalPattern":
         """Create default non-seasonal pattern."""
         return SeasonalPattern(
             keyword=keyword,
@@ -1842,7 +1844,7 @@ class SeasonalityDetector:
             historical_pattern=[50.0] * 12,
         )
 
-    def _generate_pattern_from_peaks(self, peaks: List[int]) -> List[float]:
+    def _generate_pattern_from_peaks(self, peaks: list[int]) -> list[float]:
         """Generate normalized pattern from known peaks."""
         pattern = [30.0] * 12  # Base level
 
@@ -1871,7 +1873,7 @@ class KeywordIntelligence:
     Coordinates all sub-components for comprehensive keyword analysis.
     """
 
-    def __init__(self, cache_dir: str = "data/seo_cache"):
+    def __init__(self, cache_dir: str = "data/seo_cache") -> None:
         """Initialize keyword intelligence system."""
         self.researcher = KeywordResearcher(cache_dir)
         self.trend_predictor = TrendPredictor()
@@ -1882,7 +1884,7 @@ class KeywordIntelligence:
 
         logger.info("[KeywordIntelligence] System initialized")
 
-    def full_analysis(self, keyword: str, niche: str = "default") -> Dict[str, Any]:
+    def full_analysis(self, keyword: str, niche: str = "default") -> dict[str, Any]:
         """
         Perform full keyword analysis.
 
@@ -1941,21 +1943,21 @@ class KeywordIntelligence:
 
     def find_opportunities(
         self, seed_keyword: str, niche: str = "default", count: int = 20
-    ) -> List[KeywordMetrics]:
+    ) -> list[KeywordMetrics]:
         """Find keyword opportunities."""
         return self.researcher.find_opportunities(
             seed_keyword, niche, min_opportunity_score=50.0, max_results=count
         )
 
-    def generate_longtails(self, keyword: str, count: int = 50) -> List[LongTailKeyword]:
+    def generate_longtails(self, keyword: str, count: int = 50) -> list[LongTailKeyword]:
         """Generate long-tail variations."""
         return self.longtail_generator.generate(keyword, count)
 
-    def get_content_timing(self, keyword: str) -> Dict[str, Any]:
+    def get_content_timing(self, keyword: str) -> dict[str, Any]:
         """Get optimal content timing based on seasonality."""
         return self.seasonality_detector.get_optimal_timing(keyword)
 
-    def compare_keywords(self, keywords: List[str], niche: str = "default") -> List[Dict[str, Any]]:
+    def compare_keywords(self, keywords: list[str], niche: str = "default") -> list[dict[str, Any]]:
         """Compare multiple keywords."""
         results = []
 
@@ -1974,13 +1976,13 @@ class KeywordIntelligence:
             )
 
         # Sort by opportunity
-        results.sort(key=lambda x: x["opportunity_score"], reverse=True)
+        results.sort(key=lambda x: x["opportunity_score"], reverse=True)  # type: ignore[arg-type,return-value]
 
         return results
 
     def optimize_description_keywords(
-        self, description: str, target_keywords: List[str], target_density: float = 0.025
-    ) -> Dict[str, Any]:
+        self, description: str, target_keywords: list[str], target_density: float = 0.025
+    ) -> dict[str, Any]:
         """
         Optimize description to achieve optimal keyword density (2-3%).
 

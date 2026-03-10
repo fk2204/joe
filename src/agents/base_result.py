@@ -24,6 +24,8 @@ Usage:
     print(result)  # [SUCCESS] script_generation (agent=ScriptAgent, tokens=1500, cost=$0.0020)
 """
 
+from __future__ import annotations
+
 from dataclasses import asdict, dataclass, field
 from datetime import datetime
 from typing import Any, Dict, Optional
@@ -80,7 +82,7 @@ class AgentResult:
         Returns:
             Dictionary with all fields, datetime converted to ISO format
         """
-        result = asdict(self)
+        result: Dict[str, Any] = asdict(self)
         # Convert datetime to ISO string for JSON serialization
         if isinstance(result.get("timestamp"), datetime):
             result["timestamp"] = result["timestamp"].isoformat()
@@ -93,8 +95,8 @@ class AgentResult:
         Returns:
             String like "[SUCCESS] operation_name (agent=Name, tokens=100, cost=$0.0010)"
         """
-        status = "SUCCESS" if self.success else "FAILURE"
-        details = []
+        status: str = "SUCCESS" if self.success else "FAILURE"
+        details: list[str] = []
 
         if self.agent_name:
             details.append(f"agent={self.agent_name}")
@@ -105,7 +107,7 @@ class AgentResult:
         if self.duration_seconds:
             details.append(f"duration={self.duration_seconds:.1f}s")
 
-        detail_str = ", ".join(details) if details else "no details"
+        detail_str: str = ", ".join(details) if details else "no details"
         return f"[{status}] {self.operation} ({detail_str})"
 
     def __repr__(self) -> str:
@@ -126,7 +128,7 @@ def create_result(
     tokens_used: int = 0,
     cost: float = 0.0,
     duration_seconds: float = 0.0,
-    **metadata,
+    **metadata: Any,
 ) -> AgentResult:
     """
     Convenience factory function to create an AgentResult.

@@ -28,9 +28,11 @@ Usage:
     description_with_chapters = optimizer.add_chapters(description, timestamps)
 """
 
+from __future__ import annotations
+
 import re
 from dataclasses import dataclass
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 from loguru import logger
 
@@ -41,10 +43,10 @@ class OptimizedMetadata:
 
     title: str
     description: str
-    tags: List[str]
+    tags: list[str]
     title_score: float  # 0-100
     keyword_density: float
-    chapters: List[Dict]
+    chapters: list[dict[str, Any]]
 
 
 class MetadataOptimizer:
@@ -75,14 +77,14 @@ class MetadataOptimizer:
         "T": "Transform",  # Promise transformation
     }
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize metadata optimizer."""
         logger.info("[MetadataOptimizer] Initialized")
 
     def optimize_title(
         self,
         base_title: str,
-        keywords: List[str],
+        keywords: list[str],
         max_length: int = 70,
         front_load_keywords: bool = True,
     ) -> str:
@@ -132,7 +134,7 @@ class MetadataOptimizer:
 
         return title
 
-    def _score_title(self, title: str, keywords: List[str]) -> float:
+    def _score_title(self, title: str, keywords: list[str]) -> float:
         """Score title based on best practices (0-100)."""
         score = 0.0
         title_lower = title.lower()
@@ -168,7 +170,7 @@ class MetadataOptimizer:
 
         return min(100.0, score)
 
-    def score_title(self, title: str, keywords: List[str] = None) -> float:
+    def score_title(self, title: str, keywords: Optional[list[str]] = None) -> float:
         """
         Public method to score a title.
 
@@ -181,7 +183,7 @@ class MetadataOptimizer:
         """
         return self._score_title(title, keywords or [])
 
-    def generate_title_variants(self, topic: str, keywords: List[str], count: int = 3) -> List[str]:
+    def generate_title_variants(self, topic: str, keywords: list[str], count: int = 3) -> list[str]:
         """
         Generate multiple title variants for A/B testing.
 
@@ -229,11 +231,11 @@ class MetadataOptimizer:
     def generate_description(
         self,
         topic: str,
-        keywords: List[str],
+        keywords: list[str],
         video_duration: int = 600,
         target_words: int = 250,
         include_chapters: bool = True,
-        chapters: Optional[List[Dict]] = None,
+        chapters: Optional[list[dict[str, Any]]] = None,
     ) -> str:
         """
         Generate optimized description (200-300 words).
@@ -294,7 +296,7 @@ class MetadataOptimizer:
 
         return description
 
-    def _generate_description_hook(self, topic: str, keywords: List[str]) -> str:
+    def _generate_description_hook(self, topic: str, keywords: list[str]) -> str:
         """Generate engaging description hook."""
         templates = [
             f"Want to master {keywords[0]}? You're in the right place.",
@@ -304,7 +306,7 @@ class MetadataOptimizer:
         ]
         return templates[hash(topic) % len(templates)]
 
-    def _generate_value_bullets(self, topic: str, keywords: List[str]) -> str:
+    def _generate_value_bullets(self, topic: str, keywords: list[str]) -> str:
         """Generate value bullet points."""
         bullets = [
             f"✓ How to get started with {keywords[0]}",
@@ -314,7 +316,7 @@ class MetadataOptimizer:
         ]
         return "\n".join(bullets)
 
-    def _format_chapters(self, chapters: List[Dict]) -> str:
+    def _format_chapters(self, chapters: list[dict[str, Any]]) -> str:
         """Format chapters as timestamps."""
         if not chapters:
             return ""
@@ -337,7 +339,7 @@ class MetadataOptimizer:
             return f"{hours}:{minutes:02d}:{secs:02d}"
         return f"{minutes}:{secs:02d}"
 
-    def _generate_keyword_section(self, keywords: List[str]) -> str:
+    def _generate_keyword_section(self, keywords: list[str]) -> str:
         """Generate keyword-rich section."""
         return (
             f"Topics covered: {', '.join(keywords)}. "
@@ -347,7 +349,7 @@ class MetadataOptimizer:
 
     def auto_generate_chapters(
         self, script: str, video_duration: int, chapter_count: int = 5
-    ) -> List[Dict]:
+    ) -> list[dict[str, Any]]:
         """
         Auto-generate chapters from script.
 
@@ -396,7 +398,7 @@ class MetadataOptimizer:
         logger.info(f"[MetadataOptimizer] Generated {len(chapters)} chapters")
         return chapters
 
-    def optimize_tags(self, keywords: List[str], topic: str, max_tags: int = 15) -> List[str]:
+    def optimize_tags(self, keywords: list[str], topic: str, max_tags: int = 15) -> list[str]:
         """
         Generate optimized tag list.
 
@@ -430,7 +432,7 @@ class MetadataOptimizer:
         return tags
 
     def create_complete_metadata(
-        self, topic: str, keywords: List[str], script: str, video_duration: int
+        self, topic: str, keywords: list[str], script: str, video_duration: int
     ) -> OptimizedMetadata:
         """
         Generate complete optimized metadata package.

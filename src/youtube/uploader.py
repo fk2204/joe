@@ -14,6 +14,8 @@ Usage:
     )
 """
 
+from __future__ import annotations
+
 import os
 import random
 import re
@@ -200,8 +202,8 @@ class YouTubeSEOOptimizer:
         self,
         hook: str,
         main_description: str,
-        chapters: Optional[List[Dict[str, Any]]] = None,
-        related_videos: Optional[List[str]] = None,
+        chapters: Optional[list[dict[str, Any]]] = None,
+        related_videos: Optional[list[str]] = None,
         channel_name: str = "",
     ) -> str:
         """
@@ -280,7 +282,7 @@ class YouTubeSEOOptimizer:
 
         return description
 
-    def get_hashtags(self, custom_hashtags: Optional[List[str]] = None) -> List[str]:
+    def get_hashtags(self, custom_hashtags: Optional[list[str]] = None) -> list[str]:
         """Get 3-5 relevant hashtags for the niche."""
         niche_tags = NICHE_HASHTAGS.get(self.niche, NICHE_HASHTAGS["default"])
 
@@ -294,7 +296,7 @@ class YouTubeSEOOptimizer:
 
         return niche_tags[:5]
 
-    def optimize_tags(self, base_tags: List[str], title: str = "", max_tags: int = 30) -> List[str]:
+    def optimize_tags(self, base_tags: list[str], title: str = "", max_tags: int = 30) -> list[str]:
         """
         Optimize video tags for SEO.
 
@@ -312,11 +314,11 @@ class YouTubeSEOOptimizer:
         Returns:
             Optimized tags list
         """
-        optimized = []
-        seen = set()
+        optimized: list[str] = []
+        seen: set[str] = set()
 
-        def add_tag(tag: str):
-            tag_lower = tag.lower().strip()
+        def add_tag(tag: str) -> None:
+            tag_lower: str = tag.lower().strip()
             if tag_lower and tag_lower not in seen and len(tag) <= 30:
                 seen.add(tag_lower)
                 optimized.append(tag)
@@ -409,7 +411,7 @@ class YouTubeSEOOptimizer:
 
         return NICHE_CATEGORIES.get(self.niche, "27")
 
-    def format_chapters(self, sections: List[Dict[str, Any]]) -> List[Dict[str, str]]:
+    def format_chapters(self, sections: list[dict[str, Any]]) -> list[dict[str, str]]:
         """
         Format script sections into YouTube chapter format.
 
@@ -419,15 +421,15 @@ class YouTubeSEOOptimizer:
         Returns:
             List of {"timestamp": "00:00", "title": "Chapter"}
         """
-        chapters = []
-        current_time = 0
+        chapters: list[dict[str, str]] = []
+        current_time: int = 0
 
         for section in sections:
-            minutes = current_time // 60
-            seconds = current_time % 60
-            timestamp = f"{minutes:02d}:{seconds:02d}"
+            minutes: int = current_time // 60
+            seconds: int = current_time % 60
+            timestamp: str = f"{minutes:02d}:{seconds:02d}"
 
-            title = section.get("title", section.get("section_type", "Content"))
+            title: str = section.get("title", section.get("section_type", "Content"))
 
             # Ensure first chapter is at 00:00
             if not chapters:
@@ -488,7 +490,7 @@ class YouTubeUploader:
         video_file: str,
         title: str,
         description: str,
-        tags: Optional[List[str]] = None,
+        tags: Optional[list[str]] = None,
         niche: str = "default",
         privacy: str = "public",
         thumbnail_file: Optional[str] = None,
@@ -496,8 +498,8 @@ class YouTubeUploader:
         publish_at: Optional[datetime] = None,
         made_for_kids: bool = False,
         default_language: str = "en",
-        chapters: Optional[List[Dict[str, Any]]] = None,
-        related_videos: Optional[List[str]] = None,
+        chapters: Optional[list[dict[str, Any]]] = None,
+        related_videos: Optional[list[str]] = None,
         channel_name: str = "",
         hook_text: str = "",
     ) -> UploadResult:
@@ -580,7 +582,7 @@ class YouTubeUploader:
         video_file: str,
         title: str,
         description: str,
-        tags: Optional[List[str]] = None,
+        tags: Optional[list[str]] = None,
         category: str = "education",
         privacy: str = "public",
         thumbnail_file: Optional[str] = None,
@@ -630,7 +632,7 @@ class YouTubeUploader:
         video_file: str,
         title: str,
         description: str,
-        tags: Optional[List[str]] = None,
+        tags: Optional[list[str]] = None,
         category_id: str = "27",
         privacy: str = "public",
         thumbnail_file: Optional[str] = None,
@@ -656,7 +658,7 @@ class YouTubeUploader:
 
         logger.info(f"Uploading video: {title}")
 
-        body = {
+        body: dict[str, Any] = {
             "snippet": {
                 "title": title[:100],  # Max 100 chars
                 "description": description[:5000],  # Max 5000 chars
@@ -673,7 +675,8 @@ class YouTubeUploader:
 
         # Add scheduled publish time
         if publish_at and privacy == "private":
-            body["status"]["publishAt"] = publish_at.isoformat() + "Z"
+            status_dict: Any = body["status"]
+            status_dict["publishAt"] = publish_at.isoformat() + "Z"
             logger.info(f"Scheduled for: {publish_at}")
 
         # Create media upload
@@ -718,7 +721,7 @@ class YouTubeUploader:
             success=False, video_id=None, video_url=None, error="Upload failed for unknown reason"
         )
 
-    def _resumable_upload(self, request) -> Optional[str]:
+    def _resumable_upload(self, request: Any) -> Optional[str]:
         """
         Execute a resumable upload with retry logic.
 
@@ -728,8 +731,8 @@ class YouTubeUploader:
         Returns:
             Video ID on success, None on failure
         """
-        response = None
-        retry = 0
+        response: Any = None
+        retry: int = 0
 
         while response is None:
             try:
@@ -753,7 +756,9 @@ class YouTubeUploader:
                     raise
 
         if response:
-            return response.get("id")
+            video_id: Any = response.get("id")
+            if isinstance(video_id, str):
+                return video_id
         return None
 
     def set_thumbnail(self, video_id: str, thumbnail_file: str) -> bool:
@@ -816,7 +821,7 @@ class YouTubeUploader:
             logger.error(f"Failed to add to playlist: {e}")
             return False
 
-    def get_channel_info(self) -> Optional[Dict[str, Any]]:
+    def get_channel_info(self) -> Optional[dict[str, Any]]:
         """
         Get information about the authenticated channel.
 
@@ -842,14 +847,14 @@ class YouTubeUploader:
 
         return None
 
-    def get_my_playlists(self) -> List[Dict[str, str]]:
+    def get_my_playlists(self) -> list[dict[str, str]]:
         """
         Get list of playlists for the authenticated channel.
 
         Returns:
             List of playlist dicts with id and title
         """
-        playlists = []
+        playlists: list[dict[str, str]] = []
 
         try:
             response = (
@@ -893,9 +898,11 @@ class YouTubeUploader:
                 .execute()
             )
 
-            playlist_id = response["id"]
-            logger.success(f"Playlist created: {playlist_id}")
-            return playlist_id
+            playlist_id_value: Any = response.get("id")
+            if isinstance(playlist_id_value, str):
+                logger.success(f"Playlist created: {playlist_id_value}")
+                return playlist_id_value
+            return None
 
         except HttpError as e:
             logger.error(f"Failed to create playlist: {e}")
@@ -906,8 +913,8 @@ class YouTubeUploader:
     # ============================================================
 
     def get_optimal_upload_time(
-        self, niche: str = "default", target_regions: Optional[List[str]] = None
-    ) -> Dict[str, Any]:
+        self, niche: str = "default", target_regions: Optional[list[str]] = None
+    ) -> dict[str, Any]:
         """
         Calculate the optimal upload time for maximum algorithm boost.
 
@@ -943,8 +950,8 @@ class YouTubeUploader:
         }
 
     def schedule_first_hour_actions(
-        self, video_id: str, niche: str = "default", playlist_ids: Optional[List[str]] = None
-    ) -> List[Dict[str, Any]]:
+        self, video_id: str, niche: str = "default", playlist_ids: Optional[list[str]] = None
+    ) -> list[dict[str, Any]]:
         """
         Schedule engagement actions for the critical first hour after upload.
 
@@ -986,7 +993,7 @@ class YouTubeUploader:
             for a in actions
         ]
 
-    def execute_first_hour_action(self, action: Dict[str, Any]) -> bool:
+    def execute_first_hour_action(self, action: dict[str, Any]) -> bool:
         """
         Execute a single first-hour engagement action.
 
@@ -996,8 +1003,8 @@ class YouTubeUploader:
         Returns:
             True if action was executed successfully
         """
-        action_type = action.get("action_type", "")
-        video_id = action.get("parameters", {}).get("video_id", "")
+        action_type: str = action.get("action_type", "")
+        video_id: str = action.get("parameters", {}).get("video_id", "")
 
         logger.info(f"Executing first-hour action: {action_type}")
 
@@ -1036,7 +1043,7 @@ class YouTubeUploader:
             logger.error(f"Failed to execute action {action_type}: {e}")
             return False
 
-    def analyze_title(self, title: str, niche: str = "default") -> Dict[str, Any]:
+    def analyze_title(self, title: str, niche: str = "default") -> dict[str, Any]:
         """
         Analyze a video title against viral patterns.
 
@@ -1079,12 +1086,12 @@ class YouTubeUploader:
         self,
         title: str,
         description: str,
-        tags: List[str],
+        tags: list[str],
         niche: str = "default",
-        target_keywords: Optional[List[str]] = None,
-        script: Optional[Dict[str, Any]] = None,
+        target_keywords: Optional[list[str]] = None,
+        script: Optional[dict[str, Any]] = None,
         duration_seconds: Optional[int] = None,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Fully optimize video metadata for YouTube algorithm.
 
@@ -1127,7 +1134,7 @@ class YouTubeUploader:
                 "error": "youtube_optimizer module not installed",
             }
 
-        result = {
+        result: dict[str, Any] = {
             "original_title": title,
             "original_description": description,
             "optimized_title": title,
@@ -1136,16 +1143,16 @@ class YouTubeUploader:
         }
 
         # 1. Analyze and potentially improve title
-        title_analysis = self.analyze_title(title, niche)
+        title_analysis: dict[str, Any] = self.analyze_title(title, niche)
         result["title_analysis"] = title_analysis
 
         # 2. Optimize description keywords
-        keywords = target_keywords or []
+        keywords: list[str] = target_keywords or []
         if not keywords and tags:
             keywords = list(tags)[:5]
 
         if keywords:
-            keyword_result = optimize_description_keywords(
+            keyword_result: Any = optimize_description_keywords(
                 description, keywords, target_density=0.025
             )
             result["optimized_description"] = keyword_result.optimized_text
@@ -1157,15 +1164,15 @@ class YouTubeUploader:
 
         # 3. Generate chapters if script provided
         if script and duration_seconds:
-            chapters = generate_chapters_from_script(script, duration_seconds)
+            chapters: str = generate_chapters_from_script(script, duration_seconds)
             result["optimized_description"] = result["optimized_description"] + chapters
             result["chapters_generated"] = True
 
         # 4. Add niche-specific hashtags
-        niche_hashtags = NICHE_HASHTAGS.get(niche, NICHE_HASHTAGS.get("default", []))
+        niche_hashtags: list[str] = NICHE_HASHTAGS.get(niche, NICHE_HASHTAGS.get("default", []))
         if niche_hashtags:
             # Add hashtags to end of description
-            hashtag_line = "\n\n" + " ".join(niche_hashtags[:5])
+            hashtag_line: str = "\n\n" + " ".join(niche_hashtags[:5])
             result["optimized_description"] += hashtag_line
 
         logger.success("Video metadata optimized for YouTube algorithm")
@@ -1176,15 +1183,15 @@ class YouTubeUploader:
         video_file: str,
         title: str,
         description: str,
-        tags: List[str] = None,
+        tags: Optional[list[str]] = None,
         niche: str = "default",
-        target_keywords: List[str] = None,
-        script: Dict[str, Any] = None,
+        target_keywords: Optional[list[str]] = None,
+        script: Optional[dict[str, Any]] = None,
         privacy: str = "unlisted",
-        thumbnail: str = None,
-        playlist_id: str = None,
+        thumbnail: Optional[str] = None,
+        playlist_id: Optional[str] = None,
         schedule_first_hour: bool = True,
-    ) -> Optional["UploadResult"]:
+    ) -> Optional[UploadResult]:
         """
         Upload a video with full YouTube algorithm optimization.
 
@@ -1248,16 +1255,15 @@ class YouTubeUploader:
             description=optimized.get("optimized_description", description),
             tags=optimized.get("optimized_tags", tags),
             privacy=privacy,
-            thumbnail=thumbnail,
+            thumbnail_file=thumbnail,
         )
 
-        if result and schedule_first_hour:
+        if result and result.success and schedule_first_hour and result.video_id:
             # Schedule first-hour engagement actions
-            playlist_ids = [playlist_id] if playlist_id else None
-            actions = self.schedule_first_hour_actions(
+            playlist_ids: Optional[list[str]] = [playlist_id] if playlist_id else None
+            actions: list[dict[str, Any]] = self.schedule_first_hour_actions(
                 video_id=result.video_id, niche=niche, playlist_ids=playlist_ids
             )
-            result.scheduled_actions = actions
             logger.info(f"Scheduled {len(actions)} first-hour engagement actions")
 
         return result
@@ -1267,14 +1273,14 @@ class YouTubeUploader:
         video_file: str,
         title: str,
         description: str,
-        tags: List[str] = None,
+        tags: Optional[list[str]] = None,
         niche: str = "default",
-        video_id: str = None,
+        video_id: Optional[str] = None,
         script: str = "",
         duration_seconds: int = 600,
         privacy: str = "unlisted",
-        thumbnail: str = None,
-        playlist_id: str = None,
+        thumbnail: Optional[str] = None,
+        playlist_id: Optional[str] = None,
         ai_disclosure_enabled: bool = True,
         metadata_optimization_enabled: bool = True,
         auto_chapters: bool = True,

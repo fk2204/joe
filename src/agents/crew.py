@@ -12,6 +12,8 @@ Usage:
     result = crew.run_pipeline(niche="python tutorials")
 """
 
+from __future__ import annotations
+
 import asyncio
 import os
 from dataclasses import dataclass
@@ -44,7 +46,7 @@ class PipelineResult:
     video_file: Optional[str]
     title: str
     topic: str
-    error: Optional[str]
+    error: Optional[str] = None
 
 
 class YouTubeCrew:
@@ -56,8 +58,11 @@ class YouTubeCrew:
     """
 
     def __init__(
-        self, provider: str = None, api_key: Optional[str] = None, output_dir: str = "output"
-    ):
+        self,
+        provider: Optional[str] = None,
+        api_key: Optional[str] = None,
+        output_dir: str = "output",
+    ) -> None:
         """
         Initialize the YouTube crew.
 
@@ -69,9 +74,9 @@ class YouTubeCrew:
         # Use environment variable if provider not specified
         if provider is None:
             provider = os.getenv("AI_PROVIDER", "ollama")
-        self.provider = provider
-        self.api_key = api_key
-        self.output_dir = Path(output_dir)
+        self.provider: str = provider
+        self.api_key: Optional[str] = api_key
+        self.output_dir: Path = Path(output_dir)
         self.output_dir.mkdir(parents=True, exist_ok=True)
 
         logger.info(f"YouTubeCrew initialized with provider: {provider}")
@@ -81,7 +86,7 @@ class YouTubeCrew:
         else:
             self._setup_simple_pipeline()
 
-    def _setup_crewai_agents(self):
+    def _setup_crewai_agents(self) -> None:
         """Setup CrewAI agents."""
         logger.info("Setting up CrewAI agents...")
 
@@ -139,7 +144,7 @@ class YouTubeCrew:
             allow_delegation=False,
         )
 
-    def _setup_simple_pipeline(self):
+    def _setup_simple_pipeline(self) -> None:
         """Setup simple sequential pipeline (no CrewAI)."""
         logger.info("Setting up simple pipeline (CrewAI not available)...")
 
@@ -167,6 +172,8 @@ class YouTubeCrew:
         Returns:
             PipelineResult with video details
         """
+        # Type annotation helpers
+        idea: Any
         logger.info(f"Starting pipeline for niche: {niche}")
 
         try:
@@ -260,17 +267,17 @@ class YouTubeCrew:
                 error=str(e),
             )
 
-    async def _create_video(self, script, topic: str) -> Dict[str, Any]:
+    async def _create_video(self, script: Any, topic: str) -> Dict[str, Any]:
         """Create video from script."""
         import re
 
         # Generate safe filename
-        safe_title = re.sub(r"[^\w\s-]", "", script.title)[:50]
+        safe_title: str = re.sub(r"[^\w\s-]", "", script.title)[:50]
         safe_title = safe_title.replace(" ", "_")
 
-        audio_file = self.output_dir / f"{safe_title}_audio.mp3"
-        video_file = self.output_dir / f"{safe_title}.mp4"
-        thumbnail_file = self.output_dir / f"{safe_title}_thumb.png"
+        audio_file: Path = self.output_dir / f"{safe_title}_audio.mp3"
+        video_file: Path = self.output_dir / f"{safe_title}.mp4"
+        thumbnail_file: Path = self.output_dir / f"{safe_title}_thumb.png"
 
         try:
             # Generate audio
@@ -308,16 +315,16 @@ class YouTubeCrew:
         Returns:
             List of PipelineResult for each channel
         """
-        results = []
+        results: List[PipelineResult] = []
 
         for channel in channels:
             if not channel.get("enabled", True):
                 continue
 
-            niche = channel.get("settings", {}).get("niche", "tutorials")
+            niche: str = channel.get("settings", {}).get("niche", "tutorials")
             logger.info(f"Processing channel: {channel.get('name', 'Unknown')}")
 
-            result = self.run_pipeline(
+            result: PipelineResult = self.run_pipeline(
                 niche=niche,
                 upload=True,
                 privacy=channel.get("settings", {}).get("default_privacy", "unlisted"),
@@ -332,8 +339,8 @@ class YouTubeCrew:
 class SimplePipeline:
     """Simplified pipeline without CrewAI dependency."""
 
-    def __init__(self, provider: str = "ollama", api_key: Optional[str] = None):
-        self.crew = YouTubeCrew(provider=provider, api_key=api_key)
+    def __init__(self, provider: str = "ollama", api_key: Optional[str] = None) -> None:
+        self.crew: YouTubeCrew = YouTubeCrew(provider=provider, api_key=api_key)
 
     def run(self, niche: str, upload: bool = False) -> PipelineResult:
         return self.crew.run_pipeline(niche=niche, upload=upload)

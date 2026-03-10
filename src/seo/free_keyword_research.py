@@ -28,15 +28,17 @@ Usage:
     trending = researcher.get_trending_topics(niche="finance")
 """
 
+from __future__ import annotations
+
 import json
 import time
 from dataclasses import dataclass
-from typing import Dict, List
+from typing import Any, Dict, List, Optional
 
 from loguru import logger
 
 try:
-    import requests
+    import requests  # type: ignore[import-untyped]
 
     REQUESTS_AVAILABLE = True
 except ImportError:
@@ -62,7 +64,7 @@ class KeywordResult:
     suggestions_count: int = 0  # Number of autocomplete suggestions
     is_longtail: bool = False
 
-    def to_dict(self) -> Dict:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "keyword": self.keyword,
             "search_volume_estimate": self.search_volume_estimate,
@@ -90,9 +92,9 @@ class FreeKeywordResearch:
     # Modifier words for variations
     MODIFIERS = ["best", "top", "free", "easy", "simple", "ultimate", "complete", "beginner"]
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize free keyword research system."""
-        self.pytrends = None
+        self.pytrends: Optional[Any] = None
         if PYTRENDS_AVAILABLE:
             self.pytrends = TrendReq(hl="en-US", tz=360, timeout=(10, 25))
 
@@ -155,7 +157,7 @@ class FreeKeywordResearch:
         logger.success(f"[FreeKeywordResearch] Found {len(results[:count])} keywords")
         return results[:count]
 
-    def _get_youtube_suggestions(self, query: str) -> List[str]:
+    def _get_youtube_suggestions(self, query: str) -> list[str]:
         """Get YouTube autocomplete suggestions."""
         if not REQUESTS_AVAILABLE:
             return []
@@ -183,7 +185,7 @@ class FreeKeywordResearch:
 
         return []
 
-    def _analyze_keyword(self, keyword: str) -> KeywordResult:
+    def _analyze_keyword(self, keyword: str) -> "KeywordResult":
         """Analyze a single keyword."""
         # Get suggestion count
         suggestions = self._get_youtube_suggestions(keyword)
@@ -252,7 +254,7 @@ class FreeKeywordResearch:
 
     def _calculate_opportunity(
         self, volume: str, competition: str, trend: str, word_count: int
-    ) -> float:
+    ) -> float: # type: ignore[return-value]
         """Calculate opportunity score (0-100)."""
         score = 0.0
 
@@ -276,7 +278,7 @@ class FreeKeywordResearch:
 
         return min(100.0, score)
 
-    def analyze_competition(self, keyword: str) -> Dict:
+    def analyze_competition(self, keyword: str) -> dict[str, Any]:
         """
         Analyze competition for a keyword.
 
@@ -315,7 +317,7 @@ class FreeKeywordResearch:
             "recommendation": self._get_recommendation(result),
         }
 
-    def _get_recommendation(self, result: KeywordResult) -> str:
+    def _get_recommendation(self, result: "KeywordResult") -> str:
         """Get actionable recommendation."""
         if result.opportunity_score >= 70:
             return "HIGH OPPORTUNITY - Great keyword to target!"
@@ -328,7 +330,7 @@ class FreeKeywordResearch:
 
     def get_trending_topics(
         self, niche: str = "", region: str = "US", count: int = 10
-    ) -> List[Dict]:
+    ) -> list[dict[str, Any]]:
         """
         Get trending topics from Google Trends.
 

@@ -37,6 +37,8 @@ Usage:
     ])
 """
 
+from __future__ import annotations
+
 import asyncio
 import threading
 import time
@@ -207,12 +209,12 @@ class AgentRegistry:
         "ContentSafetyAgent": ["QualityAgent"],
     }
 
-    def __init__(self):
+    def __init__(self) -> None:
         self._agents: Dict[str, AgentInfo] = {}
         self._capability_index: Dict[AgentCapability, List[str]] = {
             cap: [] for cap in AgentCapability
         }
-        self._lock = threading.RLock()
+        self._lock: threading.RLock = threading.RLock()
         logger.info("AgentRegistry initialized")
 
     def register(
@@ -270,8 +272,8 @@ class AgentRegistry:
     ) -> List[AgentInfo]:
         """Get all agents with a specific capability."""
         with self._lock:
-            agent_names = self._capability_index.get(capability, [])
-            agents = [self._agents[name] for name in agent_names if name in self._agents]
+            agent_names: List[str] = self._capability_index.get(capability, [])
+            agents: List[AgentInfo] = [self._agents[name] for name in agent_names if name in self._agents]
 
             if healthy_only:
                 agents = [a for a in agents if a.is_healthy]
@@ -291,9 +293,9 @@ class AgentRegistry:
     ) -> None:
         """Update agent execution statistics."""
         with self._lock:
-            agent_info = self._agents.get(name)
+            agent_info: Optional[AgentInfo] = self._agents.get(name)
             if agent_info:
-                total = agent_info.total_executions
+                total: int = agent_info.total_executions
                 agent_info.total_executions = total + 1
 
                 # Update average execution time
@@ -302,7 +304,7 @@ class AgentRegistry:
                 ) / (total + 1)
 
                 # Update success rate
-                successes = agent_info.success_rate * total
+                successes: float = agent_info.success_rate * total
                 agent_info.success_rate = (successes + (1 if success else 0)) / (total + 1)
 
                 agent_info.last_execution = datetime.now()
@@ -343,9 +345,9 @@ class TaskRouter:
     - Priority-based routing
     """
 
-    def __init__(self, registry: AgentRegistry):
-        self.registry = registry
-        self._routing_rules: Dict[str, Callable] = {}
+    def __init__(self, registry: AgentRegistry) -> None:
+        self.registry: AgentRegistry = registry
+        self._routing_rules: Dict[str, Callable[[Dict[str, Any]], str]] = {}
         logger.info("TaskRouter initialized")
 
     def add_routing_rule(
@@ -742,8 +744,8 @@ class ResultAggregator:
     - Summary generation
     """
 
-    def __init__(self):
-        self._aggregation_rules: Dict[str, Callable] = {}
+    def __init__(self) -> None:
+        self._aggregation_rules: Dict[str, Callable[[List[TaskResult]], Any]] = {}
         logger.info("ResultAggregator initialized")
 
     def add_rule(
@@ -919,10 +921,10 @@ class LoadBalancer:
     - Health-aware routing
     """
 
-    def __init__(self, registry: AgentRegistry):
-        self.registry = registry
+    def __init__(self, registry: AgentRegistry) -> None:
+        self.registry: AgentRegistry = registry
         self._round_robin_index: Dict[AgentCapability, int] = {}
-        self._lock = threading.Lock()
+        self._lock: threading.Lock = threading.Lock()
         logger.info("LoadBalancer initialized")
 
     def get_next_agent(
@@ -1021,24 +1023,24 @@ class MasterOrchestrator:
         self,
         max_workers: int = 8,
         default_timeout: float = 300.0,
-    ):
-        self.registry = AgentRegistry()
-        self.router = TaskRouter(self.registry)
-        self.dependency_graph = DependencyGraph(self.registry)
-        self.executor = ParallelExecutor(
+    ) -> None:
+        self.registry: AgentRegistry = AgentRegistry()
+        self.router: TaskRouter = TaskRouter(self.registry)
+        self.dependency_graph: DependencyGraph = DependencyGraph(self.registry)
+        self.executor: ParallelExecutor = ParallelExecutor(
             self.registry,
             max_workers=max_workers,
             default_timeout=default_timeout,
         )
-        self.aggregator = ResultAggregator()
-        self.load_balancer = LoadBalancer(self.registry)
+        self.aggregator: ResultAggregator = ResultAggregator()
+        self.load_balancer: LoadBalancer = LoadBalancer(self.registry)
 
         self._workflows: Dict[str, WorkflowResult] = {}
-        self._lock = threading.Lock()
+        self._lock: threading.Lock = threading.Lock()
 
         logger.info("MasterOrchestrator initialized")
 
-    def auto_register_agents(self) -> int:
+    def auto_register_agents(self) -> int:  # type: ignore
         """
         Automatically register all available agents.
 
@@ -1091,14 +1093,14 @@ class MasterOrchestrator:
 
             # Try to import additional agents
             try:
-                from . import InsightAgent
+                from . import InsightAgent  # type: ignore
 
                 agents.append(("InsightAgent", InsightAgent))
             except ImportError:
                 pass
 
             try:
-                from . import ContentStrategyAgent
+                from . import ContentStrategyAgent  # type: ignore
 
                 agents.append(("ContentStrategyAgent", ContentStrategyAgent))
             except ImportError:
@@ -1301,7 +1303,7 @@ class MasterOrchestrator:
         """Get workflow by ID."""
         return self._workflows.get(workflow_id)
 
-    def shutdown(self):
+    def shutdown(self) -> None:
         """Shutdown the orchestrator."""
         self.executor.shutdown()
         logger.info("MasterOrchestrator shutdown complete")
@@ -1334,7 +1336,7 @@ def get_master_orchestrator(
 # ============================================================================
 
 
-def main():
+def main() -> None:
     """CLI entry point for master orchestrator."""
     import sys
 
