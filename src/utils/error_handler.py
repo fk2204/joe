@@ -76,9 +76,13 @@ def retry(
     max_attempts: int = 3,
     backoff_seconds: float = 1.0,
     backoff_multiplier: float = 2.0,
-    retryable_exceptions: tuple = (Exception,),
+    retryable_exceptions: tuple = None,
+    exceptions: tuple = None,
 ):
     """Decorator: Retry function with exponential backoff."""
+    # Handle both parameter names for compatibility
+    exc_tuple = exceptions or retryable_exceptions or (Exception,)
+
     def decorator(func: Callable) -> Callable:
         @wraps(func)
         def wrapper(*args: Any, **kwargs: Any) -> Any:
@@ -86,7 +90,7 @@ def retry(
             for attempt in range(1, max_attempts + 1):
                 try:
                     return func(*args, **kwargs)
-                except retryable_exceptions as e:
+                except exc_tuple as e:
                     if attempt == max_attempts:
                         logger.error(f"{func.__name__} failed after {max_attempts} attempts")
                         raise
@@ -108,3 +112,117 @@ def check_file_exists(path: str, error_code: str = "ERR_FILE_NOT_FOUND") -> bool
             suggestion=f"Make sure {path} exists",
         )
     return True
+
+
+from contextlib import contextmanager
+
+
+@contextmanager
+def ErrorContext(operation: str, details: str = ""):
+    """Context manager for operation tracking with error logging."""
+    import time
+    start = time.time()
+    try:
+        yield
+    except Exception as e:
+        elapsed = time.time() - start
+        logger.error(f"[{operation}] Failed after {elapsed:.2f}s. Details: {details}. Error: {e}")
+        raise
+    else:
+        elapsed = time.time() - start
+        logger.debug(f"[{operation}] Completed in {elapsed:.2f}s")
+
+
+def handle_tts_error(error: Exception, voice: str = "", text_length: int = 0) -> None:
+    """Handle TTS-specific errors with helpful messages."""
+    error_msg = str(error).lower()
+
+    if "api" in error_msg or "connection" in error_msg:
+        raise TTSError(
+            code="ERR_TTS_API",
+            user_msg="Text-to-speech API connection failed",
+            tech_details=str(error),
+            suggestion="Check internet connection and API status",
+        )
+    elif "auth" in error_msg:
+        raise TTSError(
+            code="ERR_TTS_AUTH",
+            user_msg="Text-to-speech authentication failed",
+            tech_details=str(error),
+            suggestion="Check API credentials in .env file",
+        )
+    elif "limit" in error_msg or "rate" in error_msg:
+        raise TTSError(
+            code="ERR_TTS_RATE_LIMIT",
+            user_msg="Text-to-speech rate limit exceeded",
+            tech_details=str(error),
+            suggestion="Wait a few minutes before retrying",
+        )
+    else:
+        raise TTSError(
+            code="ERR_TTS_UNKNOWN",
+            user_msg=f"Text-to-speech generation failed for voice '{voice}' ({text_length} chars)",
+            tech_details=str(error),
+            suggestion="Try with a different voice or shorter text",
+        )
+
+
+def handle_ffmpeg_error(error: Exception, operation: str = "encoding") -> None:
+    """Handle FFmpeg-specific errors."""
+    error_msg = str(error).lower()
+
+    if "not found" in error_msg or "command not found" in error_msg:
+        raise FFmpegError(
+            code="ERR_FFMPEG_NOT_FOUND",
+            user_msg="FFmpeg is not installed",
+            tech_details=str(error),
+            suggestion="Install FFmpeg from https://ffmpeg.org/download.html",
+        )
+    elif "invalid" in error_msg or "format" in error_msg:
+        raise FFmpegError(
+            code="ERR_FFMPEG_FORMAT",
+            user_msg=f"Invalid video format for {operation}",
+            tech_details=str(error),
+            suggestion="Use H.264 codec with MP4 container",
+        )
+    else:
+        raise FFmpegError(
+            code="ERR_FFMPEG_UNKNOWN",
+            user_msg=f"FFmpeg {operation} failed",
+            tech_details=str(error),
+            suggestion="Check video file integrity and format",
+        )
+
+
+def handle_upload_error(error: Exception, video_id: str = "") -> None:
+    """Handle YouTube upload-specific errors."""
+    error_msg = str(error).lower()
+
+    if "auth" in error_msg or "401" in error_msg or "403" in error_msg:
+        raise UploadError(
+            code="ERR_UPLOAD_AUTH",
+            user_msg="YouTube authentication failed - credentials may have expired",
+            tech_details=str(error),
+            suggestion="Run: python authenticate_youtube.py",
+        )
+    elif "quota" in error_msg or "limit" in error_msg:
+        raise UploadError(
+            code="ERR_UPLOAD_QUOTA",
+            user_msg="YouTube upload quota exceeded",
+            tech_details=str(error),
+            suggestion="Wait 24 hours or request higher quota",
+        )
+    elif "not found" in error_msg or "404" in error_msg:
+        raise UploadError(
+            code="ERR_UPLOAD_FILE_NOT_FOUND",
+            user_msg="Video file not found for upload",
+            tech_details=str(error),
+            suggestion="Check file path exists and is accessible",
+        )
+    else:
+        raise UploadError(
+            code="ERR_UPLOAD_UNKNOWN",
+            user_msg="YouTube upload failed",
+            tech_details=str(error),
+            suggestion="Check internet connection and try again",
+        )
