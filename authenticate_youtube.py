@@ -24,6 +24,7 @@ load_dotenv('.env')
 
 from pathlib import Path
 from src.youtube.auth import YouTubeAuth
+from src.utils.error_handler import OAuthError, ConfigError
 
 
 def main():
@@ -58,6 +59,11 @@ def main():
 
         return True
 
+    except (OAuthError, ConfigError) as e:
+        # Show user-friendly message
+        e.show_user_message()
+        e.log_details()
+        return False
     except Exception as e:
         print(f"\n[ERROR] Authentication failed: {e}")
         print("\nTroubleshooting:")

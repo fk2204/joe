@@ -34,6 +34,9 @@ except ImportError:
 
 from .auth import YouTubeAuth
 
+# Import error handling
+from src.utils.error_handler import UploadError, OAuthError, retry, ErrorContext, handle_upload_error
+
 # Import YouTube optimization utilities
 try:
     from src.utils.youtube_optimizer import (
@@ -577,6 +580,7 @@ class YouTubeUploader:
             default_language=default_language,
         )
 
+    @retry(max_attempts=3, backoff_seconds=2, exceptions=(TimeoutError, ConnectionError, HttpError))
     def upload_video(
         self,
         video_file: str,
@@ -598,6 +602,8 @@ class YouTubeUploader:
         """
         Upload a video to YouTube.
 
+        Retries up to 3 times on network errors.
+
         Args:
             video_file: Path to video file
             title: Video title (max 100 chars)
@@ -618,44 +624,59 @@ class YouTubeUploader:
         Returns:
             UploadResult with video ID and URL on success
         """
-        # Apply Shorts overlays if requested
-        if apply_shorts_overlays and channel_id:
+        # Validate file before upload
+        if not os.path.exists(video_file):
+            return UploadResult(
+                success=False,
+                video_id=None,
+                video_url=None,
+                error=f"Video file not found: {video_file}",
+            )
+
+        with ErrorContext("YouTube Upload", f"title={title[:50]}, file={video_file}"):
             try:
-                from src.content.graphics_engine import apply_overlays
+                # Apply Shorts overlays if requested
+                if apply_shorts_overlays and channel_id:
+                    try:
+                        from src.content.graphics_engine import apply_overlays
 
-                overlaid_file = video_file.replace(".mp4", "_overlaid.mp4")
-                apply_overlays(
-                    input_video=video_file,
-                    output_video=overlaid_file,
-                    channel_id=channel_id,
-                    script={
-                        "hook_text": hook_text or "",
-                        "key_benefit": key_benefit or "",
-                        "duration_s": 45,  # Default short-form duration
-                    }
+                        overlaid_file = video_file.replace(".mp4", "_overlaid.mp4")
+                        apply_overlays(
+                            input_video=video_file,
+                            output_video=overlaid_file,
+                            channel_id=channel_id,
+                            script={
+                                "hook_text": hook_text or "",
+                                "key_benefit": key_benefit or "",
+                                "duration_s": 45,  # Default short-form duration
+                            }
+                        )
+                        video_file = overlaid_file
+                        logger.info(f"Shorts overlays applied, uploading: {overlaid_file}")
+
+                    except Exception as e:
+                        logger.warning(f"Failed to apply Shorts overlays: {e}, continuing without overlays")
+
+                # Get category ID from category name
+                category_id = self.CATEGORIES.get(category.lower(), "27")  # Default: Education
+
+                return self._upload_video_internal(
+                    video_file=video_file,
+                    title=title,
+                    description=description,
+                    tags=tags,
+                    category_id=category_id,
+                    privacy=privacy,
+                    thumbnail_file=thumbnail_file,
+                    playlist_id=playlist_id,
+                    publish_at=publish_at,
+                    made_for_kids=made_for_kids,
+                    default_language=default_language,
                 )
-                video_file = overlaid_file
-                logger.info(f"Shorts overlays applied, uploading: {overlaid_file}")
 
-            except Exception as e:
-                logger.warning(f"Failed to apply Shorts overlays: {e}, continuing without overlays")
-
-        # Get category ID from category name
-        category_id = self.CATEGORIES.get(category.lower(), "27")  # Default: Education
-
-        return self._upload_video_internal(
-            video_file=video_file,
-            title=title,
-            description=description,
-            tags=tags,
-            category_id=category_id,
-            privacy=privacy,
-            thumbnail_file=thumbnail_file,
-            playlist_id=playlist_id,
-            publish_at=publish_at,
-            made_for_kids=made_for_kids,
-            default_language=default_language,
-        )
+            except HttpError as e:
+                # Handle YouTube API errors
+                handle_upload_error(e)
 
     def _upload_video_internal(
         self,

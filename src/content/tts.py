@@ -43,6 +43,9 @@ except ImportError:
 
 import random
 
+# Import error handling
+from src.utils.error_handler import TTSError, retry, ErrorContext, handle_tts_error
+
 
 class NaturalVoiceVariation:
     """
@@ -295,6 +298,7 @@ class TextToSpeech:
         self.default_voice = default_voice
         logger.info(f"TTS initialized with voice: {default_voice}")
 
+    @retry(max_attempts=3, backoff_seconds=2, exceptions=(ConnectionError, TimeoutError))
     async def generate(
         self,
         text: str,
@@ -307,6 +311,8 @@ class TextToSpeech:
         """
         Generate speech from text and save to file.
 
+        Retries up to 3 times with exponential backoff on network errors.
+
         Args:
             text: Text to convert to speech
             output_file: Output audio file path (mp3)
@@ -317,6 +323,9 @@ class TextToSpeech:
 
         Returns:
             Path to the generated audio file
+
+        Raises:
+            TTSError: If generation fails after retries
         """
         voice = voice or self.default_voice
 
@@ -327,18 +336,26 @@ class TextToSpeech:
         logger.info(f"Generating speech: {len(text)} chars -> {output_file}")
         logger.debug(f"Voice: {voice}, Rate: {rate}, Pitch: {pitch}")
 
-        try:
-            communicate = edge_tts.Communicate(
-                text=text, voice=voice, rate=rate, pitch=pitch, volume=volume
-            )
-            await communicate.save(str(output_path))
+        with ErrorContext("TTS Generation", f"voice={voice}, chars={len(text)}"):
+            try:
+                communicate = edge_tts.Communicate(
+                    text=text, voice=voice, rate=rate, pitch=pitch, volume=volume
+                )
+                await communicate.save(str(output_path))
 
-            logger.success(f"Audio saved: {output_file}")
-            return str(output_path)
+                logger.success(f"Audio saved: {output_file}")
+                return str(output_path)
 
-        except (ConnectionError, TimeoutError, OSError, IOError) as e:
-            logger.error(f"TTS generation failed: {e}")
-            raise
+            except (ConnectionError, TimeoutError) as e:
+                # Network errors - will be retried
+                logger.warning(f"TTS network error (will retry): {e}")
+                raise
+            except (OSError, IOError) as e:
+                # File system errors - not retryable
+                handle_tts_error(e)
+            except Exception as e:
+                # Other errors
+                handle_tts_error(e)
 
     def add_dramatic_pauses(self, text: str) -> str:
         """
@@ -401,6 +418,7 @@ class TextToSpeech:
 </speak>"""
         return ssml
 
+    @retry(max_attempts=3, backoff_seconds=2, exceptions=(ConnectionError, TimeoutError))
     async def generate_with_ssml(
         self,
         text: str,
@@ -414,6 +432,8 @@ class TextToSpeech:
         """
         Generate speech from text with SSML support.
 
+        Retries up to 3 times with exponential backoff on network errors.
+
         Args:
             text: Text to convert (can contain SSML tags or be plain text)
             output_file: Output audio file path (mp3)
@@ -425,6 +445,9 @@ class TextToSpeech:
 
         Returns:
             Path to the generated audio file
+
+        Raises:
+            TTSError: If generation fails after retries
         """
         voice = voice or self.default_voice
 
@@ -440,18 +463,19 @@ class TextToSpeech:
         logger.info(f"Generating SSML speech: {len(text)} chars -> {output_file}")
         logger.debug(f"Voice: {voice}, Rate: {rate}, Pitch: {pitch}")
 
-        try:
-            communicate = edge_tts.Communicate(
-                text=text, voice=voice, rate=rate, pitch=pitch, volume=volume
-            )
-            await communicate.save(str(output_path))
+        with ErrorContext("TTS SSML Generation", f"voice={voice}, chars={len(text)}"):
+            try:
+                communicate = edge_tts.Communicate(
+                    text=text, voice=voice, rate=rate, pitch=pitch, volume=volume
+                )
+                await communicate.save(str(output_path))
 
-            logger.success(f"SSML audio saved: {output_file}")
-            return str(output_path)
+                logger.success(f"SSML audio saved: {output_file}")
+                return str(output_path)
 
-        except (ConnectionError, TimeoutError, OSError, IOError) as e:
-            logger.error(f"SSML TTS generation failed: {e}")
-            raise
+            except (ConnectionError, TimeoutError, OSError, IOError) as e:
+                logger.error(f"SSML TTS generation failed: {e}")
+                raise
 
     async def generate_natural(
         self,

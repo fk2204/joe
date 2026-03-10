@@ -24,15 +24,17 @@ def main():
     print("JOE FULL PIPELINE DEMO: GENERATE > CREATE > UPLOAD")
     print("="*70)
 
-    # Step 1: Check YouTube setup
-    print("\n[STEP 1] Checking YouTube setup...")
-    yt_secret = os.getenv('YOUTUBE_CLIENT_SECRETS_FILE', 'config/client_secret.json')
+    # Pre-flight system checks
+    print("\n[PRE-FLIGHT CHECKS] Verifying system...")
+    try:
+        from src.utils.error_handler import check_system
 
-    if not os.path.exists(yt_secret or ''):
-        print(f"[ERROR] YouTube client secret not found at {yt_secret}")
-        return
-
-    print(f"[OK] YouTube secret exists: {yt_secret}")
+        if not check_system():
+            print("\nFix the above issues and try again.")
+            return
+    except Exception as e:
+        print(f"[WARN] System checks failed: {e}")
+        # Continue anyway - not critical
 
     # Step 2: Generate Script (Template-Based, No AI)
     print("\n[STEP 2] Generating video script (template-based)...")
@@ -108,6 +110,7 @@ Your financial future starts now.
     print("\n[STEP 3] Generating audio (TTS - Edge)...")
     try:
         from src.content.tts import TextToSpeech
+        from src.utils.error_handler import TTSError
 
         output_dir = Path('output')
         output_dir.mkdir(exist_ok=True)
@@ -125,6 +128,11 @@ Your financial future starts now.
             print(f"[ERROR] Audio file not created")
             return
 
+    except TTSError as e:
+        # Show user-friendly message
+        e.show_user_message()
+        e.log_details()
+        return
     except Exception as e:
         print(f"[ERROR] Audio generation failed: {e}")
         import traceback
@@ -135,12 +143,13 @@ Your financial future starts now.
     print("\n[STEP 4] Creating video...")
     try:
         from src.content.video_fast import FastVideoGenerator
+        from src.utils.error_handler import FFmpegError
 
         generator = FastVideoGenerator()
         video_file = str(output_dir / "video.mp4")
 
         print(f"   Creating {script['duration']}s video at 1920x1080...")
-        generator.create_video(
+        result = generator.create_video(
             audio_file=audio_file,
             output_file=video_file,
             title=script['title'],
@@ -148,13 +157,18 @@ Your financial future starts now.
             normalize_audio=True
         )
 
-        if os.path.exists(video_file):
+        if result and os.path.exists(video_file):
             size_mb = os.path.getsize(video_file) / 1024 / 1024
             print(f"[OK] Video created: {video_file} ({size_mb:.1f} MB)")
         else:
             print(f"[ERROR] Video file not created")
             return
 
+    except FFmpegError as e:
+        # Show user-friendly message
+        e.show_user_message()
+        e.log_details()
+        return
     except Exception as e:
         print(f"[ERROR] Video creation failed: {e}")
         import traceback
@@ -193,6 +207,7 @@ Your financial future starts now.
 
     try:
         from src.youtube.uploader import YouTubeUploader
+        from src.utils.error_handler import UploadError, OAuthError
 
         uploader = YouTubeUploader()
 
@@ -210,20 +225,23 @@ Your financial future starts now.
             privacy="unlisted"
         )
 
-        if result.get('success'):
+        if result.success:
             print(f"\n[OK] Upload successful!")
-            print(f"  Video URL: {result['video_url']}")
-            print(f"  Video ID: {result['video_id']}")
+            print(f"  Video URL: {result.video_url}")
+            print(f"  Video ID: {result.video_id}")
             print(f"\n  NEXT STEPS:")
             print(f"  1. Browser opened for OAuth (may be in background)")
             print(f"  2. Click ALLOW to authorize YouTube access")
             print(f"  3. Go to https://youtube.com/studio to verify upload")
             print(f"  4. Change privacy to PUBLIC when ready")
         else:
-            print(f"[ERROR] Upload failed: {result.get('error', 'Unknown error')}")
-            if result.get('error_details'):
-                print(f"  Details: {result['error_details']}")
+            print(f"[ERROR] Upload failed: {result.error}")
 
+    except (UploadError, OAuthError) as e:
+        # Show user-friendly message
+        e.show_user_message()
+        e.log_details()
+        return
     except Exception as e:
         print(f"[ERROR] Upload failed: {e}")
         import traceback

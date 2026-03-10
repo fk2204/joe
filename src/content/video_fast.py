@@ -42,6 +42,9 @@ try:
 except ImportError:
     raise ImportError("Please install pillow: pip install pillow")
 
+# Import error handling
+from src.utils.error_handler import FFmpegError, retry, ErrorContext, handle_ffmpeg_error
+
 # Import audio processor for normalization
 try:
     from .audio_processor import AudioProcessor
@@ -119,10 +122,10 @@ class FastVideoGenerator:
 
     def __init__(
         self,
-        resolution: Tuple[int, int] = (1920, 1080),
+        resolution: Tuple[int, int] = (1080, 1920),
         fps: int = 30,
         background_color: str = "#14141e",
-        content_type: str = "regular",
+        content_type: str = "shorts",
     ):
         self.resolution = resolution
         self.fps = fps
@@ -640,39 +643,74 @@ class FastVideoGenerator:
 
         Returns:
             Path to created video or None on failure
+
+        Raises:
+            FFmpegError: If FFmpeg not found or encoding fails
         """
-        # Use optimized single-pass if requested and subtitles are needed
-        if single_pass and (normalize_audio or background_music or subtitles_enabled):
-            return self._create_video_single_pass(
-                audio_file,
-                output_file,
-                title,
-                subtitle,
-                background_image,
-                normalize_audio,
-                background_music,
-                music_volume,
-                script_text,
-                subtitles_enabled,
-                subtitle_style,
-                niche,
+        # Pre-flight checks
+        if not self.ffmpeg:
+            raise FFmpegError(
+                code="FFMPEG_NOT_FOUND",
+                user_msg="FFmpeg not found. Video generation requires FFmpeg.",
+                tech_details="find_ffmpeg() returned None",
+                suggestion="Install FFmpeg: https://ffmpeg.org/download.html",
             )
 
-        # Fall back to multi-pass method
-        return self._create_video_multipass(
-            audio_file,
-            output_file,
-            title,
-            subtitle,
-            background_image,
-            normalize_audio,
-            background_music,
-            music_volume,
-            script_text,
-            subtitles_enabled,
-            subtitle_style,
-            niche,
-        )
+        if not os.path.exists(audio_file):
+            raise FFmpegError(
+                code="AUDIO_FILE_NOT_FOUND",
+                user_msg=f"Audio file not found: {audio_file}",
+                tech_details=f"Expected file at {audio_file}",
+                suggestion="Check that the audio file exists",
+            )
+
+        with ErrorContext("Video Creation", f"audio={audio_file}, output={output_file}"):
+            try:
+                # Use optimized single-pass if requested and subtitles are needed
+                if single_pass and (normalize_audio or background_music or subtitles_enabled):
+                    result = self._create_video_single_pass(
+                        audio_file,
+                        output_file,
+                        title,
+                        subtitle,
+                        background_image,
+                        normalize_audio,
+                        background_music,
+                        music_volume,
+                        script_text,
+                        subtitles_enabled,
+                        subtitle_style,
+                        niche,
+                    )
+                else:
+                    # Fall back to multi-pass method
+                    result = self._create_video_multipass(
+                        audio_file,
+                        output_file,
+                        title,
+                        subtitle,
+                        background_image,
+                        normalize_audio,
+                        background_music,
+                        music_volume,
+                        script_text,
+                        subtitles_enabled,
+                        subtitle_style,
+                        niche,
+                    )
+
+                if not result:
+                    raise FFmpegError(
+                        code="VIDEO_CREATION_FAILED",
+                        user_msg="Video creation failed. Check logs above.",
+                        tech_details="Both single-pass and multi-pass methods failed",
+                        suggestion="Try again with simpler settings or check FFmpeg",
+                    )
+
+                return result
+
+            except subprocess.CalledProcessError as e:
+                handle_ffmpeg_error(e)
 
     def _create_video_multipass(
         self,
@@ -760,7 +798,7 @@ class FastVideoGenerator:
                     "-crf",
                     "23",  # Constant rate factor for quality
                     "-b:v",
-                    "8000k",  # Video bitrate (8 Mbps for YouTube 1080p)
+                    "8000k",  # Video bitrate (8 Mbps for YouTube Shorts 1080x1920)
                     "-c:a",
                     "aac",  # Audio codec
                     "-b:a",
@@ -1126,6 +1164,157 @@ class FastVideoGenerator:
         logger.info(f"Batch complete: {len(successful)} succeeded, {len(failed)} failed")
         return successful
 
+    def validate_output_resolution(self, video_file: str) -> Dict[str, any]:
+        """
+        Validate that the output video has the correct resolution (1080x1920 for YouTube Shorts).
+
+        Uses ffprobe to check video dimensions and aspect ratio.
+
+        Args:
+            video_file: Path to the output video file
+
+        Returns:
+            Dictionary with validation results:
+            {
+                'is_valid': bool,
+                'width': int,
+                'height': int,
+                'aspect_ratio': float,
+                'expected_aspect_ratio': float,
+                'matches_expected': bool,
+                'warning': str or None
+            }
+        """
+        try:
+            import json
+            import subprocess
+
+            if not os.path.exists(video_file):
+                logger.error(f"Video file not found for validation: {video_file}")
+                return {
+                    "is_valid": False,
+                    "width": None,
+                    "height": None,
+                    "aspect_ratio": None,
+                    "expected_aspect_ratio": 9 / 16,
+                    "matches_expected": False,
+                    "warning": f"Video file not found: {video_file}",
+                }
+
+            # Use ffprobe to get video information
+            ffprobe_cmd = [
+                "ffprobe",
+                "-v",
+                "error",
+                "-select_streams",
+                "v:0",
+                "-show_entries",
+                "stream=width,height",
+                "-of",
+                "json",
+                video_file,
+            ]
+
+            result = subprocess.run(ffprobe_cmd, capture_output=True, text=True)
+
+            if result.returncode != 0:
+                logger.error(f"ffprobe failed: {result.stderr}")
+                return {
+                    "is_valid": False,
+                    "width": None,
+                    "height": None,
+                    "aspect_ratio": None,
+                    "expected_aspect_ratio": 9 / 16,
+                    "matches_expected": False,
+                    "warning": f"ffprobe error: {result.stderr[:200]}",
+                }
+
+            data = json.loads(result.stdout)
+            if not data.get("streams") or len(data["streams"]) == 0:
+                logger.error("No video stream found in output file")
+                return {
+                    "is_valid": False,
+                    "width": None,
+                    "height": None,
+                    "aspect_ratio": None,
+                    "expected_aspect_ratio": 9 / 16,
+                    "matches_expected": False,
+                    "warning": "No video stream found in output file",
+                }
+
+            stream = data["streams"][0]
+            width = stream.get("width")
+            height = stream.get("height")
+
+            if width is None or height is None:
+                logger.error("Could not determine video dimensions")
+                return {
+                    "is_valid": False,
+                    "width": None,
+                    "height": None,
+                    "aspect_ratio": None,
+                    "expected_aspect_ratio": 9 / 16,
+                    "matches_expected": False,
+                    "warning": "Could not determine video dimensions from ffprobe",
+                }
+
+            aspect_ratio = width / height
+            expected_aspect_ratio = 9 / 16  # YouTube Shorts aspect ratio
+            expected_width = 1080
+            expected_height = 1920
+
+            # Check if resolution matches expected (1080x1920)
+            matches_expected = width == expected_width and height == expected_height
+
+            # Check if aspect ratio is correct (with small tolerance)
+            aspect_tolerance = 0.01
+            aspect_ratio_correct = (
+                abs(aspect_ratio - expected_aspect_ratio) < aspect_tolerance
+            )
+
+            is_valid = matches_expected and aspect_ratio_correct
+
+            warning = None
+            if not matches_expected:
+                warning = (
+                    f"Resolution mismatch: got {width}x{height}, "
+                    f"expected {expected_width}x{expected_height}"
+                )
+            if not aspect_ratio_correct:
+                if warning:
+                    warning += f" | Aspect ratio: {aspect_ratio:.3f}, expected: {expected_aspect_ratio:.3f}"
+                else:
+                    warning = f"Aspect ratio mismatch: {aspect_ratio:.3f}, expected: {expected_aspect_ratio:.3f}"
+
+            if is_valid:
+                logger.success(
+                    f"Video resolution validated: {width}x{height} (9:16 aspect ratio)"
+                )
+            else:
+                logger.warning(f"Validation warning: {warning}")
+
+            return {
+                "is_valid": is_valid,
+                "width": width,
+                "height": height,
+                "aspect_ratio": aspect_ratio,
+                "expected_aspect_ratio": expected_aspect_ratio,
+                "matches_expected": matches_expected,
+                "warning": warning,
+            }
+
+        except Exception as e:
+            logger.error(f"Error validating video resolution: {e}")
+            return {
+                "is_valid": False,
+                "width": None,
+                "height": None,
+                "aspect_ratio": None,
+                "expected_aspect_ratio": 9 / 16,
+                "matches_expected": False,
+                "warning": f"Validation error: {str(e)}",
+            }
+
 
 # Example usage
 if __name__ == "__main__":
@@ -1142,11 +1331,23 @@ if __name__ == "__main__":
     # If we have test audio, create video
     if os.path.exists("output/test_voice.mp3"):
         print("\nCreating test video...")
-        generator.create_video(
+        video_file = generator.create_video(
             audio_file="output/test_voice.mp3",
             output_file="output/test_video.mp4",
             title="Test Video",
             subtitle="Created with FFmpeg",
         )
+
+        # Validate output resolution
+        if video_file:
+            print("\nValidating output resolution...")
+            validation = generator.validate_output_resolution(video_file)
+            print(f"Resolution: {validation['width']}x{validation['height']}")
+            print(f"Aspect Ratio: {validation['aspect_ratio']:.3f} (9:16 = {validation['expected_aspect_ratio']:.3f})")
+            print(f"Valid for YouTube Shorts: {validation['is_valid']}")
+            if validation["warning"]:
+                print(f"⚠️  Warning: {validation['warning']}")
+            else:
+                print("✓ Resolution validated successfully for YouTube Shorts!")
     else:
         print("\nNo test audio found. Run TTS test first.")

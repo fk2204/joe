@@ -34,6 +34,9 @@ except ImportError:
         "pip install google-auth-oauthlib google-api-python-client"
     )
 
+# Import error handling
+from src.utils.error_handler import OAuthError, ConfigError
+
 
 class YouTubeAuth:
     """Handle YouTube API authentication."""
@@ -105,13 +108,17 @@ class YouTubeAuth:
     def _create_new_credentials(self) -> Any:
         """Create new OAuth credentials via browser flow with fallback to OOB."""
         if not self.client_secrets_file or not os.path.exists(self.client_secrets_file):
-            raise FileNotFoundError(
-                f"Client secrets file not found: {self.client_secrets_file}\n\n"
-                "To set up YouTube API:\n"
-                "1. Go to console.cloud.google.com\n"
-                "2. Create a project and enable 'YouTube Data API v3'\n"
-                "3. Create OAuth 2.0 credentials (Desktop app)\n"
-                "4. Download and save as config/client_secret.json"
+            raise ConfigError(
+                code="YOUTUBE_CLIENT_SECRET_MISSING",
+                user_msg="YouTube client_secret.json not found.",
+                tech_details=f"Expected at {self.client_secrets_file}",
+                suggestion=(
+                    "1. Go to https://console.cloud.google.com\n"
+                    "2. Create a new project\n"
+                    "3. Enable 'YouTube Data API v3'\n"
+                    "4. Create OAuth 2.0 Desktop credentials\n"
+                    "5. Download JSON and save to config/client_secret.json"
+                ),
             )
 
         logger.info("Creating new credentials (browser will open)...")

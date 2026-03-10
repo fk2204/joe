@@ -16,15 +16,20 @@ from dotenv import load_dotenv
 load_dotenv('.env')
 
 def upload_to_channel(channel_name, video_file):
-    """Upload video to a specific channel"""
+    """Upload video to a specific channel. Continues on error."""
     print(f"\n{'='*70}")
     print(f"UPLOADING TO: {channel_name}")
     print(f"{'='*70}")
 
     try:
         from src.youtube.auth import YouTubeAuth
+        from src.utils.error_handler import UploadError, OAuthError
 
         # Load channels config
+        if not os.path.exists('config/channels_config.json'):
+            print(f"[ERROR] Config not found: config/channels_config.json")
+            return False
+
         with open('config/channels_config.json', 'r') as f:
             config = json.load(f)
 
@@ -36,7 +41,7 @@ def upload_to_channel(channel_name, video_file):
                 break
 
         if not selected:
-            print(f"[ERROR] Channel {channel_name} not found")
+            print(f"[ERROR] Channel {channel_name} not found in config")
             return False
 
         print(f"[OK] Selected: {selected['name']}")
@@ -51,9 +56,13 @@ def upload_to_channel(channel_name, video_file):
 
         # Authenticate
         print(f"\n[AUTHENTICATING] YouTube...")
-        auth = YouTubeAuth()
-        youtube = auth.get_authenticated_service()
-        print(f"[OK] Authenticated!")
+        try:
+            auth = YouTubeAuth()
+            youtube = auth.get_authenticated_service()
+            print(f"[OK] Authenticated!")
+        except (OAuthError, Exception) as auth_err:
+            print(f"[ERROR] Authentication failed: {auth_err}")
+            return False
 
         # Upload
         print(f"\n[UPLOADING] to {selected['name']} (PUBLIC)...")
@@ -89,10 +98,15 @@ def upload_to_channel(channel_name, video_file):
 
         return True
 
+    except UploadError as e:
+        # Show user message but continue to next channel
+        print(f"[ERROR] {e.code}: {e.user_msg}")
+        if e.suggestion:
+            print(f"  Suggestion: {e.suggestion}")
+        return False
     except Exception as e:
         print(f"[ERROR] Upload failed: {e}")
-        import traceback
-        traceback.print_exc()
+        # Don't print full traceback - too verbose for batch operations
         return False
 
 

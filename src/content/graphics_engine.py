@@ -235,7 +235,10 @@ def _build_filter_complex(
     accent_color: str = "0xFF0000FF",
 ) -> str:
     """
-    Build complete FFmpeg filter_complex string from overlays config.
+    Build complete FFmpeg filter string from overlays config.
+
+    Uses simple comma-separated filter syntax for compatibility and reliability.
+    Avoids complex labeled pads which can have escaping issues.
 
     Args:
         overlays: List of overlay dicts from config
@@ -244,7 +247,7 @@ def _build_filter_complex(
         accent_color: Default accent color in 0xRRGGBBAA format
 
     Returns:
-        FFmpeg filter_complex string ready for -filter_complex argument.
+        FFmpeg filter string ready for -vf argument (simple comma-separated format).
     """
     filter_parts = []
 
@@ -296,28 +299,13 @@ def _build_filter_complex(
 
         filter_parts.append(filter_str)
 
-    # Chain filters with comma
+    # Chain filters with comma (simple format)
     if not filter_parts:
-        # No overlays, return identity filter
-        return "[0:v]format=yuv420p[v_out]"
+        # No overlays, return format filter for YUV
+        return "format=yuv420p"
 
-    # Build chain: [0:v]filter1[tmp0]; [tmp0]filter2[tmp1]; ...; [tmpN]format=yuv420p[v_out]
-    if len(filter_parts) == 1:
-        # Single filter: [0:v]filter[v_out_temp]; [v_out_temp]format=yuv420p[v_out]
-        filter_chain = f"[0:v]{filter_parts[0]}[v_out_temp]; [v_out_temp]format=yuv420p[v_out]"
-    else:
-        # Multiple filters: chain them with intermediate labels
-        filter_chain = f"[0:v]{filter_parts[0]}[tmp0]"
-
-        for i, part in enumerate(filter_parts[1:], start=1):
-            if i == len(filter_parts) - 1:
-                # Last filter outputs to v_out_temp
-                filter_chain += f"; [tmp{i-1}]{part}[v_out_temp]"
-            else:
-                # Intermediate filter outputs to tmp label
-                filter_chain += f"; [tmp{i-1}]{part}[tmp{i}]"
-
-        filter_chain += "; [v_out_temp]format=yuv420p[v_out]"
+    # Join all filters with comma: filter1,filter2,filter3,format=yuv420p
+    filter_chain = ",".join(filter_parts) + ",format=yuv420p"
 
     return filter_chain
 
@@ -392,16 +380,13 @@ def apply_overlays(
         )
 
     # Build FFmpeg command
+    # Use -vf for simple filter chain (more reliable than -filter_complex)
     cmd = [
         ffmpeg_path,
         "-i",
         input_video,
-        "-filter_complex",
+        "-vf",
         filter_complex,
-        "-map",
-        "[v_out]",  # Use filtered video output
-        "-map",
-        "0:a",  # Copy audio from input
         "-c:v",
         "libx264",
         "-preset",
