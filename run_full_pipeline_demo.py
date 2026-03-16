@@ -9,7 +9,7 @@ import sys
 import os
 
 # Change to project directory
-project_dir = r'C:\Users\fkozi\joe'
+project_dir = '/root/fk2204-repos/youtube-automation'
 os.chdir(project_dir)
 sys.path.insert(0, os.getcwd())
 

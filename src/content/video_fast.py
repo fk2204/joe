@@ -172,21 +172,36 @@ class FastVideoGenerator:
                 logger.debug(f"SubtitleGenerator initialization failed: {e}")
 
     def _check_nvenc_available(self) -> bool:
-        """Check if NVIDIA NVENC hardware encoder is available."""
+        """Check if NVIDIA NVENC hardware encoder is available and functional."""
         if self._nvenc_available is not None:
             return self._nvenc_available
 
         try:
             ffmpeg_path = self.ffmpeg or "ffmpeg"
+            # First check if encoder is listed
             result = subprocess.run(
                 [ffmpeg_path, "-hide_banner", "-encoders"],
                 capture_output=True,
                 text=True,
                 timeout=5,
             )
-            self._nvenc_available = "h264_nvenc" in result.stdout
+            if "h264_nvenc" not in result.stdout:
+                self._nvenc_available = False
+                return False
+
+            # Actually test if NVENC works (encoder may be listed but no GPU present)
+            test_result = subprocess.run(
+                [ffmpeg_path, "-y", "-f", "lavfi", "-i", "color=c=black:s=16x16:d=0.1",
+                 "-c:v", "h264_nvenc", "-f", "null", "-"],
+                capture_output=True,
+                text=True,
+                timeout=10,
+            )
+            self._nvenc_available = test_result.returncode == 0
             if self._nvenc_available:
-                logger.info("NVENC hardware encoder detected")
+                logger.info("NVENC hardware encoder detected and functional")
+            else:
+                logger.info("NVENC listed but not functional (no GPU?) - using libx264")
             return self._nvenc_available
         except Exception:
             self._nvenc_available = False

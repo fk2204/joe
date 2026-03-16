@@ -7,14 +7,14 @@ Generates a video script, creates a video, and uploads to YouTube.
 
 import sys
 import os
-sys.path.insert(0, '/c/Users/fkozi/joe')
+sys.path.insert(0, '/root/fk2204-repos/youtube-automation')
 
 from dotenv import load_dotenv
 import asyncio
 from pathlib import Path
 
 # Load environment variables
-load_dotenv('/c/Users/fkozi/joe/.env')
+load_dotenv('/root/fk2204-repos/youtube-automation/.env')
 
 def main():
     print("\n" + "="*70)
